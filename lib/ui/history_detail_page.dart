@@ -6,7 +6,7 @@ import '../history/database.dart';
 import '../providers/app_settings.dart';
 import '../quality/catalog.dart';
 import '../quality/overview.dart';
-import '../yinmik/reading.dart';
+import '../yinmik/reading_values.dart';
 import 'widgets/parameter_card.dart';
 import 'widgets/summary_header.dart';
 
@@ -27,6 +27,10 @@ class HistoryDetailPage extends ConsumerStatefulWidget {
 }
 
 class _HistoryDetailPageState extends ConsumerState<HistoryDetailPage> {
+  // Локаль-нейтральный формат — не требует initializeDateFormatting и не падает на устройствах
+  // без российских locale data.
+  static final _timeFormat = DateFormat('dd.MM.yyyy HH:mm');
+
   late int _currentIndex = widget.initialIndex;
   late final PageController _pageController =
       PageController(initialPage: widget.initialIndex);
@@ -40,7 +44,7 @@ class _HistoryDetailPageState extends ConsumerState<HistoryDetailPage> {
   @override
   Widget build(BuildContext context) {
     final current = widget.measurements[_currentIndex];
-    final timeFormat = DateFormat('dd MMM yyyy, HH:mm', 'ru');
+    final hasLabel = current.label?.isNotEmpty == true;
 
     return Scaffold(
       appBar: AppBar(
@@ -48,12 +52,12 @@ class _HistoryDetailPageState extends ConsumerState<HistoryDetailPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              current.label?.isNotEmpty == true ? current.label! : 'Замер',
+              hasLabel ? current.label! : 'Замер',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
             Text(
-              timeFormat.format(current.observedAt),
+              _timeFormat.format(current.observedAt),
               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
             ),
           ],
@@ -74,9 +78,8 @@ class _HistoryDetailPageState extends ConsumerState<HistoryDetailPage> {
         controller: _pageController,
         itemCount: widget.measurements.length,
         onPageChanged: (index) => setState(() => _currentIndex = index),
-        itemBuilder: (context, index) {
-          return _MeasurementDetailView(measurement: widget.measurements[index]);
-        },
+        itemBuilder: (context, index) =>
+            _MeasurementDetailView(measurement: widget.measurements[index]),
       ),
     );
   }
@@ -91,10 +94,9 @@ class _MeasurementDetailView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final profile = ref.watch(appSettingsProvider).normsProfile;
     final parameters = WaterParameterCatalog.forProfile(profile);
-    final values = _extractValues(measurement);
+    final values = measurementValues(measurement);
     final overview = WaterQualityOverview.compute(values, profile: profile);
-
-    final reading = _yinmikFromMeasurement(measurement);
+    final reading = readingFromMeasurement(measurement);
 
     return ListView(
       children: [
@@ -106,34 +108,4 @@ class _MeasurementDetailView extends ConsumerWidget {
       ],
     );
   }
-
-  Map<String, double> _extractValues(Measurement m) {
-    return {
-      'ph': m.ph,
-      'orp': m.oxidationReductionPotentialMillivolts.toDouble(),
-      'ec': m.electricalConductivityUsCm.toDouble(),
-      'tds': m.totalDissolvedSolidsPpm.toDouble(),
-      'salinity': m.salinityPpm.toDouble(),
-      'temperature': m.temperatureCelsius,
-      'sg': m.specificGravity,
-    };
-  }
-}
-
-/// Собирает доменный `YinmikReading` из записи БД, чтобы переиспользовать `SummaryHeader`.
-YinmikReading _yinmikFromMeasurement(Measurement m) {
-  return YinmikReading(
-    ph: m.ph,
-    electricalConductivityUsCm: m.electricalConductivityUsCm,
-    totalDissolvedSolidsPpm: m.totalDissolvedSolidsPpm,
-    salinityPpm: m.salinityPpm,
-    salinityPercent: m.salinityPercent,
-    temperatureCelsius: m.temperatureCelsius,
-    batteryRawMillivolts: m.batteryRawMillivolts,
-    statusFlags: (m.backlightOn ? 0x08 : 0) | (m.holdReadingOn ? 0x10 : 0),
-    backlightOn: m.backlightOn,
-    holdReadingOn: m.holdReadingOn,
-    specificGravity: m.specificGravity,
-    oxidationReductionPotentialMillivolts: m.oxidationReductionPotentialMillivolts,
-  );
 }

@@ -116,25 +116,39 @@
 
 ## Зависимости
 
+### Production
 - `flutter_blue_plus` ^1.32.12 — BLE.
 - `permission_handler` ^11.3.1 — рантайм-разрешения.
-- `cupertino_icons` ^1.0.8 — иконки (стандартно из flutter create).
-- `flutter_lints` ^6.0.0 — правила линтера (dev).
-- `flutter_test` — юнит-тесты (dev, SDK-бандл).
+- `flutter_riverpod` ^2.6.1 — state management + DI.
+- `go_router` ^14.6.2 — навигация.
+- `drift` ^2.21.0 + `sqlite3_flutter_libs` — локальная БД истории.
+- `fl_chart` ^0.69.2 — графики.
+- `shared_preferences` ^2.3.3 — настройки.
+- `flutter_local_notifications` ^18.0.1 — уведомления при выходе из нормы.
+- `share_plus` ^10.1.2 — экспорт CSV.
+- `intl` ^0.20.2 + `flutter_localizations` — локализация.
+- `path_provider` + `path` — пути для drift.
+
+### Dev
+- `flutter_lints` + `flutter_test` — стандартный комплект.
+- `build_runner` + `drift_dev` — code generation для drift.
+- `flutter_launcher_icons` + `flutter_native_splash` — сборка иконок/splash.
+- `mocktail` — мок-инфраструктура для тестов.
+- `integration_test` — e2e-сценарии.
 
 Минимальный Dart SDK: 3.11.5.
 
 ## State management
 
-Сейчас — **локальный `setState`** в `StatefulWidget`. Никаких provider/riverpod/bloc.
+Используется **`flutter_riverpod` 2.x**. Полный обзор провайдеров — в `docs/05-state-and-storage.md`.
 
-Обоснование: приложение однопоточное логически, экранов мало (2), shared state — только `YinmikBleClient` экземпляр (один на HomePage, передаётся в ReadingPage пропом). Зачем тащить library для одного scoped object.
+Краткая карта:
 
-Если экранов станет много или появится фоновая логика (cron-опрос, история) — реальный кандидат для введения — `riverpod`. Тогда:
+| Слой | Что | Где |
+|---|---|---|
+| Singleton-сервисы | `YinmikBleClient`, `AppDatabase`, `NotificationService` | `lib/providers/` |
+| Persisted state | `AppSettings` (тема, профиль, lastDevice, currentLabel) | `app_settings.dart` |
+| Стримы платформы | `bluetoothAdapterStateProvider` | `bluetooth_state_provider.dart` |
+| Стримы БД | `recentMeasurementsProvider` | `history_provider.dart` |
 
-- `yinmikClientProvider` (singleton)
-- `connectionStateProvider` (текущее устройство)
-- `readingProvider` (последний кадр)
-- `normsProfileProvider` (выбранный профиль)
-
-Сейчас рано.
+Локальное эфемерное состояние (loading flag, текущая страница) остаётся в `StatefulWidget` с `setState` — не выносится в провайдеры без необходимости.

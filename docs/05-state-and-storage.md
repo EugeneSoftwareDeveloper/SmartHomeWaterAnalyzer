@@ -52,11 +52,25 @@
 
 История измерений — таблица `Measurements` в SQLite-файле `<app docs>/water_analyzer.sqlite`.
 
+**Текущая schemaVersion = 2.** v2 добавила колонку `label TEXT NULL` для пользовательских меток замеров (например, «Москва, квартира»). Миграция выполняется автоматически при первом запуске после обновления:
+
+```dart
+MigrationStrategy get migration => MigrationStrategy(
+      onUpgrade: (m, from, to) async {
+        if (from < 2) {
+          await m.addColumn(measurements, measurements.label);
+        }
+      },
+    );
+```
+
 Схема — в `lib/history/database.dart`. После изменения схемы нужно:
 
-1. Поднять `schemaVersion` в `AppDatabase`.
-2. Добавить миграцию в `migration` getter (см. [drift docs](https://drift.simonbinder.eu/Migrations/)).
+1. Поднять `schemaVersion` в `AppDatabase` (например, до 3).
+2. Добавить ветку миграции в `migration` getter: `if (from < 3) await m.addColumn(...)`.
 3. Перегенерить через `dart run build_runner build --delete-conflicting-outputs`.
+
+При откате версии БД (даунгрейд) drift не делает ничего — если установить старую версию приложения поверх новой схемы, она просто не увидит новые колонки. Безопасно.
 
 Репозиторий `HistoryRepository` — единственная точка работы с БД из UI. Принимает доменные `YinmikReading`, скрывает drift-специфику. Это означает:
 

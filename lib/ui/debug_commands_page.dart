@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../yinmik/decoder.dart';
 import '../yinmik/reading.dart';
@@ -9,16 +8,16 @@ import '../yinmik/reading.dart';
 /// Страница отладки команд: пресеты байтов + ручной ввод hex для подбора правильной
 /// команды управления подсветкой и удержанием. Делает «send и verify»: после записи
 /// перечитывает кадр и показывает, изменился ли соответствующий бит статуса.
-class DebugCommandsPage extends ConsumerStatefulWidget {
+class DebugCommandsPage extends StatefulWidget {
   final BluetoothDevice device;
 
   const DebugCommandsPage({super.key, required this.device});
 
   @override
-  ConsumerState<DebugCommandsPage> createState() => _DebugCommandsPageState();
+  State<DebugCommandsPage> createState() => _DebugCommandsPageState();
 }
 
-class _DebugCommandsPageState extends ConsumerState<DebugCommandsPage> {
+class _DebugCommandsPageState extends State<DebugCommandsPage> {
   /// Выбранная характеристика для записи.
   late Guid _targetUuid = _ff15;
 
@@ -65,7 +64,17 @@ class _DebugCommandsPageState extends ConsumerState<DebugCommandsPage> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Отладка команд')),
+      appBar: AppBar(
+        title: const Text('Отладка команд'),
+        actions: [
+          if (_log.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.delete_sweep_outlined),
+              tooltip: 'Очистить лог',
+              onPressed: () => setState(_log.clear),
+            ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         children: [

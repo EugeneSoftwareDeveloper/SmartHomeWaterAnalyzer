@@ -13,8 +13,9 @@ import '../providers/bluetooth_state_provider.dart';
 import '../providers/yinmik_client_provider.dart';
 import '../yinmik/client.dart' show ScanState;
 
-/// Главный экран: проверка Bluetooth, сканирование, список устройств.
-/// При наличии lastDeviceId — кнопка «Подключиться к последнему».
+/// Главный экран: проверка состояния Bluetooth, сканирование и список найденных
+/// устройств. На стартовом экране слева — пустота, потом по итогам сканирования
+/// либо список устройств, либо сообщение об ошибке/отсутствии.
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 
@@ -302,6 +303,7 @@ class _ErrorBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -311,7 +313,7 @@ class _ErrorBody extends StatelessWidget {
           const SizedBox(height: 12),
           Text(message, textAlign: TextAlign.center),
           const SizedBox(height: 16),
-          FilledButton(onPressed: onRetry, child: const Text('Повторить')),
+          FilledButton(onPressed: onRetry, child: Text(l10n.scanRetryButton)),
         ],
       ),
     );
@@ -341,6 +343,20 @@ class _BluetoothOffBody extends StatelessWidget {
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
+          ),
+          const SizedBox(height: 24),
+          // Android: попытка программно включить Bluetooth (требует BLUETOOTH_CONNECT в манифесте).
+          // На iOS метод бросает исключение — поэтому try/catch.
+          FilledButton.icon(
+            icon: const Icon(Icons.bluetooth),
+            label: const Text('Включить Bluetooth'),
+            onPressed: () async {
+              try {
+                await FlutterBluePlus.turnOn();
+              } on Object catch (_) {
+                // Тихо игнорируем — пользователь сам зайдёт в настройки.
+              }
+            },
           ),
         ],
       ),
