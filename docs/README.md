@@ -10,6 +10,7 @@
 | [02-ble-protocol.md](./02-ble-protocol.md) | Разработчик BLE-части | GATT-структура BLE-C600, формат кадра FF02, алгоритм декодирования |
 | [03-control-commands.md](./03-control-commands.md) | Тот, кто будет искать байты команд | HCI snoop guide, Wireshark, как заполнить commands.dart |
 | [04-ui-design.md](./04-ui-design.md) | Разработчик UI | Material 3, цветовые конвенции, виджеты, gauge, layout |
+| [05-state-and-storage.md](./05-state-and-storage.md) | Разработчик новых фич | Riverpod провайдеры, Drift схема и миграции, SharedPreferences, l10n, навигация, error handling |
 
 ## Перед началом работы
 

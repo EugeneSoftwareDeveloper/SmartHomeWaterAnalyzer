@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../quality/parameter.dart';
 import '../../quality/zone.dart';
@@ -24,13 +25,10 @@ class ParameterCard extends StatefulWidget {
 }
 
 class _ParameterCardState extends State<ParameterCard> {
-  bool _expanded = false;
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final zone = widget.parameter.zoneFor(widget.value);
-    final hasDescription = widget.parameter.description != null;
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -41,21 +39,20 @@ class _ParameterCardState extends State<ParameterCard> {
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: hasDescription ? () => setState(() => _expanded = !_expanded) : null,
+        onTap: () => context.push('/help', extra: widget.parameter.key),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          widget.parameter.label,
+                          widget.parameter.displayLabel,
                           style: theme.textTheme.titleSmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                             fontWeight: FontWeight.w500,
@@ -68,27 +65,16 @@ class _ParameterCardState extends State<ParameterCard> {
                     ),
                   ),
                   _ZoneBadge(zone: zone),
+                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.help_outline,
+                    size: 18,
+                    color: theme.colorScheme.outline,
+                  ),
                 ],
               ),
               const SizedBox(height: 14),
               ColorGauge(parameter: widget.parameter, value: widget.value),
-              if (hasDescription) ...[
-                AnimatedCrossFade(
-                  firstChild: const SizedBox(height: 0, width: double.infinity),
-                  secondChild: Padding(
-                    padding: const EdgeInsets.only(top: 14),
-                    child: Text(
-                      widget.parameter.description!,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-                  crossFadeState:
-                      _expanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-                  duration: const Duration(milliseconds: 200),
-                ),
-              ],
             ],
           ),
         ),

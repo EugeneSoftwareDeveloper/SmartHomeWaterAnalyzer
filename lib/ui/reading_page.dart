@@ -1,28 +1,34 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../providers/app_settings.dart';
+import '../providers/history_provider.dart';
+import '../providers/notification_provider.dart';
+import '../providers/yinmik_client_provider.dart';
 import '../quality/catalog.dart';
 import '../quality/overview.dart';
-import '../yinmik/client.dart';
 import '../yinmik/reading.dart';
+import '../yinmik/reading_values.dart';
 import 'widgets/control_panel.dart';
 import 'widgets/parameter_card.dart';
 import 'widgets/summary_header.dart';
 
-/// Экран показаний подключенного BLE-C600. При открытии — одно чтение. По кнопке
-/// «Обновить» или pull-to-refresh — повторное чтение. Управление подсветкой/HOLD
-/// доступно в нижней секции (см. ControlPanel).
-class ReadingPage extends StatefulWidget {
+/// Экран показаний подключённого BLE-C600. Делает одно чтение при открытии и при тапе на
+/// «Обновить» или pull-to-refresh. После успешного чтения автоматически сохраняет запись
+/// в локальную историю с текущей меткой из настроек.
+class ReadingPage extends ConsumerStatefulWidget {
   final BluetoothDevice device;
-  final YinmikBleClient client;
 
-  const ReadingPage({super.key, required this.device, required this.client});
+  const ReadingPage({super.key, required this.device});
 
   @override
-  State<ReadingPage> createState() => _ReadingPageState();
+  ConsumerState<ReadingPage> createState() => _ReadingPageState();
 }
 
-class _ReadingPageState extends State<ReadingPage> {
+class _ReadingPageState extends ConsumerState<ReadingPage> {
   YinmikReading? _reading;
   String? _error;
   bool _loading = false;
@@ -30,7 +36,7 @@ class _ReadingPageState extends State<ReadingPage> {
   @override
   void initState() {
     super.initState();
-    _refresh();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _refresh());
   }
 
   Future<void> _refresh() async {
@@ -39,22 +45,49 @@ class _ReadingPageState extends State<ReadingPage> {
       _error = null;
     });
 
+    final client = ref.read(yinmikBleClientProvider);
+    final history = ref.read(historyRepositoryProvider);
+
     try {
-      final reading = await widget.client.readOnce(widget.device);
-      if (mounted) {
-        setState(() {
-          _reading = reading;
-          _loading = false;
-        });
-      }
-    } catch (error) {
-      if (mounted) {
-        setState(() {
-          _error = '$error';
-          _loading = false;
-        });
-      }
+      final reading = await client.readOnce(widget.device);
+      if (!mounted) return;
+      setState(() {
+        _reading = reading;
+        _loading = false;
+      });
+
+      final label = ref.read(appSettingsProvider).currentLabel;
+      await history.save(
+        widget.device.remoteId.str,
+        reading,
+        DateTime.now(),
+        label: label,
+      );
+
+      // Уведомление — в _refresh, а не в build. В build setState может вызвать ребилды,
+      // в которых notifier стрелял бы повторно.
+      if (mounted) await _maybeNotify(reading);
+    } on Object catch (error) {
+      if (!mounted) return;
+      await HapticFeedback.mediumImpact();
+      setState(() {
+        _error = '$error';
+        _loading = false;
+      });
     }
+  }
+
+  Future<void> _maybeNotify(YinmikReading reading) async {
+    final settings = ref.read(appSettingsProvider);
+    if (!settings.notificationsEnabled) return;
+
+    final overview = WaterQualityOverview.compute(
+      readingValues(reading),
+      profile: settings.normsProfile,
+    );
+    if (overview.isAllGood) return;
+
+    await ref.read(notificationServiceProvider).notifyIfOutOfRange(overview);
   }
 
   @override
@@ -67,6 +100,11 @@ class _ReadingPageState extends State<ReadingPage> {
       appBar: AppBar(
         title: Text(deviceName),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.science_outlined),
+            tooltip: 'Отладка команд',
+            onPressed: () => context.push('/debug-commands', extra: widget.device),
+          ),
           IconButton(
             icon: _loading
                 ? const SizedBox(
@@ -113,44 +151,90 @@ class _ReadingPageState extends State<ReadingPage> {
     final reading = _reading;
     if (reading == null) return const SizedBox.shrink();
 
-    final values = _extractValues(reading);
-    final overview = WaterQualityOverview.compute(values);
+    final settings = ref.watch(appSettingsProvider);
+    final profile = settings.normsProfile;
+    final parameters = WaterParameterCatalog.forProfile(profile);
+    final values = readingValues(reading);
+    final overview = WaterQualityOverview.compute(values, profile: profile);
 
     return RefreshIndicator(
       onRefresh: _refresh,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
+          const _LabelEditor(),
           SummaryHeader(overview: overview, reading: reading),
-          ...WaterParameterCatalog.all.map((parameter) {
-            final value = values[parameter.key];
-            if (value == null) return const SizedBox.shrink();
-            return ParameterCard(parameter: parameter, value: value);
-          }),
+          for (final parameter in parameters)
+            if (values[parameter.key] != null)
+              ParameterCard(parameter: parameter, value: values[parameter.key]!),
           const SizedBox(height: 8),
           ControlPanel(
             device: widget.device,
-            client: widget.client,
+            client: ref.read(yinmikBleClientProvider),
             reading: reading,
-            onReadingUpdated: (updated) => setState(() => _reading = updated),
+            onReadingUpdated: (updated) async {
+              setState(() => _reading = updated);
+              final label = ref.read(appSettingsProvider).currentLabel;
+              await ref.read(historyRepositoryProvider).save(
+                    widget.device.remoteId.str,
+                    updated,
+                    DateTime.now(),
+                    label: label,
+                  );
+            },
           ),
           const SizedBox(height: 24),
         ],
       ),
     );
   }
+}
 
-  Map<String, double> _extractValues(YinmikReading reading) {
-    return {
-      WaterParameterCatalog.ph.key: reading.ph,
-      WaterParameterCatalog.orp.key: reading.oxidationReductionPotentialMillivolts.toDouble(),
-      WaterParameterCatalog.electricalConductivity.key:
-          reading.electricalConductivityUsCm.toDouble(),
-      WaterParameterCatalog.totalDissolvedSolids.key:
-          reading.totalDissolvedSolidsPpm.toDouble(),
-      WaterParameterCatalog.salinity.key: reading.salinityPpm.toDouble(),
-      WaterParameterCatalog.temperature.key: reading.temperatureCelsius,
-      WaterParameterCatalog.specificGravity.key: reading.specificGravity,
-    };
+/// Поле ввода ярлыка замера. Значение хранится в AppSettings и используется как
+/// `label` для каждой сохраняемой записи истории, пока пользователь его не сменит.
+class _LabelEditor extends ConsumerStatefulWidget {
+  const _LabelEditor();
+
+  @override
+  ConsumerState<_LabelEditor> createState() => _LabelEditorState();
+}
+
+class _LabelEditorState extends ConsumerState<_LabelEditor> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(
+      text: ref.read(appSettingsProvider).currentLabel ?? '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: TextField(
+        controller: _controller,
+        decoration: InputDecoration(
+          prefixIcon: const Icon(Icons.label_outline, size: 20),
+          labelText: 'Метка замера',
+          hintText: 'Например: Москва, квартира',
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          isDense: true,
+        ),
+        style: theme.textTheme.bodyMedium,
+        onChanged: (value) =>
+            ref.read(appSettingsProvider.notifier).setCurrentLabel(value.trim()),
+      ),
+    );
   }
 }

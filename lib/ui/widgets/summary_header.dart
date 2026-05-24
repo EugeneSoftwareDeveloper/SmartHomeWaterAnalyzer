@@ -124,9 +124,9 @@ class _DeviceStatusBar extends StatelessWidget {
           ),
         ),
         const Spacer(),
-        if (reading.holdReadingOn) _StatusChip(icon: Icons.lock, label: 'HOLD'),
+        if (reading.holdReadingOn) const _StatusChip(icon: Icons.lock, label: 'HOLD'),
         if (reading.holdReadingOn && reading.backlightOn) const SizedBox(width: 6),
-        if (reading.backlightOn) _StatusChip(icon: Icons.lightbulb, label: 'LIGHT'),
+        if (reading.backlightOn) const _StatusChip(icon: Icons.lightbulb, label: 'LIGHT'),
       ],
     );
   }

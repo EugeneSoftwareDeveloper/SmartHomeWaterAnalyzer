@@ -1,92 +1,203 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:permission_handler/permission_handler.dart' show openAppSettings;
 
-import '../yinmik/client.dart';
-import 'reading_page.dart';
+import '../l10n/generated/app_localizations.dart';
+import '../providers/app_settings.dart';
+import '../providers/bluetooth_state_provider.dart';
+import '../providers/yinmik_client_provider.dart';
+import '../yinmik/client.dart' show ScanState;
 
-/// Главный экран: сканирование BLE и список найденных YINMIK-устройств. По тапу — подключение
-/// и переход на [ReadingPage]. Стартует scan при открытии и предлагает повторить вручную.
-class HomePage extends StatefulWidget {
+/// Главный экран: проверка Bluetooth, сканирование, список устройств.
+/// При наличии lastDeviceId — кнопка «Подключиться к последнему».
+class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  ConsumerState<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
-  final YinmikBleClient _client = YinmikBleClient();
-
-  StreamSubscription<List<ScanResult>>? _scanSubscription;
+class _HomePageState extends ConsumerState<HomePage> {
+  StreamSubscription<ScanState>? _scanSubscription;
   List<ScanResult> _devices = const [];
+  int _totalScanned = 0;
   bool _scanning = false;
   String? _error;
+  bool _showSettingsButton = false;
 
   @override
   void initState() {
     super.initState();
-    _startScan();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _startScan());
   }
 
   @override
   void dispose() {
     _scanSubscription?.cancel();
-    FlutterBluePlus.stopScan();
+    unawaited(FlutterBluePlus.stopScan());
     super.dispose();
   }
 
   Future<void> _startScan() async {
     setState(() {
       _devices = const [];
+      _totalScanned = 0;
       _error = null;
+      _showSettingsButton = false;
       _scanning = true;
     });
 
-    final granted = await _client.ensurePermissions();
-    if (!granted) {
+    final client = ref.read(yinmikBleClientProvider);
+    final permission = await client.ensurePermissions();
+    if (!permission.isGranted) {
       setState(() {
-        _error =
-            'Нужны разрешения на Bluetooth и геолокацию (для сканирования BLE на Android).';
+        _error = permission.message;
+        _showSettingsButton = true;
         _scanning = false;
       });
       return;
     }
 
-    _scanSubscription?.cancel();
-    _scanSubscription = _client.scan(timeout: const Duration(seconds: 10)).listen(
-          (results) => setState(() => _devices = results),
-          onError: (error) => setState(() {
+    await _scanSubscription?.cancel();
+    _scanSubscription = client.scan(timeout: const Duration(seconds: 10)).listen(
+          (state) => setState(() {
+            _devices = state.matching;
+            _totalScanned = state.totalScanned;
+          }),
+          onError: (Object error) => setState(() {
             _error = '$error';
             _scanning = false;
           }),
-          onDone: () => setState(() => _scanning = false),
+          onDone: () {
+            if (mounted) setState(() => _scanning = false);
+          },
         );
+  }
+
+  /// Диагностический режим: показать ВСЕ BLE-устройства, которые увидел сканер, без
+  /// фильтра по имени. Полезно, если прибор называется не «BLE-C600», а как-то иначе.
+  Future<void> _showAllDevices() async {
+    final results = await FlutterBluePlus.scanResults.first;
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.7,
+          maxChildSize: 0.95,
+          builder: (_, controller) {
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              child: Column(
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: Text(
+                      'Все видимые BLE-устройства. Если прибор здесь — нажми, '
+                      'чтобы подключиться (минуя фильтр по имени).',
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  Expanded(
+                    child: ListView.separated(
+                      controller: controller,
+                      itemCount: results.length,
+                      separatorBuilder: (_, _) => const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        final result = results[index];
+                        final name = result.device.platformName.isEmpty
+                            ? '(без имени)'
+                            : result.device.platformName;
+                        return ListTile(
+                          leading: const Icon(Icons.bluetooth),
+                          title: Text(name),
+                          subtitle: Text(
+                            '${result.device.remoteId.str} • RSSI ${result.rssi}',
+                          ),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () {
+                            Navigator.of(sheetContext).pop();
+                            _openReading(result.device);
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _openReading(BluetoothDevice device) async {
+    await HapticFeedback.selectionClick();
+    await FlutterBluePlus.stopScan();
+    if (!mounted) return;
+    setState(() => _scanning = false);
+
+    await ref.read(appSettingsProvider.notifier).rememberDevice(device.remoteId.str);
+    if (!mounted) return;
+
+    await context.push('/device', extra: device);
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
+    final adapterState = ref.watch(bluetoothAdapterStateProvider);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Water Analyzer'),
+        title: Text(l10n.appTitle),
         actions: [
           IconButton(
+            icon: const Icon(Icons.history),
+            tooltip: l10n.historyTitle,
+            onPressed: () => context.push('/history'),
+          ),
+          IconButton(
+            icon: const Icon(Icons.help_outline),
+            tooltip: 'Справка',
+            onPressed: () => context.push('/help'),
+          ),
+          IconButton(
             icon: Icon(_scanning ? Icons.stop : Icons.refresh),
-            tooltip: _scanning ? 'Остановить сканирование' : 'Сканировать заново',
-            onPressed: _scanning
-                ? () async {
-                    await FlutterBluePlus.stopScan();
-                    if (mounted) setState(() => _scanning = false);
-                  }
-                : _startScan,
+            tooltip: _scanning ? l10n.scanStopButton : l10n.scanButton,
+            onPressed: () async {
+              if (_scanning) {
+                await FlutterBluePlus.stopScan();
+                if (mounted) setState(() => _scanning = false);
+              } else {
+                await _startScan();
+              }
+            },
           ),
         ],
       ),
-      body: _buildBody(),
+      body: adapterState.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, _) => _ErrorBody(message: '$error', onRetry: _startScan),
+        data: (state) {
+          if (state != BluetoothAdapterState.on) {
+            return _BluetoothOffBody(l10n: l10n);
+          }
+          return _buildScanBody(l10n);
+        },
+      ),
     );
   }
 
-  Widget _buildBody() {
+  Widget _buildScanBody(AppL10n l10n) {
     if (_error != null) {
       return Padding(
         padding: const EdgeInsets.all(24),
@@ -97,7 +208,15 @@ class _HomePageState extends State<HomePage> {
             const SizedBox(height: 12),
             Text(_error!, textAlign: TextAlign.center),
             const SizedBox(height: 16),
-            FilledButton(onPressed: _startScan, child: const Text('Повторить')),
+            FilledButton(onPressed: _startScan, child: Text(l10n.scanRetryButton)),
+            if (_showSettingsButton) ...[
+              const SizedBox(height: 8),
+              TextButton.icon(
+                onPressed: openAppSettings,
+                icon: const Icon(Icons.settings),
+                label: Text(l10n.permissionOpenSettings),
+              ),
+            ],
           ],
         ),
       );
@@ -111,22 +230,45 @@ class _HomePageState extends State<HomePage> {
             if (_scanning) ...[
               const CircularProgressIndicator(),
               const SizedBox(height: 16),
-              const Text('Поиск BLE-C600...'),
+              Text(l10n.scanSearching),
               const SizedBox(height: 4),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 32),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
                 child: Text(
-                  'Включи прибор длинным нажатием ON/OFF и убедись, что официальное приложение YINMIK не подключено к нему.',
+                  l10n.scanHint,
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 12, color: Colors.black54),
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
               ),
-            ] else
+              const SizedBox(height: 16),
+              Text(
+                'BLE-устройств в эфире: $_totalScanned',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+              ),
+            ] else ...[
               FilledButton.icon(
                 onPressed: _startScan,
                 icon: const Icon(Icons.bluetooth_searching),
-                label: const Text('Сканировать'),
+                label: Text(l10n.scanButton),
               ),
+              if (_totalScanned > 0) ...[
+                const SizedBox(height: 16),
+                Text(
+                  'Сканер нашёл $_totalScanned устройств(а), но среди них нет BLE-C600.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+                const SizedBox(height: 4),
+                TextButton(
+                  onPressed: _showAllDevices,
+                  child: const Text('Показать все устройства'),
+                ),
+              ],
+            ],
           ],
         ),
       );
@@ -138,7 +280,7 @@ class _HomePageState extends State<HomePage> {
       itemBuilder: (context, index) {
         final result = _devices[index];
         final name = result.device.platformName.isEmpty
-            ? '(no name)'
+            ? l10n.scanNoDeviceName
             : result.device.platformName;
         return ListTile(
           leading: const Icon(Icons.bluetooth),
@@ -150,15 +292,57 @@ class _HomePageState extends State<HomePage> {
       },
     );
   }
+}
 
-  Future<void> _openReading(BluetoothDevice device) async {
-    await FlutterBluePlus.stopScan();
-    if (!mounted) return;
-    setState(() => _scanning = false);
+class _ErrorBody extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
 
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => ReadingPage(device: device, client: _client),
+  const _ErrorBody({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error_outline, size: 48, color: Colors.redAccent),
+          const SizedBox(height: 12),
+          Text(message, textAlign: TextAlign.center),
+          const SizedBox(height: 16),
+          FilledButton(onPressed: onRetry, child: const Text('Повторить')),
+        ],
+      ),
+    );
+  }
+}
+
+class _BluetoothOffBody extends StatelessWidget {
+  final AppL10n l10n;
+
+  const _BluetoothOffBody({required this.l10n});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.bluetooth_disabled, size: 64, color: theme.colorScheme.error),
+          const SizedBox(height: 16),
+          Text(l10n.bluetoothOffTitle, style: theme.textTheme.titleLarge),
+          const SizedBox(height: 8),
+          Text(
+            l10n.bluetoothOffSubtitle,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
       ),
     );
   }

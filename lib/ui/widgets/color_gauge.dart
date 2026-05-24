@@ -88,7 +88,7 @@ class _GaugePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     const verticalPadding = 4.0;
-    final barTop = verticalPadding;
+    const barTop = verticalPadding;
     final barBottom = barTop + barHeight;
     final scaleRange = parameter.scaleMax - parameter.scaleMin;
     if (scaleRange <= 0) return;

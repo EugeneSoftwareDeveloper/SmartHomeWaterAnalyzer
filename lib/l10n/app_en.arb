@@ -1,0 +1,80 @@
+{
+  "@@locale": "en",
+
+  "appTitle": "Water Analyzer",
+
+  "scanButton": "Scan",
+  "scanStopButton": "Stop scanning",
+  "scanRetryButton": "Retry",
+  "scanSearching": "Looking for BLE-C600...",
+  "scanHint": "Turn the device on with a long ON/OFF press and make sure the official YINMIK app is disconnected.",
+  "scanNoDeviceName": "(no name)",
+
+  "permissionBluetoothDisabled": "Bluetooth is disabled. Enable it in phone settings.",
+  "permissionOpenSettings": "Open app settings",
+
+  "readingRefresh": "Refresh",
+  "readingFailed": "Failed to read measurements",
+  "readingRetry": "Retry",
+
+  "summaryAllGood": "All measured parameters are within range.",
+  "summaryProblematic": "Out of range: {names}",
+  "@summaryProblematic": {
+    "placeholders": {
+      "names": { "type": "String" }
+    }
+  },
+
+  "qualityExcellent": "Excellent water quality",
+  "qualityGood": "Good water quality",
+  "qualityAcceptable": "Acceptable water quality",
+  "qualityCaution": "Needs attention",
+  "qualityDanger": "Dangerous water quality",
+
+  "controlSectionTitle": "Device controls",
+  "controlBacklight": "Backlight",
+  "controlBacklightSubtitle": "Turn on device screen",
+  "controlHold": "Hold reading",
+  "controlHoldSubtitle": "Freeze current values on the screen",
+  "controlCommandFailed": "Failed to send command: {error}",
+  "@controlCommandFailed": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+
+  "historyTitle": "Measurement history",
+  "historyEmpty": "No saved measurements yet. Make a few readings on the main screen.",
+  "historyExport": "Export CSV",
+  "historyDeleteAll": "Clear history",
+  "historyDeleteConfirm": "Delete all saved measurements? Cannot be undone.",
+  "historyDeleted": "History cleared",
+  "historyExported": "File saved: {path}",
+  "@historyExported": {
+    "placeholders": {
+      "path": { "type": "String" }
+    }
+  },
+
+  "profilesTitle": "Norms profile",
+  "profileDrinking": "Drinking water",
+  "profilePool": "Swimming pool",
+  "profileAquariumFresh": "Aquarium (fresh)",
+  "profileHydroponics": "Hydroponics",
+
+  "settingsTitle": "Settings",
+  "settingsThemeSystem": "System",
+  "settingsThemeLight": "Light",
+  "settingsThemeDark": "Dark",
+  "settingsTheme": "Theme",
+  "settingsProfile": "Norms profile",
+  "settingsNotifications": "Notify on out-of-range",
+  "settingsAbout": "About",
+
+  "tabReading": "Reading",
+  "tabHistory": "History",
+  "tabSettings": "Settings",
+
+  "bluetoothOffTitle": "Bluetooth is off",
+  "bluetoothOffSubtitle": "Turn on Bluetooth to start scanning"
+}

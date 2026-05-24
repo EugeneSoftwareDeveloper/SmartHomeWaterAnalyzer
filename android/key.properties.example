@@ -1,0 +1,19 @@
+# Шаблон для подписи release-сборок.
+#
+# Создание keystore (один раз, на машине разработчика):
+#   keytool -genkey -v -keystore C:\Users\<you>\water-analyzer-release.jks \
+#           -keyalg RSA -keysize 2048 -validity 10000 -alias water-analyzer
+#
+# После создания:
+#   1. Скопируй этот файл в android/key.properties (без .example).
+#   2. Заполни значения ниже.
+#   3. НЕ коммить key.properties и .jks файл в git — они в .gitignore.
+#   4. Пересобери: flutter build apk --release
+#
+# Если key.properties отсутствует, build.gradle.kts падает обратно на debug-ключ — это нужно
+# для CI и быстрых dev-сборок. Но релизные APK подписывай только настоящим ключом.
+
+storePassword=YOUR_KEYSTORE_PASSWORD
+keyPassword=YOUR_KEY_PASSWORD
+keyAlias=water-analyzer
+storeFile=C:/Users/YOUR_USERNAME/water-analyzer-release.jks

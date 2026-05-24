@@ -1,0 +1,81 @@
+{
+  "@@locale": "ru",
+
+  "appTitle": "Water Analyzer",
+
+  "scanButton": "Сканировать",
+  "scanStopButton": "Остановить сканирование",
+  "scanRetryButton": "Повторить",
+  "scanSearching": "Поиск BLE-C600...",
+  "scanHint": "Включи прибор длинным нажатием ON/OFF и убедись, что официальное приложение YINMIK не подключено к нему.",
+  "scanNoDeviceName": "(без имени)",
+
+  "permissionBluetoothDisabled": "Bluetooth выключен. Включи его в настройках телефона.",
+  "permissionOpenSettings": "Открыть настройки приложения",
+
+  "readingRefresh": "Обновить",
+  "readingFailed": "Не удалось прочитать показания",
+  "readingRetry": "Повторить",
+
+  "summaryAllGood": "Все измеренные параметры в пределах нормы.",
+  "@summaryAllGood": {},
+  "summaryProblematic": "Вне нормы: {names}",
+  "@summaryProblematic": {
+    "placeholders": {
+      "names": { "type": "String" }
+    }
+  },
+
+  "qualityExcellent": "Отличное качество воды",
+  "qualityGood": "Хорошее качество воды",
+  "qualityAcceptable": "Приемлемое качество воды",
+  "qualityCaution": "Требует внимания",
+  "qualityDanger": "Опасное качество воды",
+
+  "controlSectionTitle": "Управление прибором",
+  "controlBacklight": "Подсветка",
+  "controlBacklightSubtitle": "Включить экран прибора",
+  "controlHold": "Удержание показаний (HOLD)",
+  "controlHoldSubtitle": "Зафиксировать текущие значения на экране",
+  "controlCommandFailed": "Не удалось отправить команду: {error}",
+  "@controlCommandFailed": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+
+  "historyTitle": "История измерений",
+  "historyEmpty": "Пока нет сохранённых измерений. Сделай несколько чтений на главном экране.",
+  "historyExport": "Экспорт CSV",
+  "historyDeleteAll": "Очистить историю",
+  "historyDeleteConfirm": "Удалить все сохранённые измерения? Действие необратимо.",
+  "historyDeleted": "История очищена",
+  "historyExported": "Файл сохранён: {path}",
+  "@historyExported": {
+    "placeholders": {
+      "path": { "type": "String" }
+    }
+  },
+
+  "profilesTitle": "Профиль норм",
+  "profileDrinking": "Питьевая вода",
+  "profilePool": "Бассейн",
+  "profileAquariumFresh": "Аквариум (пресный)",
+  "profileHydroponics": "Гидропоника",
+
+  "settingsTitle": "Настройки",
+  "settingsThemeSystem": "По системе",
+  "settingsThemeLight": "Светлая",
+  "settingsThemeDark": "Тёмная",
+  "settingsTheme": "Тема оформления",
+  "settingsProfile": "Профиль норм",
+  "settingsNotifications": "Уведомления при выходе из нормы",
+  "settingsAbout": "О приложении",
+
+  "tabReading": "Показания",
+  "tabHistory": "История",
+  "tabSettings": "Настройки",
+
+  "bluetoothOffTitle": "Bluetooth выключен",
+  "bluetoothOffSubtitle": "Включи Bluetooth, чтобы начать сканирование"
+}

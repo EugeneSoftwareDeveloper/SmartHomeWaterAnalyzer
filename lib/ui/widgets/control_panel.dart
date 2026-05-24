@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 import '../../yinmik/client.dart';
@@ -92,7 +95,7 @@ class _ControlPanelState extends State<ControlPanel> {
                   subtitle: 'Включить экран прибора',
                   value: widget.reading.backlightOn,
                   enabled: !_sending,
-                  onChanged: (on) => _toggleBacklight(on),
+                  onChanged: _toggleBacklight,
                 ),
                 Divider(
                   height: 1,
@@ -106,7 +109,7 @@ class _ControlPanelState extends State<ControlPanel> {
                   subtitle: 'Зафиксировать текущие значения на экране',
                   value: widget.reading.holdReadingOn,
                   enabled: !_sending,
-                  onChanged: (on) => _toggleHold(on),
+                  onChanged: _toggleHold,
                 ),
               ],
             ),
@@ -116,15 +119,15 @@ class _ControlPanelState extends State<ControlPanel> {
     );
   }
 
-  Future<void> _toggleBacklight(bool on) async {
-    await _runCommand(
+  Future<void> _toggleBacklight(bool on) {
+    return _runCommand(
       commandName: on ? 'Подсветка ON' : 'Подсветка OFF',
       command: YinmikCommands.backlightCommand(on: on),
     );
   }
 
-  Future<void> _toggleHold(bool on) async {
-    await _runCommand(
+  Future<void> _toggleHold(bool on) {
+    return _runCommand(
       commandName: on ? 'HOLD ON' : 'HOLD OFF',
       command: YinmikCommands.holdCommand(on: on),
     );
@@ -132,18 +135,20 @@ class _ControlPanelState extends State<ControlPanel> {
 
   Future<void> _runCommand({
     required String commandName,
-    required dynamic command,
+    required Uint8List command,
   }) async {
     if (_sending) return;
     setState(() => _sending = true);
+    await HapticFeedback.selectionClick();
 
     try {
-      final reading =
-          await widget.client.sendCommandAndRead(widget.device, command, commandName: commandName);
+      final reading = await widget.client
+          .sendCommandAndRead(widget.device, command, commandName: commandName);
       if (mounted) widget.onReadingUpdated(reading);
     } on UnknownCommandException {
       if (mounted) await _showCommandsUnknownDialog(commandName);
-    } catch (error) {
+    } on Object catch (error) {
+      await HapticFeedback.mediumImpact();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Не удалось отправить команду: $error')),
@@ -207,7 +212,7 @@ class _ControlTile extends StatelessWidget {
   final String subtitle;
   final bool value;
   final bool enabled;
-  final ValueChanged<bool> onChanged;
+  final Future<void> Function(bool) onChanged;
 
   // ignore: unused_element_parameter
   const _ControlTile({
@@ -237,9 +242,9 @@ class _ControlTile extends StatelessWidget {
       ),
       trailing: Switch(
         value: value,
-        onChanged: enabled ? onChanged : null,
+        onChanged: enabled ? (on) => unawaited(onChanged(on)) : null,
       ),
-      onTap: enabled ? () => onChanged(!value) : null,
+      onTap: enabled ? () => unawaited(onChanged(!value)) : null,
     );
   }
 }

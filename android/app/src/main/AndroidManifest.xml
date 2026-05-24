@@ -22,6 +22,9 @@
          без Bluetooth LE в Play Store. -->
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="true" />
 
+    <!-- Уведомления при выходе параметров из нормы (Android 13+ требует рантайм-запрос). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <application
         android:label="Water Analyzer"
         android:name="${applicationName}"
