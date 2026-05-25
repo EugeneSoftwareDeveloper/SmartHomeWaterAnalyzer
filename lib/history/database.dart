@@ -36,6 +36,11 @@ class Measurements extends Table {
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
+  /// Конструктор для unit-тестов: позволяет передать произвольный `QueryExecutor`,
+  /// обычно `NativeDatabase.memory()` для in-memory SQLite. Production-код использует
+  /// дефолтный конструктор с файловой БД в documents-directory.
+  AppDatabase.forTesting(super.executor);
+
   @override
   int get schemaVersion => 2;
 
@@ -69,6 +74,24 @@ class AppDatabase extends _$AppDatabase {
 
   Future<int> insertMeasurement(MeasurementsCompanion entry) =>
       into(measurements).insert(entry);
+
+  /// Меняет только колонку `label` у одной строки. Возвращает количество затронутых записей
+  /// (0 если запись с таким id не найдена, 1 при успехе).
+  Future<int> updateMeasurementLabel(int id, String? label) {
+    return (update(measurements)..where((tbl) => tbl.id.equals(id))).write(
+      MeasurementsCompanion(label: Value(label)),
+    );
+  }
+
+  /// Удаляет одну запись по id. Возвращает количество затронутых записей.
+  Future<int> deleteMeasurementById(int id) =>
+      (delete(measurements)..where((tbl) => tbl.id.equals(id))).go();
+
+  /// Восстановление удалённой записи через undo: вставляет с указанным id, чтобы
+  /// сохранить связи (PageView-индексы, сравнения и т.п.). Возвращает количество
+  /// затронутых записей.
+  Future<int> restoreMeasurement(MeasurementsCompanion entry) =>
+      into(measurements).insert(entry, mode: InsertMode.insertOrReplace);
 
   Future<int> deleteAll({String? deviceId}) {
     if (deviceId == null) return delete(measurements).go();

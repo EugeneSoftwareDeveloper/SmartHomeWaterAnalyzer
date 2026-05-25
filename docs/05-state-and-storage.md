@@ -75,8 +75,30 @@ MigrationStrategy get migration => MigrationStrategy(
 Репозиторий `HistoryRepository` — единственная точка работы с БД из UI. Принимает доменные `YinmikReading`, скрывает drift-специфику. Это означает:
 
 - UI зависит от `HistoryRepository`, а не от `AppDatabase` напрямую.
-- В тестах можно подменить `historyRepositoryProvider` на мок.
+- В тестах можно подменить `historyRepositoryProvider` на мок, или (предпочтительнее для CRUD-тестов) запустить настоящий репозиторий поверх in-memory drift через `AppDatabase.forTesting(NativeDatabase.memory())`.
 - Замена drift на другую БД-библиотеку = переписывание `repository.dart`, не UI.
+
+### Методы HistoryRepository
+
+| Метод | Что делает | Возвращает |
+|---|---|---|
+| `save(deviceId, reading, observedAt, {label})` | Вставка новой записи | `int` — id вставленной строки. Нужен для undo. |
+| `recent({deviceId, limit})` | Список последних, `desc by observedAt`. | `List<Measurement>` |
+| `watchRecent({deviceId, limit})` | Стрим последних с реактивным обновлением при insert/delete. | `Stream<List<Measurement>>` |
+| `updateLabel(id, label)` | Меняет только колонку `label`. Пустая строка из пробелов автоматически становится `null`. | `int` — затронутых строк (0 / 1). |
+| `deleteById(id)` | Удаляет одну запись. | `int` — затронутых строк (0 / 1). |
+| `restoreFromMeasurement(m)` | Восстанавливает удалённую запись с её исходным id через `InsertMode.insertOrReplace`. Используется в undo для swipe-to-delete и FAB «Сохранить → Отменить». | `int` — затронутых строк. |
+| `clear({deviceId})` | Полная очистка таблицы. | `Future<void>` |
+
+**Тесты CRUD-операций** — в `test/history_repository_test.dart`. Используется `AppDatabase.forTesting(NativeDatabase.memory())` — drift работает без файла и без `sqlite3_flutter_libs` инициализации (на Windows и Linux нативный sqlite подбирается автоматически).
+
+### Группировка по дням
+
+`groupMeasurementsByDay(rows, {now})` в `lib/history/grouping.dart` — top-level функция, отдельная от UI. Принимает список `Measurement` (предполагается `desc by observedAt`), возвращает `List<MeasurementDayGroup>` в порядке первого появления каждого дня.
+
+Названия групп: «Сегодня» (diff=0), «Вчера» (diff=1), `dd.MM.yyyy` (остальные). Параметр `now` опциональный — в production не передаётся, в тестах фиксируется для детерминированности.
+
+Тесты — в `test/measurement_grouping_test.dart` (8 случаев: пустой ввод, граница 23:59→00:00, порядок групп и т.д.).
 
 ### Реактивность
 

@@ -1,14 +1,21 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../export/csv_export.dart';
 import '../history/database.dart';
+import '../history/grouping.dart';
 import '../l10n/generated/app_localizations.dart';
+import '../providers/app_settings.dart';
 import '../providers/history_provider.dart';
+import '../quality/catalog.dart';
+import '../quality/parameter.dart';
 import '../router.dart';
+import '../yinmik/reading_values.dart';
+import 'widgets/chart_axis.dart';
 
 /// Экран истории измерений. Если [standalone] = true — открыт как отдельный маршрут
 /// без подключённого устройства (в AppBar появляется кнопка «Назад»).
@@ -109,131 +116,295 @@ class HistoryPage extends ConsumerWidget {
 
 enum _HistoryAction { exportCsv, clear }
 
-class _HistoryBody extends StatelessWidget {
+class _HistoryBody extends ConsumerWidget {
   final List<Measurement> rows;
 
   const _HistoryBody({required this.rows});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final groups = groupMeasurementsByDay(rows);
+
     return ListView(
       children: [
-        _PhChart(rows: rows),
+        _MeasurementChart(rows: rows),
         const Divider(height: 32),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
           child: Text(
             'Последние ${rows.length} измерений',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+            style: theme.textTheme.titleSmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.w600,
                 ),
           ),
         ),
-        for (var index = 0; index < rows.length; index++)
-          _MeasurementTile(
-            row: rows[index],
-            onTap: () => context.push(
-              '/history/detail',
-              extra: HistoryDetailArgs(measurements: rows, index: index),
+        for (final group in groups) ...[
+          _DayHeader(label: group.label),
+          for (final row in group.measurements)
+            _DismissibleTile(
+              key: ValueKey(row.id),
+              row: row,
+              allRows: rows,
             ),
-          ),
+        ],
         const SizedBox(height: 16),
       ],
     );
   }
 }
 
-class _PhChart extends StatelessWidget {
-  final List<Measurement> rows;
+/// Лейбл-«разделитель» между группами замеров. Не sticky — это упростило бы виджет,
+/// но потребовало бы `SliverList` вместо `ListView`. Текущий вариант — обычный
+/// текстовый блок, разделяющий ленту визуально.
+class _DayHeader extends StatelessWidget {
+  final String label;
 
-  const _PhChart({required this.rows});
+  const _DayHeader({required this.label});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final chronological = rows.reversed.take(50).toList();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: Row(
+        children: [
+          Icon(
+            Icons.event_outlined,
+            size: 16,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: theme.textTheme.labelMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Карточка одного замера, обёрнутая в `Dismissible` для swipe-to-delete.
+/// Удаление через swipe: запись сразу убирается из БД, в SnackBar предлагается «Отменить»
+/// в течение 5 секунд — нажатие восстанавливает запись с тем же id через
+/// `HistoryRepository.restoreFromMeasurement`.
+class _DismissibleTile extends ConsumerWidget {
+  final Measurement row;
+  final List<Measurement> allRows;
+
+  const _DismissibleTile({
+    required super.key,
+    required this.row,
+    required this.allRows,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    return Dismissible(
+      key: ValueKey('dismiss-${row.id}'),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        color: theme.colorScheme.errorContainer,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Text(
+              'Удалить',
+              style: theme.textTheme.labelLarge?.copyWith(
+                    color: theme.colorScheme.onErrorContainer,
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+            const SizedBox(width: 8),
+            Icon(Icons.delete_outline, color: theme.colorScheme.onErrorContainer),
+          ],
+        ),
+      ),
+      onDismissed: (_) async {
+        final repo = ref.read(historyRepositoryProvider);
+        final messenger = ScaffoldMessenger.of(context);
+        await repo.deleteById(row.id);
+        await HapticFeedback.lightImpact();
+        messenger.showSnackBar(
+          SnackBar(
+            content: const Text('Замер удалён'),
+            action: SnackBarAction(
+              label: 'Отменить',
+              onPressed: () => repo.restoreFromMeasurement(row),
+            ),
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      },
+      child: _MeasurementTile(
+        row: row,
+        onTap: () {
+          final index = allRows.indexWhere((m) => m.id == row.id);
+          if (index < 0) return;
+          context.push(
+            '/history/detail',
+            extra: HistoryDetailArgs(measurements: allRows, index: index),
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// График значений одного параметра во времени. Параметр переключается через
+/// `DropdownButton` сверху — отображаются последние 50 точек включительно.
+/// Диапазон y-оси — `scaleMin..scaleMax` параметра.
+class _MeasurementChart extends ConsumerStatefulWidget {
+  final List<Measurement> rows;
+
+  const _MeasurementChart({required this.rows});
+
+  @override
+  ConsumerState<_MeasurementChart> createState() => _MeasurementChartState();
+}
+
+class _MeasurementChartState extends ConsumerState<_MeasurementChart> {
+  String _selectedKey = 'ph';
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final profile = ref.watch(appSettingsProvider).normsProfile;
+    final parameters = WaterParameterCatalog.forProfile(profile);
+    final parameter = parameters.firstWhere(
+      (p) => p.key == _selectedKey,
+      orElse: () => parameters.first,
+    );
+
+    final chronological = widget.rows.reversed.take(50).toList();
     final spots = <FlSpot>[
       for (var index = 0; index < chronological.length; index++)
-        FlSpot(index.toDouble(), chronological[index].ph),
-    ];
-
-    if (spots.length < 2) {
-      return Padding(
-        padding: const EdgeInsets.all(24),
-        child: Center(
-          child: Text(
-            'Нужно минимум 2 измерения для построения графика',
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
+        FlSpot(
+          index.toDouble(),
+          measurementValues(chronological[index])[parameter.key] ?? 0,
         ),
-      );
-    }
+    ];
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Кислотность (pH) во времени',
-            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${parameter.displayLabel} во времени',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              DropdownButton<String>(
+                value: parameter.key,
+                isDense: true,
+                underline: const SizedBox.shrink(),
+                items: [
+                  for (final p in parameters)
+                    DropdownMenuItem(
+                      value: p.key,
+                      child: Text(p.shortLabel),
+                    ),
+                ],
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() => _selectedKey = value);
+                  }
+                },
+              ),
+            ],
           ),
           const SizedBox(height: 12),
-          SizedBox(
-            height: 200,
-            child: LineChart(
-              LineChartData(
-                gridData: FlGridData(
-                  drawVerticalLine: false,
-                  getDrawingHorizontalLine: (_) => FlLine(
-                    color: theme.colorScheme.outlineVariant,
-                    strokeWidth: 0.5,
-                  ),
-                ),
-                borderData: FlBorderData(
-                  show: true,
-                  border: Border.all(color: theme.colorScheme.outlineVariant),
-                ),
-                titlesData: FlTitlesData(
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 36,
-                      interval: 1,
-                      getTitlesWidget: (value, _) => Text(
-                        value.toStringAsFixed(0),
-                        style: theme.textTheme.bodySmall,
+          if (spots.length < 2)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Center(
+                child: Text(
+                  'Нужно минимум 2 измерения для построения графика',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
-                    ),
-                  ),
-                  bottomTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                 ),
-                minY: 0,
-                maxY: 14,
-                lineBarsData: [
-                  LineChartBarData(
-                    spots: spots,
-                    isCurved: true,
-                    color: theme.colorScheme.primary,
-                    dotData: const FlDotData(show: false),
-                    barWidth: 2.5,
-                    belowBarData: BarAreaData(
-                      show: true,
-                      color: theme.colorScheme.primary.withValues(alpha: 0.15),
-                    ),
-                  ),
-                ],
+              ),
+            )
+          else
+            SizedBox(
+              height: 200,
+              child: LineChart(
+                _buildChartData(theme, parameter, spots),
               ),
             ),
-          ),
         ],
       ),
+    );
+  }
+
+  LineChartData _buildChartData(
+    ThemeData theme,
+    WaterParameter parameter,
+    List<FlSpot> spots,
+  ) {
+    final interval = niceAxisInterval(parameter.scaleMax - parameter.scaleMin);
+
+    return LineChartData(
+      gridData: FlGridData(
+        drawVerticalLine: false,
+        getDrawingHorizontalLine: (_) => FlLine(
+          color: theme.colorScheme.outlineVariant,
+          strokeWidth: 0.5,
+        ),
+      ),
+      borderData: FlBorderData(
+        show: true,
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      titlesData: FlTitlesData(
+        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        leftTitles: AxisTitles(
+          sideTitles: SideTitles(
+            showTitles: true,
+            reservedSize: 44,
+            interval: interval,
+            getTitlesWidget: (value, _) => Text(
+              formatChartAxisLabel(value, parameter),
+              style: theme.textTheme.bodySmall,
+            ),
+          ),
+        ),
+        bottomTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+      ),
+      minY: parameter.scaleMin,
+      maxY: parameter.scaleMax,
+      lineBarsData: [
+        LineChartBarData(
+          spots: spots,
+          isCurved: true,
+          color: theme.colorScheme.primary,
+          dotData: const FlDotData(show: false),
+          barWidth: 2.5,
+          belowBarData: BarAreaData(
+            show: true,
+            color: theme.colorScheme.primary.withValues(alpha: 0.15),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -247,7 +418,7 @@ class _MeasurementTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final timeFormat = DateFormat('dd.MM HH:mm');
+    final timeFormat = DateFormat('HH:mm');
     final hasLabel = row.label != null && row.label!.trim().isNotEmpty;
 
     return ListTile(

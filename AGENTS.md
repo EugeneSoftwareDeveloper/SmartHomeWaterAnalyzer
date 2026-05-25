@@ -56,9 +56,10 @@ lib/
 │   ├── catalog.dart                # WaterParameterCatalog.forProfile(profile)
 │   └── overview.dart               # WaterQualityOverview.compute(values, profile:)
 ├── history/                        # Локальное хранение измерений
-│   ├── database.dart               # Drift schema v2 (с колонкой label) + миграция onUpgrade
+│   ├── database.dart               # Drift schema v2 + AppDatabase.forTesting (для in-memory тестов)
 │   ├── database.g.dart             # Auto-generated, не редактировать
-│   └── repository.dart             # HistoryRepository — фасад над БД
+│   ├── grouping.dart               # groupMeasurementsByDay → группы «Сегодня»/«Вчера»/dd.MM.yyyy
+│   └── repository.dart             # HistoryRepository: save/updateLabel/deleteById/restoreFromMeasurement
 ├── help/
 │   └── parameter_help.dart         # ParameterHelpCatalog: подробная справка с тонкой градацией
 ├── export/
@@ -76,6 +77,7 @@ lib/
     ├── settings_page.dart          # Тема, профиль, уведомления, ссылка на справку
     └── widgets/
         ├── color_gauge.dart        # Анимированная цветная шкала + метки концов
+        ├── chart_axis.dart         # niceAxisInterval + formatChartAxisLabel (testable helpers)
         ├── parameter_card.dart     # Карточка параметра — тап ведёт в справку
         ├── summary_header.dart     # Hero-карточка общей оценки + статус прибора
         └── control_panel.dart      # Секция управления (подсветка, HOLD)
@@ -84,6 +86,9 @@ test/
 ├── yinmik_decoder_test.dart        # 5 регрессионных тестов декодера
 ├── quality_overview_test.dart      # 7 тестов на сводную оценку и профили
 ├── catalog_profiles_test.dart      # 5 тестов на зоны для разных профилей
+├── chart_axis_test.dart            # 9 тестов: niceAxisInterval + formatChartAxisLabel
+├── measurement_grouping_test.dart  # 8 тестов: «Сегодня»/«Вчера»/dd.MM.yyyy + порядок
+├── history_repository_test.dart    # 13 тестов CRUD через AppDatabase.forTesting(NativeDatabase.memory())
 └── widgets/
     └── color_gauge_test.dart       # Smoke-тесты рендеринга шкалы
 
@@ -145,6 +150,8 @@ flutter build apk --release --split-per-abi              # release APK по ар
 - **R8 минификация включена**: при добавлении нового пакета с reflection (например, `objectbox` или `json_serializable`) проверь, не нужны ли новые `-keep` правила в `proguard-rules.pro`.
 - **Платформенный `withServices: [serviceUuid]` фильтр НЕ работает** с BLE-C600 — прибор не объявляет сервис FF01 в advertisement. Сканировать без фильтра + фильтровать по имени на клиенте.
 - **`scanResults` стрим требует «прогрева»** — обязательно подписаться через `listen((_) {})` ДО `startScan`, иначе первые батчи могут потеряться (см. `YinmikBleClient.scan`).
+- **Фильтр имени работает по `contains`, а не `startsWith`** (`knownNameKeywords` в `client.dart`). Дополнительно проверяется `advertisementData.advName` и есть fallback по сервису FF01 в advertisement. Если расширяешь список — добавляй короткие подстроки, которые гарантированно есть в имени всех вариантов прибора.
+- **Stop → Start сканирования** требует отмены `StreamSubscription` ДО повторного `startScan`. Просто `FlutterBluePlus.stopScan()` без `cancel()` оставляет платформу в полу-остановленном состоянии и следующий `startScan` тихо игнорируется. См. `HomePage._stopScan` + 300 мс задержка в `YinmikBleClient.scan` между stop и start.
 - **Release signing** — `android/key.properties` в `.gitignore`. Если файла нет, build падает на debug-ключ. Для production создай keystore и заполни `key.properties` (шаблон в `key.properties.example`).
 
 ## Практические советы
@@ -157,6 +164,9 @@ flutter build apk --release --split-per-abi              # release APK по ар
 - **При добавлении параметра** правь `lib/quality/catalog.dart` (новый параметр для каждого профиля), `lib/yinmik/reading_values.dart` (`readingValues` + `measurementValues`), `lib/help/parameter_help.dart` (справка). UI подхватит автоматически.
 - **При изменении схемы БД** — schemaVersion + миграция в `onUpgrade` + `dart run build_runner build`.
 - **Уведомления триггеры в `_refresh`, не в `build`** — иначе при ребилде дублируются.
+- **Замеры сохраняются ТОЛЬКО при ручном нажатии FAB «Сохранить»** в `ReadingPage`. `_refresh()` и `ControlPanel.onReadingUpdated` обновляют только in-memory `_reading`. Если рефакторишь — не возвращай auto-save, это сознательное архитектурное решение.
+- **Чистая логика → top-level helpers, а не private методы UI**. `groupMeasurementsByDay` (`lib/history/grouping.dart`), `niceAxisInterval`/`formatChartAxisLabel` (`lib/ui/widgets/chart_axis.dart`) вынесены из `history_page.dart` именно для unit-тестов. Любая чистая функция, которую захочется протестировать, должна оказаться в `lib/` отдельным top-level методом, а не `_методом` внутри `StatefulWidget`.
+- **In-memory тесты БД**: используй `AppDatabase.forTesting(NativeDatabase.memory())`. Drift не требует sqlite-флага для тестов на Windows — работает «из коробки» (см. `test/history_repository_test.dart`).
 
 ## Что не делать в первой версии
 
@@ -172,12 +182,12 @@ flutter build apk --release --split-per-abi              # release APK по ар
 
 ## Хорошие цели для следующих сессий
 
-- **Найти реальные байты команд** через debug-страницу или HCI snoop, заменить `_backlightOn`/`_backlightOff`/`_holdOn`/`_holdOff` в `lib/yinmik/commands.dart`.
-- **Auto-reconnect** к `lastDeviceId` — данные уже сохраняются, осталось добавить кнопку «Подключиться к последнему» в HomePage.
-- **Режим сравнения замеров**: multi-select в истории → таблица или график с несколькими линиями.
-- **App icon + splash screen** — заменить `assets/icon/README.md` на реальные PNG и запустить `dart run flutter_launcher_icons` / `dart run flutter_native_splash:create`.
-- **Golden-тесты** для `ParameterCard`, `SummaryHeader`, `ColorGauge`.
-- **Mock-based тесты** `HomePage`/`ReadingPage` через `mocktail`.
-- **Sentry/Crashlytics** в `bootstrap.dart` (TODO-комментарий).
-- **iOS-сборка** — `flutter create --platforms=ios .` + Info.plist Bluetooth-разрешения.
-- **Фоновый опрос** через `workmanager`.
+Приоритезированный roadmap — в [`docs/06-roadmap.md`](./docs/06-roadmap.md). Топ-3 на сейчас:
+
+1. **Реальные байты команд** (`commands.dart`) — через debug-страницу в Reading или HCI snoop. Самая близкая к пользе для пользователя дыра.
+2. **Auto-reconnect** к `lastDeviceId` — один тап вместо скана. Данные уже сохраняются, осталось UI-кнопка.
+3. **Trend indicators ↑↓** — под значением каждой карточки показывать дельту относительно последнего сохранённого замера.
+
+Остальное (режим сравнения, iOS, Sentry, ...) — в roadmap по приоритетам.
+
+После закрытия задачи: переноси её из `06-roadmap.md` в `CHANGELOG.md` (раздел `[Unreleased]`), не оставляй в обоих местах.

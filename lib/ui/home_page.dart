@@ -39,12 +39,19 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   @override
   void dispose() {
-    _scanSubscription?.cancel();
+    unawaited(_scanSubscription?.cancel());
+    _scanSubscription = null;
     unawaited(FlutterBluePlus.stopScan());
     super.dispose();
   }
 
   Future<void> _startScan() async {
+    // Сначала корректно гасим предыдущий скан (если он висит после Stop) —
+    // только после этого можно зайти в новый цикл, иначе platform-сканер
+    // зависает в промежуточном состоянии и больше ничего не отдаёт.
+    await _scanSubscription?.cancel();
+    _scanSubscription = null;
+
     setState(() {
       _devices = const [];
       _totalScanned = 0;
@@ -56,6 +63,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     final client = ref.read(yinmikBleClientProvider);
     final permission = await client.ensurePermissions();
     if (!permission.isGranted) {
+      if (!mounted) return;
       setState(() {
         _error = permission.message;
         _showSettingsButton = true;
@@ -64,20 +72,39 @@ class _HomePageState extends ConsumerState<HomePage> {
       return;
     }
 
-    await _scanSubscription?.cancel();
     _scanSubscription = client.scan(timeout: const Duration(seconds: 10)).listen(
-          (state) => setState(() {
-            _devices = state.matching;
-            _totalScanned = state.totalScanned;
-          }),
-          onError: (Object error) => setState(() {
-            _error = '$error';
-            _scanning = false;
-          }),
+          (state) {
+            if (!mounted) return;
+            setState(() {
+              _devices = state.matching;
+              _totalScanned = state.totalScanned;
+            });
+          },
+          onError: (Object error) {
+            if (!mounted) return;
+            setState(() {
+              _error = '$error';
+              _scanning = false;
+            });
+          },
           onDone: () {
             if (mounted) setState(() => _scanning = false);
           },
         );
+  }
+
+  /// Корректно останавливает текущий скан: гасит подписку (что запускает finally
+  /// в `YinmikBleClient.scan` и освобождает keepAlive-listener), затем дёргает
+  /// platform stop. Без отмены подписки повторный запуск через 1-2 секунды может
+  /// застрять — sequential `startScan` платформа игнорирует, если предыдущий
+  /// цикл не закрыт полностью.
+  Future<void> _stopScan() async {
+    await _scanSubscription?.cancel();
+    _scanSubscription = null;
+    if (FlutterBluePlus.isScanningNow) {
+      await FlutterBluePlus.stopScan();
+    }
+    if (mounted) setState(() => _scanning = false);
   }
 
   /// Диагностический режим: показать ВСЕ BLE-устройства, которые увидел сканер, без
@@ -176,8 +203,7 @@ class _HomePageState extends ConsumerState<HomePage> {
             tooltip: _scanning ? l10n.scanStopButton : l10n.scanButton,
             onPressed: () async {
               if (_scanning) {
-                await FlutterBluePlus.stopScan();
-                if (mounted) setState(() => _scanning = false);
+                await _stopScan();
               } else {
                 await _startScan();
               }
@@ -248,6 +274,24 @@ class _HomePageState extends ConsumerState<HomePage> {
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
               ),
+              if (_totalScanned > 0) ...[
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  onPressed: _showAllDevices,
+                  icon: const Icon(Icons.search, size: 18),
+                  label: const Text('Показать все устройства'),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: Text(
+                    'Если прибор называется не «BLE-C600», выбери его вручную.',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                ),
+              ],
             ] else ...[
               FilledButton.icon(
                 onPressed: _startScan,

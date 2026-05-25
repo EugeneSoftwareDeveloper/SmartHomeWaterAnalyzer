@@ -65,31 +65,26 @@
    );
    ```
 
-3. Добавь в `WaterParameterCatalog.all`.
-4. В `lib/ui/reading_page.dart` метод `_extractValues` — достань значение из `YinmikReading`:
+3. Добавь параметр во все профили в `WaterParameterCatalog.forProfile(...)` (внутри `lib/quality/catalog.dart`) — у каждого профиля свой набор зон.
+4. В `lib/yinmik/reading_values.dart` дополни `readingValues` и `measurementValues` — это **single source of truth** маппинга «домен/БД-запись → `Map<key, value>`»:
 
    ```dart
-   WaterParameterCatalog.freeChlorine.key: reading.freeChlorinePpm,
+   'fc': reading.freeChlorinePpm,
    ```
 
-Карточка появится автоматически.
+5. В `lib/help/parameter_help.dart` добавь подробную справку с тонкой градацией зон для нового параметра.
+6. Если параметр должен сохраняться в БД — поднять `schemaVersion` в `AppDatabase`, добавить колонку + ветку миграции, перегенерить drift.
 
-### Новый профиль норм (бассейн / аквариум)
+Карточка появится автоматически на ReadingPage, HistoryDetailPage, а график получит новую опцию в `DropdownButton` (берётся из `WaterParameterCatalog.forProfile`).
 
-Сейчас `WaterParameterCatalog` — статика для питьевой воды. Чтобы добавить переключаемые профили:
+### Новая чистая логика (например, новый способ группировки истории)
 
-1. Преврати `WaterParameterCatalog` в фабрику или enum с разными наборами зон для каждого профиля:
+Если хочется протестировать функцию, не делай её private методом UI-виджета — вынеси top-level в `lib/`. Так уже сделано для:
 
-   ```dart
-   enum NormsProfile { drinking, pool, aquariumFreshwater }
+- `groupMeasurementsByDay` (`lib/history/grouping.dart`) — группировка списка измерений по календарной дате. Принимает опциональный `now` параметр для детерминированности в тестах.
+- `niceAxisInterval`, `formatChartAxisLabel` (`lib/ui/widgets/chart_axis.dart`) — подбор шага и формата меток оси y графика.
 
-   abstract final class WaterParameterCatalog {
-     static List<WaterParameter> forProfile(NormsProfile profile) { ... }
-   }
-   ```
-
-2. Прокинь выбранный профиль через UI (например, `Provider` или `InheritedWidget`, или просто prop).
-3. `WaterQualityOverview.compute` уже принимает `Map<String, double>` — менять не надо.
+Тесты на оба — `test/measurement_grouping_test.dart`, `test/chart_axis_test.dart`. Берите эти файлы за шаблон при добавлении новой helper-логики.
 
 ### Новая команда управления
 

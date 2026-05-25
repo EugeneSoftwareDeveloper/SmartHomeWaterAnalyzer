@@ -18,7 +18,18 @@ class YinmikBleClient {
   static final Guid measurementCharacteristicUuid =
       Guid('0000ff02-0000-1000-8000-00805f9b34fb');
 
-  static const List<String> knownNamePrefixes = ['BLE-C600', 'BLE-YC', 'YINMIK'];
+  /// Подстроки, по которым прибор узнаётся в advertisement. Сравнение через `contains`
+  /// (не `startsWith`!) — некоторые партии добавляют префикс производителя/SKU перед
+  /// именем, например `BT-BLE-C600` или `Yinmik-C600-XXXX`. Сравнение нечувствительно
+  /// к регистру и принимает оба разделителя `-` и `_` (часть прошивок использует
+  /// подчеркивание).
+  static const List<String> knownNameKeywords = <String>[
+    'BLE-C600', 'BLE_C600', 'BLE C600',
+    'BLE-YC', 'BLE_YC',
+    'YINMIK',
+    'YC01',
+    'C600',
+  ];
 
   /// Параметры устойчивости — те же дефолты, что в SmartHomeService LYWSD03MMC reader:
   /// 3 попытки с 2-секундной паузой и переподключением на каждой.
@@ -60,7 +71,14 @@ class YinmikBleClient {
   /// Подписка на `FlutterBluePlus.scanResults` через явный `listen((_) {})` обязательна:
   /// без неё поток не «прогревается» и `await for` ниже может не получать обновлений.
   Stream<ScanState> scan({Duration timeout = const Duration(seconds: 10)}) async* {
-    if (FlutterBluePlus.isScanningNow) await FlutterBluePlus.stopScan();
+    // Если предыдущий скан ещё активен — остановить и подождать обработки stop
+    // платформой. Без задержки `startScan` ниже может тихо проигнорироваться
+    // (особенно после нажатия Stop в UI с быстрым повторным запуском), и поток
+    // `scanResults` останется заморожен на пустом списке до перезапуска приложения.
+    if (FlutterBluePlus.isScanningNow) {
+      await FlutterBluePlus.stopScan();
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+    }
 
     final keepAlive = FlutterBluePlus.scanResults.listen((_) {});
     try {
@@ -193,9 +211,21 @@ class YinmikBleClient {
   }
 
   static bool _looksLikeYinmik(ScanResult result) {
-    final name = result.device.platformName.toUpperCase();
-    if (name.isEmpty) return false;
-    return knownNamePrefixes.any(name.startsWith);
+    // Имя устройства может прийти двумя путями: `platformName` (то, что система
+    // запомнила в GAP) или `advertisementData.advName` (то, что прибор объявляет
+    // прямо сейчас). На холодном скане первое часто пусто, второе — нет.
+    final names = <String>{
+      result.device.platformName.toUpperCase(),
+      result.advertisementData.advName.toUpperCase(),
+    }..removeWhere((value) => value.isEmpty);
+
+    for (final name in names) {
+      if (knownNameKeywords.any(name.contains)) return true;
+    }
+
+    // Fallback: некоторые партии BLE-C600 публикуют сервис FF01 в advertisement,
+    // даже когда имя отсутствует. Если поймали такой пакет — считаем прибор нашим.
+    return result.advertisementData.serviceUuids.contains(serviceUuid);
   }
 }
 

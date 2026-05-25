@@ -17,8 +17,12 @@ import 'widgets/parameter_card.dart';
 import 'widgets/summary_header.dart';
 
 /// Экран показаний подключённого BLE-C600. Делает одно чтение при открытии и при тапе на
-/// «Обновить» или pull-to-refresh. После успешного чтения автоматически сохраняет запись
-/// в локальную историю с текущей меткой из настроек.
+/// «Обновить» или pull-to-refresh.
+///
+/// Замеры **не сохраняются автоматически** — для записи в историю пользователь должен
+/// нажать FAB «Сохранить». Это сознательное решение, чтобы случайные/тестовые чтения
+/// (например, при подборе байтов на debug-странице или при первом разогреве электрода
+/// pH) не засоряли историю и графики.
 class ReadingPage extends ConsumerStatefulWidget {
   final BluetoothDevice device;
 
@@ -32,6 +36,12 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
   YinmikReading? _reading;
   String? _error;
   bool _loading = false;
+  bool _saving = false;
+
+  /// Ссылка на YinmikReading, который уже был сохранён в историю. Сравнивается с текущим
+  /// `_reading` через `identical(...)`, чтобы заблокировать повторное сохранение того же
+  /// самого кадра. Сбрасывается при каждом новом `_refresh()` или после команды управления.
+  YinmikReading? _savedReading;
 
   @override
   void initState() {
@@ -46,7 +56,6 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
     });
 
     final client = ref.read(yinmikBleClientProvider);
-    final history = ref.read(historyRepositoryProvider);
 
     try {
       final reading = await client.readOnce(widget.device);
@@ -54,15 +63,8 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
       setState(() {
         _reading = reading;
         _loading = false;
+        _savedReading = null; // новое чтение — снова можно сохранять
       });
-
-      final label = ref.read(appSettingsProvider).currentLabel;
-      await history.save(
-        widget.device.remoteId.str,
-        reading,
-        DateTime.now(),
-        label: label,
-      );
 
       // Уведомление — в _refresh, а не в build. В build setState может вызвать ребилды,
       // в которых notifier стрелял бы повторно.
@@ -90,11 +92,68 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
     await ref.read(notificationServiceProvider).notifyIfOutOfRange(overview);
   }
 
+  /// Сохранить текущий замер в историю + показать SnackBar с возможностью undo.
+  /// Дубликат блокируется: повторный тап на тот же кадр ничего не делает.
+  Future<void> _save() async {
+    final reading = _reading;
+    if (reading == null || _saving) return;
+
+    if (identical(_savedReading, reading)) {
+      _showSnackBar('Этот замер уже сохранён');
+      return;
+    }
+
+    setState(() => _saving = true);
+    try {
+      final history = ref.read(historyRepositoryProvider);
+      final label = ref.read(appSettingsProvider).currentLabel;
+      final id = await history.save(
+        widget.device.remoteId.str,
+        reading,
+        DateTime.now(),
+        label: label,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _savedReading = reading;
+      });
+      await HapticFeedback.lightImpact();
+
+      _showSnackBar(
+        'Замер сохранён',
+        action: SnackBarAction(
+          label: 'Отменить',
+          onPressed: () async {
+            await history.deleteById(id);
+            if (!mounted) return;
+            setState(() => _savedReading = null);
+          },
+        ),
+      );
+    } on Object catch (error) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      _showSnackBar('Не удалось сохранить: $error');
+    }
+  }
+
+  void _showSnackBar(String message, {SnackBarAction? action}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), action: action),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final deviceName = widget.device.platformName.isEmpty
         ? widget.device.remoteId.str
         : widget.device.platformName;
+    final hasReading = _reading != null;
+    final isSavedAlready = identical(_savedReading, _reading) && _reading != null;
+    final saveEnabled = hasReading && !_saving && !isSavedAlready && !_loading;
 
     return Scaffold(
       appBar: AppBar(
@@ -119,6 +178,25 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
         ],
       ),
       body: _buildBody(),
+      floatingActionButton: hasReading
+          ? FloatingActionButton.extended(
+              onPressed: saveEnabled ? _save : null,
+              icon: _saving
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Icon(isSavedAlready ? Icons.check : Icons.save_outlined),
+              label: Text(isSavedAlready ? 'Сохранено' : 'Сохранить замер'),
+              backgroundColor: isSavedAlready
+                  ? Theme.of(context).colorScheme.surfaceContainerHigh
+                  : null,
+              foregroundColor: isSavedAlready
+                  ? Theme.of(context).colorScheme.onSurfaceVariant
+                  : null,
+            )
+          : null,
     );
   }
 
@@ -161,6 +239,7 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
       onRefresh: _refresh,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.only(bottom: 96), // место под FAB
         children: [
           const _LabelEditor(),
           SummaryHeader(overview: overview, reading: reading),
@@ -172,15 +251,14 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
             device: widget.device,
             client: ref.read(yinmikBleClientProvider),
             reading: reading,
-            onReadingUpdated: (updated) async {
-              setState(() => _reading = updated);
-              final label = ref.read(appSettingsProvider).currentLabel;
-              await ref.read(historyRepositoryProvider).save(
-                    widget.device.remoteId.str,
-                    updated,
-                    DateTime.now(),
-                    label: label,
-                  );
+            onReadingUpdated: (updated) {
+              // После переключения подсветки/HOLD прибор отдал свежий кадр.
+              // Не сохраняем автоматически — пользователь сам решит, нужен ли
+              // этот кадр в истории (например, тестовый HOLD-замер для сравнения).
+              setState(() {
+                _reading = updated;
+                _savedReading = null; // изменился — снова можно сохранять
+              });
             },
           ),
           const SizedBox(height: 24),
@@ -238,3 +316,4 @@ class _LabelEditorState extends ConsumerState<_LabelEditor> {
     );
   }
 }
+

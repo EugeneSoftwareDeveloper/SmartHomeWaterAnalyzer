@@ -130,21 +130,76 @@ enum QualityCategory {
 
 ```
 SafeArea
-└─ Scaffold(AppBar + body)
-   └─ RefreshIndicator
-      └─ ListView
-         ├─ SummaryHeader
-         ├─ ParameterCard (pH)
-         ├─ ParameterCard (ORP)
-         ├─ ParameterCard (EC)
-         ├─ ParameterCard (TDS)
-         ├─ ParameterCard (Salinity)
-         ├─ ParameterCard (Temperature)
-         ├─ ParameterCard (S.G.)
-         └─ ControlPanel
+└─ Scaffold(AppBar + body + FAB)
+   ├─ AppBar: 🧪 Debug   🔄 Refresh
+   ├─ body: RefreshIndicator
+   │  └─ ListView (padding bottom 96px под FAB)
+   │     ├─ _LabelEditor (поле «Метка замера»)
+   │     ├─ SummaryHeader
+   │     ├─ ParameterCard × 7 (pH, ORP, EC, TDS, Salinity, Temp, S.G.)
+   │     └─ ControlPanel (подсветка, HOLD)
+   └─ FAB: «Сохранить замер» / «Сохранено»
 ```
 
 Pull-to-refresh повторяет чтение FF02 и обновляет всё. Refresh-кнопка в AppBar делает то же самое.
+
+### FAB «Сохранить замер»
+
+Замеры в историю **не сохраняются автоматически** — это сознательное решение, чтобы случайные/тестовые чтения (например, при подборе байтов на debug-странице или первое чтение «в воздух» при разогреве pH-электрода) не засоряли историю и графики.
+
+Состояния FAB:
+- **Не сохранён** — иконка `save_outlined`, лейбл «Сохранить замер», цвет primary. По тапу: `repository.save(...)` → SnackBar «Замер сохранён» с действием «Отменить» (5 секунд → `repository.deleteById(id)`).
+- **Сохранён** — иконка `check`, лейбл «Сохранено», цвет `surfaceContainerHigh` (приглушённый). `onPressed: null` — повторный тап заблокирован.
+- **Сохраняется** — `CircularProgressIndicator` вместо иконки. Защищает от двойного нажатия во время `await`.
+
+Сброс «уже сохранён»: после нового `_refresh()` или после команды управления (`ControlPanel.onReadingUpdated`) флаг сбрасывается через `_savedReading = null` — новый кадр снова можно сохранять.
+
+Дубликаты ловим через `identical(_savedReading, _reading)` (identity-сравнение ссылок), не через equality — это работает потому, что новый кадр всегда приходит из `client.readOnce` как новый объект.
+
+## Layout history_page
+
+```
+Scaffold(AppBar + body)
+├─ AppBar: ⋮ menu (Экспорт CSV / Очистить историю)
+└─ body: ListView
+   ├─ _MeasurementChart (LineChart + DropdownButton параметра)
+   ├─ Divider
+   ├─ «Последние N измерений» (titleSmall)
+   ├─ _DayHeader «Сегодня»
+   │  └─ _DismissibleTile × N (swipe-to-delete → SnackBar undo)
+   ├─ _DayHeader «Вчера»
+   │  └─ _DismissibleTile × N
+   ├─ _DayHeader «22.05.2026»
+   │  └─ _DismissibleTile × N
+   └─ ...
+```
+
+### График с переключателем параметра
+
+`_MeasurementChart` — `ConsumerStatefulWidget`. Состояние — `_selectedKey: String` (по умолчанию `'ph'`). В шапке `DropdownButton` со значениями из `WaterParameterCatalog.forProfile(profile).map((p) => p.shortLabel)`.
+
+y-axis range берётся напрямую из `WaterParameter.scaleMin/scaleMax`. Шаг сетки и формат меток вычисляются через top-level helpers в `lib/ui/widgets/chart_axis.dart`:
+
+- `niceAxisInterval(range)` — шаг 1–5 для узких диапазонов (pH 0..14), 5–40 для средних (Temp 0..100), кратно 100 для широких (TDS 0..3000).
+- `formatChartAxisLabel(value, parameter)` — «1.5k» вместо «1500» для значений ≥ 1000, иначе десятичная запись с `parameter.fractionDigits` (но не больше 1 знака, чтобы метка не была длиннее самого значения).
+
+Эти функции вынесены отдельно, потому что без compact-формата получалась «лесенка из 3000 чисел» поверх друг друга на оси TDS/EC. И они юнит-тестируются (см. `test/chart_axis_test.dart`).
+
+### Группировка по дням
+
+`groupMeasurementsByDay(rows)` из `lib/history/grouping.dart` (см. [`05-state-and-storage.md`](./05-state-and-storage.md#группировка-по-дням)) возвращает `List<MeasurementDayGroup>`. UI разворачивает каждую группу в `_DayHeader` (с иконкой `event_outlined`) + N тайлов.
+
+Тайл (`_MeasurementTile`) показывает только время (`HH:mm`) — дата уехала в заголовок группы, повторение в каждой строке избыточно.
+
+### Swipe-to-delete
+
+`_DismissibleTile` оборачивает `_MeasurementTile` в `Dismissible(direction: endToStart)`. Фон — `errorContainer` с лейблом «Удалить» + иконкой `delete_outline` справа. После swipe:
+
+1. `repository.deleteById(row.id)` — сразу из БД (стрим `recentMeasurementsProvider` сам перерисовывает список).
+2. `HapticFeedback.lightImpact`.
+3. SnackBar «Замер удалён» с действием «Отменить» (5 секунд → `repository.restoreFromMeasurement(row)` — восстанавливает запись с тем же id через `InsertMode.insertOrReplace`).
+
+Тот же сценарий доступен в `HistoryDetailPage` через ⋮-меню → «Удалить замер» с дополнительным confirm-диалогом (там undo тоже работает).
 
 ## Адаптивность
 
