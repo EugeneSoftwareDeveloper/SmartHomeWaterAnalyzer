@@ -1,0 +1,181 @@
+name: Release
+
+# Триггер: пуш тега вида v1.0.0, v1.2.3-rc1 и т.п. (любой тег, начинающийся с "v").
+# Создаётся новый GitHub Release с APK для трёх архитектур (armeabi-v7a / arm64-v8a / x86_64).
+#
+# Чтобы выпустить релиз:
+#   1. Обновить версию в pubspec.yaml (например, 1.1.0+2).
+#   2. Дописать раздел в CHANGELOG.md под версией.
+#   3. git commit, git push.
+#   4. git tag v1.1.0 && git push origin v1.1.0
+#
+# Опционально: для production-signing задать GitHub Secrets:
+#   - ANDROID_KEYSTORE_BASE64  — keystore.jks в base64 (base64 -w0 keystore.jks)
+#   - ANDROID_KEYSTORE_PASSWORD
+#   - ANDROID_KEY_ALIAS
+#   - ANDROID_KEY_PASSWORD
+# Если secrets не заданы, сборка идёт с debug-keystore (это нормально для приватного
+# распространения через GitHub Releases; для Play Store нужен стабильный production-keystore).
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write   # нужно для создания Release и загрузки assets
+
+jobs:
+  release:
+    name: Build and publish release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # вся история, чтобы можно было выдернуть changelog
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Show Flutter version
+        run: flutter --version
+
+      # Достаём версию из тега (v1.2.3 -> 1.2.3) — пригодится для имён APK в Release.
+      - name: Extract version from tag
+        id: version
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          VERSION="${TAG#v}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Releasing tag=$TAG version=$VERSION"
+
+      # Production keystore из secrets — опционально. Если ANDROID_KEYSTORE_BASE64 не задан,
+      # пропускаем подпись и собираем с debug-keystore (см. android/app/build.gradle.kts).
+      # `secrets.*` в `if:` напрямую не работает, поэтому пробрасываем флаг через env.
+      - name: Probe signing config
+        id: signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "Production signing: enabled (ANDROID_KEYSTORE_BASE64 secret found)"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "Production signing: disabled — building with debug keystore."
+            echo "To enable, add secrets ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD."
+          fi
+
+      - name: Decode keystore
+        if: steps.signing.outputs.enabled == 'true'
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          # Кладём keystore в android/keystore/, чтобы он жил рядом с key.properties.
+          # build.gradle.kts читает storeFile через file(...) — путь резолвится относительно
+          # android/app/, поэтому из key.properties ссылаемся как ../keystore/release.jks.
+          mkdir -p android/keystore
+          echo "$KEYSTORE_BASE64" | base64 -d > android/keystore/release.jks
+          echo "Keystore decoded: $(stat -c '%s bytes' android/keystore/release.jks)"
+
+      - name: Write key.properties
+        if: steps.signing.outputs.enabled == 'true'
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          cat > android/key.properties <<EOF
+          storeFile=../keystore/release.jks
+          storePassword=$KEYSTORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          EOF
+          echo "Production key.properties written"
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      - name: Generate l10n
+        run: flutter gen-l10n
+
+      - name: Generate code (drift)
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Static analysis
+        run: flutter analyze
+
+      - name: Run unit tests
+        run: flutter test
+
+      # ABI split включен в android/app/build.gradle.kts, поэтому --split-per-abi обязателен.
+      - name: Build release APKs
+        run: flutter build apk --release --split-per-abi
+
+      # Переименование: app-arm64-v8a-release.apk -> water-analyzer-1.2.3-arm64-v8a.apk
+      # Так в Releases видно версию прямо в имени файла.
+      - name: Rename APKs with version
+        id: artifacts
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          SRC="build/app/outputs/flutter-apk"
+          OUT="release-artifacts"
+          mkdir -p "$OUT"
+          for abi in armeabi-v7a arm64-v8a x86_64; do
+            cp "$SRC/app-$abi-release.apk" "$OUT/water-analyzer-$VERSION-$abi.apk"
+          done
+          ls -la "$OUT"
+
+      # Вытаскиваем changelog для текущей версии из CHANGELOG.md. Берём блок между
+      # «## [<VERSION>]» (или «## [Unreleased]» для первого релиза) и следующим «## [».
+      # Если такого раздела нет — ставим заглушку.
+      - name: Extract release notes from CHANGELOG.md
+        id: notes
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          NOTES_FILE="release-notes.md"
+          if [ -f CHANGELOG.md ]; then
+            awk -v ver="$VERSION" '
+              BEGIN { in_section = 0 }
+              /^## \[/ {
+                if (in_section) { exit }
+                if (index($0, "[" ver "]") > 0 || (index($0, "[Unreleased]") > 0 && !found)) {
+                  in_section = 1
+                  found = 1
+                  next
+                }
+              }
+              in_section { print }
+            ' CHANGELOG.md > "$NOTES_FILE"
+            if [ ! -s "$NOTES_FILE" ]; then
+              echo "Release ${VERSION}." > "$NOTES_FILE"
+              echo "" >> "$NOTES_FILE"
+              echo "См. [CHANGELOG.md](./CHANGELOG.md) с подробностями." >> "$NOTES_FILE"
+            fi
+          else
+            echo "Release ${VERSION}." > "$NOTES_FILE"
+          fi
+          echo "notes_file=$NOTES_FILE" >> "$GITHUB_OUTPUT"
+          echo "=== Release notes preview ==="
+          cat "$NOTES_FILE"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.tag }}
+          body_path: ${{ steps.notes.outputs.notes_file }}
+          draft: false
+          prerelease: ${{ contains(steps.version.outputs.version, '-') }}
+          files: release-artifacts/water-analyzer-*.apk
+          fail_on_unmatched_files: true

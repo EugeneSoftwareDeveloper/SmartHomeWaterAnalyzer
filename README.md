@@ -64,14 +64,19 @@ Android-приложение для тестера качества воды **Y
 
 ## Быстрый старт
 
-### Установка APK (если у тебя готовая сборка)
+### Установка APK из GitHub Releases
 
-1. Скачай APK (например, из releases на GitHub).
+1. Открой страницу [Releases](https://github.com/EugeneSoftwareDeveloper/SmartHomeWaterAnalyzer/releases) и скачай APK для своей архитектуры:
+   - **`water-analyzer-X.Y.Z-arm64-v8a.apk`** — большинство современных Android-телефонов (2018+). Если не уверен — бери этот.
+   - `water-analyzer-X.Y.Z-armeabi-v7a.apk` — старые 32-битные устройства.
+   - `water-analyzer-X.Y.Z-x86_64.apk` — для эмуляторов на ПК.
 2. На телефоне разреши установку из неизвестных источников (Settings → Apps → Special access → Install unknown apps).
 3. Установи APK, открой приложение.
 4. Разреши Bluetooth и геолокацию (для BLE-сканирования на Android ≤11).
 5. На приборе — длинное нажатие `ON/OFF` для включения Bluetooth-режима.
 6. В приложении → «Сканировать» → выбери прибор → смотри показания.
+
+> **Подпись APK**: если в репозитории не настроены release-secrets (см. ниже), релизные APK подписаны debug-keystore'ом. Это нормально для установки «скачал → поставил», но при апгрейде Android требует ту же подпись — устанавливай новые версии поверх старых без удаления.
 
 ### Сборка из исходников
 
@@ -140,6 +145,47 @@ flutter build apk --release
 flutter analyze   # статический анализ (0 issues должны быть)
 flutter test      # юнит-тесты декодера
 ```
+
+### Выпуск релиза через GitHub Actions
+
+Релизы публикуются автоматически workflow [`.github/workflows/release.yml`](./.github/workflows/release.yml) при пуше тега `v*`.
+
+Шаги:
+
+1. Обнови версию в [`pubspec.yaml`](./pubspec.yaml) — например, было `version: 1.0.0+1`, ставим `1.1.0+2` (semver + buildNumber).
+2. Опиши изменения в [`CHANGELOG.md`](./CHANGELOG.md) в новой секции `## [1.1.0] - YYYY-MM-DD`. Текст этой секции будет в описании Release.
+3. Закоммить и запушь:
+   ```powershell
+   git commit -am "Release 1.1.0"
+   git push
+   ```
+4. Поставь тег и запушь его:
+   ```powershell
+   git tag v1.1.0
+   git push origin v1.1.0
+   ```
+5. Через некоторое время странице [Releases](https://github.com/EugeneSoftwareDeveloper/SmartHomeWaterAnalyzer/releases) появится новый релиз с тремя APK.
+
+#### Production-signing через GitHub Secrets (опционально)
+
+По умолчанию APK подписываются debug-keystore'ом, который генерируется в CI на лету. Этого достаточно для распространения через GitHub Releases, но Android при апгрейде требует **ту же** подпись, поэтому debug-keystore не подходит для долгой жизни приложения (CI генерирует разный ключ при каждом запуске).
+
+Для стабильной production-подписи добавь четыре GitHub Secrets в репозитории (`Settings → Secrets and variables → Actions`):
+
+| Secret | Что |
+|---|---|
+| `ANDROID_KEYSTORE_BASE64` | `base64 -w0 keystore.jks` — твой keystore.jks в base64. На Windows: `[Convert]::ToBase64String([IO.File]::ReadAllBytes("keystore.jks"))` |
+| `ANDROID_KEYSTORE_PASSWORD` | Пароль от keystore |
+| `ANDROID_KEY_ALIAS` | Имя ключа (например, `water-analyzer`) |
+| `ANDROID_KEY_PASSWORD` | Пароль ключа |
+
+Создание keystore (один раз):
+
+```powershell
+keytool -genkey -v -keystore water-analyzer-release.jks -keyalg RSA -keysize 2048 -validity 10000 -alias water-analyzer
+```
+
+После добавления secrets — все следующие релизы будут подписаны production-ключом. **Бэкап keystore сделай немедленно** — потеря ключа значит, что выпускать апгрейды с тем же `applicationId` уже не получится, и пользователям придётся удалить старую версию и поставить новую с нуля.
 
 ## Известные ограничения
 

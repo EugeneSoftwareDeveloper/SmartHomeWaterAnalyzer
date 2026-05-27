@@ -68,11 +68,14 @@ jobs:
       - run: flutter pub get
       - run: flutter gen-l10n
       - run: dart run build_runner build --delete-conflicting-outputs
-      - run: flutter build apk --release
 
-      - name: Upload APK artifact
+
+      - run: flutter build apk --release --split-per-abi
+
+      - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: app-release-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          name: app-release-apks
+          path: build/app/outputs/flutter-apk/app-*-release.apk
+          if-no-files-found: error
           retention-days: 30

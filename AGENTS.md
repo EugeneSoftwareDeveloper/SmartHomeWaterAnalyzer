@@ -108,7 +108,8 @@ android/
     └── src/main/AndroidManifest.xml  # BLE-permissions + POST_NOTIFICATIONS
 
 .github/workflows/
-└── ci.yml                          # CI: analyze + test + build APK + upload artifact
+├── ci.yml                          # на каждый push: analyze + test; на push в master — build APK как artifact
+└── release.yml                     # на push тега v*: analyze + test + build + GitHub Release с APK
 ```
 
 ## Архитектура в одном экране

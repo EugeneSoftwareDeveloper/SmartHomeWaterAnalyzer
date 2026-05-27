@@ -64,6 +64,8 @@
   - `test/history_repository_test.dart` — 13 тестов на CRUD через `AppDatabase.forTesting(NativeDatabase.memory())`: save→id, updateLabel с trim, deleteById, restoreFromMeasurement сохраняет исходный id, watchRecent стримит изменения.
 
 ### Исправлено
+- **CI сборка APK падала** с exit code 1: `flutter build apk --release` без `--split-per-abi` не создаёт fat-APK, потому что в `android/app/build.gradle.kts` включен `splits.abi` с `isUniversalApk = false`. Файл `app-release.apk` отсутствовал → upload-artifact падал «no files found». Теперь CI использует `--split-per-abi` и upload через wildcard `app-*-release.apk`.
+- **GitHub Releases — автоматическая публикация**: добавлен workflow [`release.yml`](.github/workflows/release.yml). Триггер — push тега `v*`. Собирает три APK (один на ABI), переименовывает в `water-analyzer-X.Y.Z-<abi>.apk` и создаёт GitHub Release с описанием из соответствующего раздела `CHANGELOG.md`. Поддерживает production-signing через secrets `ANDROID_KEYSTORE_BASE64`/`ANDROID_KEYSTORE_PASSWORD`/`ANDROID_KEY_ALIAS`/`ANDROID_KEY_PASSWORD`; без них собирается с debug-keystore. Подробности — в README, секция «Выпуск релиза».
 - **Фильтр имени слишком строгий**: на некоторых партиях BLE-C600 объявляет имя как `BLE_C600` (с подчёркиванием), `Yinmik-C600-XXXX`, или вовсе пустое имя в advertisement. Прежний фильтр `startsWith('BLE-C600' | 'BLE-YC' | 'YINMIK')` такие приборы отсекал. Теперь:
   - `contains` по расширенному списку ключевых слов (`BLE-C600`, `BLE_C600`, `BLE C600`, `BLE-YC`, `BLE_YC`, `YINMIK`, `YC01`, `C600`);
   - проверка как `platformName`, так и `advertisementData.advName`;
