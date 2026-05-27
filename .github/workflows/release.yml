@@ -21,6 +21,17 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Версия для релиза (например, 1.1.0). Без префикса "v".'
+        required: true
+        type: string
+      prerelease:
+        description: 'Помечать как pre-release'
+        required: false
+        type: boolean
+        default: true
 
 permissions:
   contents: write   # нужно для создания Release и загрузки assets
@@ -49,12 +60,21 @@ jobs:
       - name: Show Flutter version
         run: flutter --version
 
-      # Достаём версию из тега (v1.2.3 -> 1.2.3) — пригодится для имён APK в Release.
-      - name: Extract version from tag
+      # Версия и тег — из push tag (refs/tags/vX.Y.Z) или из workflow_dispatch input.
+      - name: Extract version
         id: version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
         run: |
-          TAG="${GITHUB_REF#refs/tags/}"
-          VERSION="${TAG#v}"
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            VERSION="$INPUT_VERSION"
+            TAG="v$VERSION"
+            echo "Source: workflow_dispatch input"
+          else
+            TAG="${GITHUB_REF#refs/tags/}"
+            VERSION="${TAG#v}"
+            echo "Source: pushed tag"
+          fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Releasing tag=$TAG version=$VERSION"
@@ -176,6 +196,7 @@ jobs:
           name: ${{ steps.version.outputs.tag }}
           body_path: ${{ steps.notes.outputs.notes_file }}
           draft: false
-          prerelease: ${{ contains(steps.version.outputs.version, '-') }}
+          # Префикс «pre» если: ручной запуск с пререлизом, ИЛИ в версии есть дефис (v1.0.0-rc1).
+          prerelease: ${{ inputs.prerelease == true || contains(steps.version.outputs.version, '-') }}
           files: release-artifacts/water-analyzer-*.apk
           fail_on_unmatched_files: true
