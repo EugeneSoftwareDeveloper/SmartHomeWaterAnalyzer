@@ -198,5 +198,9 @@ jobs:
           draft: false
           # Префикс «pre» если: ручной запуск с пререлизом, ИЛИ в версии есть дефис (v1.0.0-rc1).
           prerelease: ${{ inputs.prerelease == true || contains(steps.version.outputs.version, '-') }}
+          # Явно помечаем как Latest: для нормальных версий (без дефиса в semver и без флага
+          # workflow_dispatch.prerelease) GitHub поднимет этот релиз на верх страницы и в API
+          # /releases/latest. Pre-release НЕ становится latest даже если semver выше.
+          make_latest: ${{ (inputs.prerelease == true || contains(steps.version.outputs.version, '-')) && 'false' || 'true' }}
           files: release-artifacts/water-analyzer-*.apk
           fail_on_unmatched_files: true
