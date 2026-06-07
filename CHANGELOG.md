@@ -6,6 +6,9 @@
 
 ## [Unreleased]
 
+### Добавлено
+- **`tools/setup-release-signing.ps1`** — PowerShell-скрипт для production-signing в одну команду. Генерирует release-keystore через `keytool` в `%USERPROFILE%\.android\` (вне репо), кодирует в base64, заливает 4 GitHub Secrets через `gh secret set` либо (если `gh` не установлен) кладёт base64 в буфер обмена + открывает страницу secrets в браузере с инструкцией. Запрашивает пароль через `Read-Host -AsSecureString`, не оставляет следов в git.
+
 ## [1.1.0] - 2026-05-25
 
 ### Добавлено
