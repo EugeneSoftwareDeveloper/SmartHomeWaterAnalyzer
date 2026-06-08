@@ -1,5 +1,7 @@
 # SmartHomeWaterAnalyzer
 
+[![SmartHomeWaterAnalyzer-CheckIn](https://github.com/EugeneSoftwareDeveloper/SmartHomeService/actions/workflows/SmartHomeServiceCheckIn.yml/badge.svg)](https://github.com/EugeneSoftwareDeveloper/SmartHomeWaterAnalyzer/blob/master/.github/workflows/ci.yml)
+
 Android-приложение для тестера качества воды **YINMIK BLE-C600** (и совместимых white-label вариантов семейства BLE-YC01) / 7 в 1 Temp ORP EC TDS минерализация S.G измеритель PH онлайн тестер качества воды с голубыми зубьями приложение для контроля питьевой лаборатории аквариума. 
 Подключается к прибору по Bluetooth LE напрямую с телефона, читает текущие показания, отображает их с цветными шкалами «опасно / норма / отлично» — чтобы не сравнивать цифры с бумажной таблицей вручную.
 
