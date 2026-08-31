@@ -47,6 +47,12 @@ dependencies:
   # Local notifications.
   flutter_local_notifications: ^18.0.1
 
+  # Геометка замера: координаты места, где сделано измерение.
+  geolocator: ^13.0.2
+
+  # Открыть координаты замера в картах (geo:-интент, fallback на maps.google.com).
+  url_launcher: ^6.3.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

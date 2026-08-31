@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 
+import '../location/measurement_location.dart';
 import '../yinmik/reading.dart';
 import 'database.dart';
 
@@ -12,17 +13,24 @@ class HistoryRepository {
 
   /// Сохраняет новую запись истории. Возвращает id вставленной строки —
   /// нужен ReadingPage для последующего undo через `restoreFromMeasurement`.
+  ///
+  /// [location] необязателен: замер без геометки — валидное состояние (геометка
+  /// выключена, нет разрешения, GPS не взял фикс в помещении).
   Future<int> save(
     String deviceId,
     YinmikReading reading,
     DateTime observedAt, {
     String? label,
+    MeasurementLocation? location,
   }) {
     return _database.insertMeasurement(
       MeasurementsCompanion.insert(
         deviceId: deviceId,
         label: Value(label),
         observedAt: observedAt,
+        latitude: Value(location?.latitude),
+        longitude: Value(location?.longitude),
+        locationAccuracyMeters: Value(location?.accuracyMeters),
         ph: reading.ph,
         electricalConductivityUsCm: reading.electricalConductivityUsCm,
         totalDissolvedSolidsPpm: reading.totalDissolvedSolidsPpm,
@@ -69,6 +77,9 @@ class HistoryRepository {
         batteryRawMillivolts: Value(m.batteryRawMillivolts),
         backlightOn: Value(m.backlightOn),
         holdReadingOn: Value(m.holdReadingOn),
+        latitude: Value(m.latitude),
+        longitude: Value(m.longitude),
+        locationAccuracyMeters: Value(m.locationAccuracyMeters),
       ),
     );
   }

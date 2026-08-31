@@ -10,9 +10,14 @@
                      tools:targetApi="s" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
 
-    <!-- Android 11 и ниже: BLE-скан требовал ACCESS_FINE_LOCATION. -->
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"
-                     android:maxSdkVersion="30" />
+    <!-- Геометка замера (geolocator) + BLE-скан на Android 11 и ниже.
+         Раньше здесь стоял maxSdkVersion="30" — разрешение нужно было только для
+         BLE-скана на старых версиях. С появлением геометки замеров ограничение снято:
+         иначе на Android 12+ координаты не запрашивались бы вовсе.
+         COARSE достаточно для «где сделан замер» и требует меньше доверия от
+         пользователя; FINE даёт точность до метров, если пользователь её разрешил. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
     <!-- Legacy Bluetooth permissions для Android 11 и ниже. -->
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />

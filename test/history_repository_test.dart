@@ -2,6 +2,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:water_analyzer/history/database.dart';
 import 'package:water_analyzer/history/repository.dart';
+import 'package:water_analyzer/location/measurement_location.dart';
 import 'package:water_analyzer/yinmik/reading.dart';
 
 YinmikReading _reading({double ph = 7.2, int orp = 380}) {
@@ -154,6 +155,55 @@ void main() {
       expect(restored.label, 'Перед удалением');
       expect(restored.ph, 7.5);
       expect(restored.observedAt, DateTime(2026, 5, 24, 10));
+    });
+
+    test('save без location оставляет координаты пустыми', () async {
+      await repo.save('AA:BB', _reading(), DateTime(2026, 5, 24, 10));
+
+      final row = (await repo.recent()).single;
+      expect(row.latitude, isNull);
+      expect(row.longitude, isNull);
+      expect(row.locationAccuracyMeters, isNull);
+    });
+
+    test('save с location сохраняет координаты и точность', () async {
+      await repo.save(
+        'AA:BB',
+        _reading(),
+        DateTime(2026, 5, 24, 10),
+        location: const MeasurementLocation(
+          latitude: 55.7631176800056,
+          longitude: 37.8282875782027,
+          accuracyMeters: 12.5,
+        ),
+      );
+
+      final row = (await repo.recent()).single;
+      expect(row.latitude, closeTo(55.7631176800056, 1e-9));
+      expect(row.longitude, closeTo(37.8282875782027, 1e-9));
+      expect(row.locationAccuracyMeters, closeTo(12.5, 1e-9));
+    });
+
+    test('restoreFromMeasurement не теряет геометку при undo', () async {
+      final id = await repo.save(
+        'AA:BB',
+        _reading(),
+        DateTime(2026, 5, 24, 10),
+        location: const MeasurementLocation(
+          latitude: 55.76,
+          longitude: 37.82,
+          accuracyMeters: 8,
+        ),
+      );
+      final original = (await repo.recent()).single;
+      await repo.deleteById(id);
+
+      await repo.restoreFromMeasurement(original);
+
+      final restored = (await repo.recent()).single;
+      expect(restored.latitude, closeTo(55.76, 1e-9));
+      expect(restored.longitude, closeTo(37.82, 1e-9));
+      expect(restored.locationAccuracyMeters, closeTo(8, 1e-9));
     });
 
     test('clear полностью очищает таблицу', () async {

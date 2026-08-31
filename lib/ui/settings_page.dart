@@ -42,6 +42,16 @@ class SettingsPage extends ConsumerWidget {
             onChanged: notifier.setNotificationsEnabled,
           ),
           const Divider(),
+          SwitchListTile(
+            secondary: const Icon(Icons.place_outlined),
+            title: const Text('Координаты замеров'),
+            subtitle: const Text(
+              'Сохранять, где сделан замер — чтобы позже открыть точку на карте',
+            ),
+            value: settings.saveLocationEnabled,
+            onChanged: notifier.setSaveLocationEnabled,
+          ),
+          const Divider(),
           ListTile(
             leading: const Icon(Icons.help_outline),
             title: const Text('Справка по параметрам'),

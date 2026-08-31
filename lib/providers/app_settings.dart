@@ -20,6 +20,12 @@ class AppSettings {
   final bool notificationsEnabled;
   final String? currentLabel;
 
+  /// Прикреплять ли координаты к сохраняемым замерам. Включено по умолчанию:
+  /// геометка — заявленная функция приложения, а разрешение всё равно
+  /// запрашивается системой при первом сохранении. Отказ в разрешении не ломает
+  /// сохранение — замер просто останется без координат.
+  final bool saveLocationEnabled;
+
   const AppSettings({
     required this.themeMode,
     required this.normsProfile,
@@ -27,6 +33,7 @@ class AppSettings {
     required this.lastDeviceName,
     required this.notificationsEnabled,
     required this.currentLabel,
+    required this.saveLocationEnabled,
   });
 
   AppSettings copyWith({
@@ -36,6 +43,7 @@ class AppSettings {
     String? lastDeviceName,
     bool? notificationsEnabled,
     String? currentLabel,
+    bool? saveLocationEnabled,
     bool clearLastDevice = false,
     // Отдельный флаг для имени: подключение к безымянному прибору должно стирать имя
     // предыдущего, а `lastDeviceName: null` из-за `??` ниже откатился бы к старому
@@ -52,6 +60,7 @@ class AppSettings {
           : (lastDeviceName ?? this.lastDeviceName),
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
       currentLabel: clearLabel ? null : (currentLabel ?? this.currentLabel),
+      saveLocationEnabled: saveLocationEnabled ?? this.saveLocationEnabled,
     );
   }
 }
@@ -67,6 +76,7 @@ class AppSettingsNotifier extends StateNotifier<AppSettings> {
   static const _kLastDeviceName = 'settings.lastDeviceName';
   static const _kNotifications = 'settings.notificationsEnabled';
   static const _kCurrentLabel = 'settings.currentLabel';
+  static const _kSaveLocation = 'settings.saveLocationEnabled';
 
   static AppSettings _load(SharedPreferences prefs) {
     return AppSettings(
@@ -82,7 +92,13 @@ class AppSettingsNotifier extends StateNotifier<AppSettings> {
       lastDeviceName: prefs.getString(_kLastDeviceName),
       notificationsEnabled: prefs.getBool(_kNotifications) ?? false,
       currentLabel: prefs.getString(_kCurrentLabel),
+      saveLocationEnabled: prefs.getBool(_kSaveLocation) ?? true,
     );
+  }
+
+  Future<void> setSaveLocationEnabled(bool enabled) async {
+    state = state.copyWith(saveLocationEnabled: enabled);
+    await _prefs.setBool(_kSaveLocation, enabled);
   }
 
   Future<void> setCurrentLabel(String? label) async {

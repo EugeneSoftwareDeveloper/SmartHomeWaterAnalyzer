@@ -30,6 +30,18 @@ class Measurements extends Table {
   IntColumn get batteryRawMillivolts => integer()();
   BoolColumn get backlightOn => boolean().withDefault(const Constant(false))();
   BoolColumn get holdReadingOn => boolean().withDefault(const Constant(false))();
+
+  /// Геометка замера — где физически находился телефон в момент сохранения.
+  /// Nullable по трём причинам: пользователь мог выключить геометку в настройках,
+  /// отказать в разрешении, или GPS не успел взять фикс (в помещении это норма).
+  /// Отсутствие координат никогда не мешает сохранить замер.
+  RealColumn get latitude => real().nullable()();
+  RealColumn get longitude => real().nullable()();
+
+  /// Радиус погрешности в метрах, как его сообщил геолокатор. Нужен, чтобы
+  /// в UI не показывать «точку на карте» там, где на самом деле известен только
+  /// район (по сети это сотни метров).
+  RealColumn get locationAccuracyMeters => real().nullable()();
 }
 
 @DriftDatabase(tables: [Measurements])
@@ -42,7 +54,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -50,6 +62,13 @@ class AppDatabase extends _$AppDatabase {
           if (from < 2) {
             // v2: добавляем колонку label для пользовательских меток замеров.
             await m.addColumn(measurements, measurements.label);
+          }
+          if (from < 3) {
+            // v3: геометка замера. Все три колонки nullable — существующие записи
+            // остаются без координат, это валидное состояние.
+            await m.addColumn(measurements, measurements.latitude);
+            await m.addColumn(measurements, measurements.longitude);
+            await m.addColumn(measurements, measurements.locationAccuracyMeters);
           }
         },
       );

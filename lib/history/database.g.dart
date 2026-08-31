@@ -179,6 +179,39 @@ class $MeasurementsTable extends Measurements
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _latitudeMeta = const VerificationMeta(
+    'latitude',
+  );
+  @override
+  late final GeneratedColumn<double> latitude = GeneratedColumn<double>(
+    'latitude',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _longitudeMeta = const VerificationMeta(
+    'longitude',
+  );
+  @override
+  late final GeneratedColumn<double> longitude = GeneratedColumn<double>(
+    'longitude',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _locationAccuracyMetersMeta =
+      const VerificationMeta('locationAccuracyMeters');
+  @override
+  late final GeneratedColumn<double> locationAccuracyMeters =
+      GeneratedColumn<double>(
+        'location_accuracy_meters',
+        aliasedName,
+        true,
+        type: DriftSqlType.double,
+        requiredDuringInsert: false,
+      );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -196,6 +229,9 @@ class $MeasurementsTable extends Measurements
     batteryRawMillivolts,
     backlightOn,
     holdReadingOn,
+    latitude,
+    longitude,
+    locationAccuracyMeters,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -345,6 +381,27 @@ class $MeasurementsTable extends Measurements
         ),
       );
     }
+    if (data.containsKey('latitude')) {
+      context.handle(
+        _latitudeMeta,
+        latitude.isAcceptableOrUnknown(data['latitude']!, _latitudeMeta),
+      );
+    }
+    if (data.containsKey('longitude')) {
+      context.handle(
+        _longitudeMeta,
+        longitude.isAcceptableOrUnknown(data['longitude']!, _longitudeMeta),
+      );
+    }
+    if (data.containsKey('location_accuracy_meters')) {
+      context.handle(
+        _locationAccuracyMetersMeta,
+        locationAccuracyMeters.isAcceptableOrUnknown(
+          data['location_accuracy_meters']!,
+          _locationAccuracyMetersMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -414,6 +471,18 @@ class $MeasurementsTable extends Measurements
         DriftSqlType.bool,
         data['${effectivePrefix}hold_reading_on'],
       )!,
+      latitude: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}latitude'],
+      ),
+      longitude: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}longitude'],
+      ),
+      locationAccuracyMeters: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}location_accuracy_meters'],
+      ),
     );
   }
 
@@ -443,6 +512,18 @@ class Measurement extends DataClass implements Insertable<Measurement> {
   final int batteryRawMillivolts;
   final bool backlightOn;
   final bool holdReadingOn;
+
+  /// Геометка замера — где физически находился телефон в момент сохранения.
+  /// Nullable по трём причинам: пользователь мог выключить геометку в настройках,
+  /// отказать в разрешении, или GPS не успел взять фикс (в помещении это норма).
+  /// Отсутствие координат никогда не мешает сохранить замер.
+  final double? latitude;
+  final double? longitude;
+
+  /// Радиус погрешности в метрах, как его сообщил геолокатор. Нужен, чтобы
+  /// в UI не показывать «точку на карте» там, где на самом деле известен только
+  /// район (по сети это сотни метров).
+  final double? locationAccuracyMeters;
   const Measurement({
     required this.id,
     required this.deviceId,
@@ -459,6 +540,9 @@ class Measurement extends DataClass implements Insertable<Measurement> {
     required this.batteryRawMillivolts,
     required this.backlightOn,
     required this.holdReadingOn,
+    this.latitude,
+    this.longitude,
+    this.locationAccuracyMeters,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -484,6 +568,17 @@ class Measurement extends DataClass implements Insertable<Measurement> {
     map['battery_raw_millivolts'] = Variable<int>(batteryRawMillivolts);
     map['backlight_on'] = Variable<bool>(backlightOn);
     map['hold_reading_on'] = Variable<bool>(holdReadingOn);
+    if (!nullToAbsent || latitude != null) {
+      map['latitude'] = Variable<double>(latitude);
+    }
+    if (!nullToAbsent || longitude != null) {
+      map['longitude'] = Variable<double>(longitude);
+    }
+    if (!nullToAbsent || locationAccuracyMeters != null) {
+      map['location_accuracy_meters'] = Variable<double>(
+        locationAccuracyMeters,
+      );
+    }
     return map;
   }
 
@@ -508,6 +603,15 @@ class Measurement extends DataClass implements Insertable<Measurement> {
       batteryRawMillivolts: Value(batteryRawMillivolts),
       backlightOn: Value(backlightOn),
       holdReadingOn: Value(holdReadingOn),
+      latitude: latitude == null && nullToAbsent
+          ? const Value.absent()
+          : Value(latitude),
+      longitude: longitude == null && nullToAbsent
+          ? const Value.absent()
+          : Value(longitude),
+      locationAccuracyMeters: locationAccuracyMeters == null && nullToAbsent
+          ? const Value.absent()
+          : Value(locationAccuracyMeters),
     );
   }
 
@@ -542,6 +646,11 @@ class Measurement extends DataClass implements Insertable<Measurement> {
       ),
       backlightOn: serializer.fromJson<bool>(json['backlightOn']),
       holdReadingOn: serializer.fromJson<bool>(json['holdReadingOn']),
+      latitude: serializer.fromJson<double?>(json['latitude']),
+      longitude: serializer.fromJson<double?>(json['longitude']),
+      locationAccuracyMeters: serializer.fromJson<double?>(
+        json['locationAccuracyMeters'],
+      ),
     );
   }
   @override
@@ -569,6 +678,11 @@ class Measurement extends DataClass implements Insertable<Measurement> {
       'batteryRawMillivolts': serializer.toJson<int>(batteryRawMillivolts),
       'backlightOn': serializer.toJson<bool>(backlightOn),
       'holdReadingOn': serializer.toJson<bool>(holdReadingOn),
+      'latitude': serializer.toJson<double?>(latitude),
+      'longitude': serializer.toJson<double?>(longitude),
+      'locationAccuracyMeters': serializer.toJson<double?>(
+        locationAccuracyMeters,
+      ),
     };
   }
 
@@ -588,6 +702,9 @@ class Measurement extends DataClass implements Insertable<Measurement> {
     int? batteryRawMillivolts,
     bool? backlightOn,
     bool? holdReadingOn,
+    Value<double?> latitude = const Value.absent(),
+    Value<double?> longitude = const Value.absent(),
+    Value<double?> locationAccuracyMeters = const Value.absent(),
   }) => Measurement(
     id: id ?? this.id,
     deviceId: deviceId ?? this.deviceId,
@@ -608,6 +725,11 @@ class Measurement extends DataClass implements Insertable<Measurement> {
     batteryRawMillivolts: batteryRawMillivolts ?? this.batteryRawMillivolts,
     backlightOn: backlightOn ?? this.backlightOn,
     holdReadingOn: holdReadingOn ?? this.holdReadingOn,
+    latitude: latitude.present ? latitude.value : this.latitude,
+    longitude: longitude.present ? longitude.value : this.longitude,
+    locationAccuracyMeters: locationAccuracyMeters.present
+        ? locationAccuracyMeters.value
+        : this.locationAccuracyMeters,
   );
   Measurement copyWithCompanion(MeasurementsCompanion data) {
     return Measurement(
@@ -649,6 +771,11 @@ class Measurement extends DataClass implements Insertable<Measurement> {
       holdReadingOn: data.holdReadingOn.present
           ? data.holdReadingOn.value
           : this.holdReadingOn,
+      latitude: data.latitude.present ? data.latitude.value : this.latitude,
+      longitude: data.longitude.present ? data.longitude.value : this.longitude,
+      locationAccuracyMeters: data.locationAccuracyMeters.present
+          ? data.locationAccuracyMeters.value
+          : this.locationAccuracyMeters,
     );
   }
 
@@ -671,7 +798,10 @@ class Measurement extends DataClass implements Insertable<Measurement> {
           )
           ..write('batteryRawMillivolts: $batteryRawMillivolts, ')
           ..write('backlightOn: $backlightOn, ')
-          ..write('holdReadingOn: $holdReadingOn')
+          ..write('holdReadingOn: $holdReadingOn, ')
+          ..write('latitude: $latitude, ')
+          ..write('longitude: $longitude, ')
+          ..write('locationAccuracyMeters: $locationAccuracyMeters')
           ..write(')'))
         .toString();
   }
@@ -693,6 +823,9 @@ class Measurement extends DataClass implements Insertable<Measurement> {
     batteryRawMillivolts,
     backlightOn,
     holdReadingOn,
+    latitude,
+    longitude,
+    locationAccuracyMeters,
   );
   @override
   bool operator ==(Object other) =>
@@ -713,7 +846,10 @@ class Measurement extends DataClass implements Insertable<Measurement> {
               this.oxidationReductionPotentialMillivolts &&
           other.batteryRawMillivolts == this.batteryRawMillivolts &&
           other.backlightOn == this.backlightOn &&
-          other.holdReadingOn == this.holdReadingOn);
+          other.holdReadingOn == this.holdReadingOn &&
+          other.latitude == this.latitude &&
+          other.longitude == this.longitude &&
+          other.locationAccuracyMeters == this.locationAccuracyMeters);
 }
 
 class MeasurementsCompanion extends UpdateCompanion<Measurement> {
@@ -732,6 +868,9 @@ class MeasurementsCompanion extends UpdateCompanion<Measurement> {
   final Value<int> batteryRawMillivolts;
   final Value<bool> backlightOn;
   final Value<bool> holdReadingOn;
+  final Value<double?> latitude;
+  final Value<double?> longitude;
+  final Value<double?> locationAccuracyMeters;
   const MeasurementsCompanion({
     this.id = const Value.absent(),
     this.deviceId = const Value.absent(),
@@ -748,6 +887,9 @@ class MeasurementsCompanion extends UpdateCompanion<Measurement> {
     this.batteryRawMillivolts = const Value.absent(),
     this.backlightOn = const Value.absent(),
     this.holdReadingOn = const Value.absent(),
+    this.latitude = const Value.absent(),
+    this.longitude = const Value.absent(),
+    this.locationAccuracyMeters = const Value.absent(),
   });
   MeasurementsCompanion.insert({
     this.id = const Value.absent(),
@@ -765,6 +907,9 @@ class MeasurementsCompanion extends UpdateCompanion<Measurement> {
     required int batteryRawMillivolts,
     this.backlightOn = const Value.absent(),
     this.holdReadingOn = const Value.absent(),
+    this.latitude = const Value.absent(),
+    this.longitude = const Value.absent(),
+    this.locationAccuracyMeters = const Value.absent(),
   }) : deviceId = Value(deviceId),
        observedAt = Value(observedAt),
        ph = Value(ph),
@@ -794,6 +939,9 @@ class MeasurementsCompanion extends UpdateCompanion<Measurement> {
     Expression<int>? batteryRawMillivolts,
     Expression<bool>? backlightOn,
     Expression<bool>? holdReadingOn,
+    Expression<double>? latitude,
+    Expression<double>? longitude,
+    Expression<double>? locationAccuracyMeters,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -816,6 +964,10 @@ class MeasurementsCompanion extends UpdateCompanion<Measurement> {
         'battery_raw_millivolts': batteryRawMillivolts,
       if (backlightOn != null) 'backlight_on': backlightOn,
       if (holdReadingOn != null) 'hold_reading_on': holdReadingOn,
+      if (latitude != null) 'latitude': latitude,
+      if (longitude != null) 'longitude': longitude,
+      if (locationAccuracyMeters != null)
+        'location_accuracy_meters': locationAccuracyMeters,
     });
   }
 
@@ -835,6 +987,9 @@ class MeasurementsCompanion extends UpdateCompanion<Measurement> {
     Value<int>? batteryRawMillivolts,
     Value<bool>? backlightOn,
     Value<bool>? holdReadingOn,
+    Value<double?>? latitude,
+    Value<double?>? longitude,
+    Value<double?>? locationAccuracyMeters,
   }) {
     return MeasurementsCompanion(
       id: id ?? this.id,
@@ -856,6 +1011,10 @@ class MeasurementsCompanion extends UpdateCompanion<Measurement> {
       batteryRawMillivolts: batteryRawMillivolts ?? this.batteryRawMillivolts,
       backlightOn: backlightOn ?? this.backlightOn,
       holdReadingOn: holdReadingOn ?? this.holdReadingOn,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      locationAccuracyMeters:
+          locationAccuracyMeters ?? this.locationAccuracyMeters,
     );
   }
 
@@ -913,6 +1072,17 @@ class MeasurementsCompanion extends UpdateCompanion<Measurement> {
     if (holdReadingOn.present) {
       map['hold_reading_on'] = Variable<bool>(holdReadingOn.value);
     }
+    if (latitude.present) {
+      map['latitude'] = Variable<double>(latitude.value);
+    }
+    if (longitude.present) {
+      map['longitude'] = Variable<double>(longitude.value);
+    }
+    if (locationAccuracyMeters.present) {
+      map['location_accuracy_meters'] = Variable<double>(
+        locationAccuracyMeters.value,
+      );
+    }
     return map;
   }
 
@@ -935,7 +1105,10 @@ class MeasurementsCompanion extends UpdateCompanion<Measurement> {
           )
           ..write('batteryRawMillivolts: $batteryRawMillivolts, ')
           ..write('backlightOn: $backlightOn, ')
-          ..write('holdReadingOn: $holdReadingOn')
+          ..write('holdReadingOn: $holdReadingOn, ')
+          ..write('latitude: $latitude, ')
+          ..write('longitude: $longitude, ')
+          ..write('locationAccuracyMeters: $locationAccuracyMeters')
           ..write(')'))
         .toString();
   }
@@ -969,6 +1142,9 @@ typedef $$MeasurementsTableCreateCompanionBuilder =
       required int batteryRawMillivolts,
       Value<bool> backlightOn,
       Value<bool> holdReadingOn,
+      Value<double?> latitude,
+      Value<double?> longitude,
+      Value<double?> locationAccuracyMeters,
     });
 typedef $$MeasurementsTableUpdateCompanionBuilder =
     MeasurementsCompanion Function({
@@ -987,6 +1163,9 @@ typedef $$MeasurementsTableUpdateCompanionBuilder =
       Value<int> batteryRawMillivolts,
       Value<bool> backlightOn,
       Value<bool> holdReadingOn,
+      Value<double?> latitude,
+      Value<double?> longitude,
+      Value<double?> locationAccuracyMeters,
     });
 
 class $$MeasurementsTableFilterComposer
@@ -1071,6 +1250,21 @@ class $$MeasurementsTableFilterComposer
 
   ColumnFilters<bool> get holdReadingOn => $composableBuilder(
     column: $table.holdReadingOn,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get latitude => $composableBuilder(
+    column: $table.latitude,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get longitude => $composableBuilder(
+    column: $table.longitude,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get locationAccuracyMeters => $composableBuilder(
+    column: $table.locationAccuracyMeters,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -1159,6 +1353,21 @@ class $$MeasurementsTableOrderingComposer
     column: $table.holdReadingOn,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<double> get latitude => $composableBuilder(
+    column: $table.latitude,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get longitude => $composableBuilder(
+    column: $table.longitude,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get locationAccuracyMeters => $composableBuilder(
+    column: $table.locationAccuracyMeters,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$MeasurementsTableAnnotationComposer
@@ -1237,6 +1446,17 @@ class $$MeasurementsTableAnnotationComposer
     column: $table.holdReadingOn,
     builder: (column) => column,
   );
+
+  GeneratedColumn<double> get latitude =>
+      $composableBuilder(column: $table.latitude, builder: (column) => column);
+
+  GeneratedColumn<double> get longitude =>
+      $composableBuilder(column: $table.longitude, builder: (column) => column);
+
+  GeneratedColumn<double> get locationAccuracyMeters => $composableBuilder(
+    column: $table.locationAccuracyMeters,
+    builder: (column) => column,
+  );
 }
 
 class $$MeasurementsTableTableManager
@@ -1286,6 +1506,9 @@ class $$MeasurementsTableTableManager
                 Value<int> batteryRawMillivolts = const Value.absent(),
                 Value<bool> backlightOn = const Value.absent(),
                 Value<bool> holdReadingOn = const Value.absent(),
+                Value<double?> latitude = const Value.absent(),
+                Value<double?> longitude = const Value.absent(),
+                Value<double?> locationAccuracyMeters = const Value.absent(),
               }) => MeasurementsCompanion(
                 id: id,
                 deviceId: deviceId,
@@ -1303,6 +1526,9 @@ class $$MeasurementsTableTableManager
                 batteryRawMillivolts: batteryRawMillivolts,
                 backlightOn: backlightOn,
                 holdReadingOn: holdReadingOn,
+                latitude: latitude,
+                longitude: longitude,
+                locationAccuracyMeters: locationAccuracyMeters,
               ),
           createCompanionCallback:
               ({
@@ -1321,6 +1547,9 @@ class $$MeasurementsTableTableManager
                 required int batteryRawMillivolts,
                 Value<bool> backlightOn = const Value.absent(),
                 Value<bool> holdReadingOn = const Value.absent(),
+                Value<double?> latitude = const Value.absent(),
+                Value<double?> longitude = const Value.absent(),
+                Value<double?> locationAccuracyMeters = const Value.absent(),
               }) => MeasurementsCompanion.insert(
                 id: id,
                 deviceId: deviceId,
@@ -1338,6 +1567,9 @@ class $$MeasurementsTableTableManager
                 batteryRawMillivolts: batteryRawMillivolts,
                 backlightOn: backlightOn,
                 holdReadingOn: holdReadingOn,
+                latitude: latitude,
+                longitude: longitude,
+                locationAccuracyMeters: locationAccuracyMeters,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

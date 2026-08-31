@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../providers/app_settings.dart';
 import '../providers/history_provider.dart';
+import '../providers/location_provider.dart';
 import '../providers/notification_provider.dart';
 import '../providers/yinmik_client_provider.dart';
 import '../quality/catalog.dart';
@@ -42,6 +43,10 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
   /// `_reading` через `identical(...)`, чтобы заблокировать повторное сохранение того же
   /// самого кадра. Сбрасывается при каждом новом `_refresh()` или после команды управления.
   YinmikReading? _savedReading;
+
+  /// Подсказку «замер сохранён без координат» показываем один раз за сессию:
+  /// после первого объяснения повторять её при каждом сохранении — это шум.
+  bool _locationFailureReported = false;
 
   @override
   void initState() {
@@ -106,12 +111,20 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
     setState(() => _saving = true);
     try {
       final history = ref.read(historyRepositoryProvider);
-      final label = ref.read(appSettingsProvider).currentLabel;
+      final settings = ref.read(appSettingsProvider);
+
+      // Геометка — best-effort: отказ в разрешении, выключенный GPS или таймаут
+      // не мешают сохранить замер, просто координат у него не будет.
+      final locationResult = settings.saveLocationEnabled
+          ? await ref.read(locationServiceProvider).currentLocation()
+          : null;
+
       final id = await history.save(
         widget.device.remoteId.str,
         reading,
         DateTime.now(),
-        label: label,
+        label: settings.currentLabel,
+        location: locationResult?.location,
       );
 
       if (!mounted) return;
@@ -132,6 +145,14 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
           },
         ),
       );
+
+      // О причине отсутствия координат сообщаем один раз за сессию, чтобы
+      // подсказка не превращалась в надоедливую после каждого замера.
+      final failure = locationResult?.failure;
+      if (failure != null && !_locationFailureReported) {
+        _locationFailureReported = true;
+        _showSnackBar(failure.message);
+      }
     } on Object catch (error) {
       if (!mounted) return;
       setState(() => _saving = false);

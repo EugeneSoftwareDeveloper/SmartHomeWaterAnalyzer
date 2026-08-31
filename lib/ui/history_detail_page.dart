@@ -5,11 +5,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../history/database.dart';
+import '../location/measurement_location.dart';
 import '../providers/app_settings.dart';
 import '../providers/history_provider.dart';
 import '../quality/catalog.dart';
 import '../quality/overview.dart';
 import '../yinmik/reading_values.dart';
+import 'widgets/location_card.dart';
 import 'widgets/parameter_card.dart';
 import 'widgets/summary_header.dart';
 
@@ -299,9 +301,17 @@ class _MeasurementDetailView extends ConsumerWidget {
     final overview = WaterQualityOverview.compute(values, profile: profile);
     final reading = readingFromMeasurement(measurement);
 
+    final location = MeasurementLocation.fromNullable(
+      measurement.latitude,
+      measurement.longitude,
+      accuracyMeters: measurement.locationAccuracyMeters,
+    );
+
     return ListView(
       children: [
         SummaryHeader(overview: overview, reading: reading),
+        if (location != null)
+          LocationCard(location: location, label: measurement.label),
         for (final parameter in parameters)
           if (values[parameter.key] != null)
             ParameterCard(parameter: parameter, value: values[parameter.key]!),
