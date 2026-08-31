@@ -16,3 +16,12 @@ final historyRepositoryProvider = Provider<HistoryRepository>(
 final recentMeasurementsProvider = StreamProvider<List<Measurement>>(
   (ref) => ref.watch(historyRepositoryProvider).watchRecent(),
 );
+
+final placesRepositoryProvider = Provider<PlacesRepository>(
+  (ref) => PlacesRepository(ref.watch(appDatabaseProvider)),
+);
+
+/// Каталог мест для выбора при сохранении замера. Недавно использованные сверху.
+final placesProvider = StreamProvider<List<Place>>(
+  (ref) => ref.watch(placesRepositoryProvider).watchAll(),
+);

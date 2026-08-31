@@ -15,6 +15,7 @@ import '../yinmik/reading.dart';
 import '../yinmik/reading_values.dart';
 import 'widgets/control_panel.dart';
 import 'widgets/parameter_card.dart';
+import 'widgets/place_picker.dart';
 import 'widgets/summary_header.dart';
 
 /// Экран показаний подключённого BLE-C600. Делает одно чтение при открытии и при тапе на
@@ -119,13 +120,19 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
           ? await ref.read(locationServiceProvider).currentLocation()
           : null;
 
+      final place = settings.currentLabel;
       final id = await history.save(
         widget.device.remoteId.str,
         reading,
         DateTime.now(),
-        label: settings.currentLabel,
+        label: place,
         location: locationResult?.location,
       );
+
+      // Место поднимается в начало списка выбора — им только что пользовались.
+      if (place != null && place.trim().isNotEmpty) {
+        await ref.read(placesRepositoryProvider).markUsed(place);
+      }
 
       if (!mounted) return;
       setState(() {
@@ -262,7 +269,7 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.only(bottom: 96), // место под FAB
         children: [
-          const _LabelEditor(),
+          const PlacePickerField(),
           SummaryHeader(overview: overview, reading: reading),
           for (final parameter in parameters)
             if (values[parameter.key] != null)
@@ -284,55 +291,6 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
           ),
           const SizedBox(height: 24),
         ],
-      ),
-    );
-  }
-}
-
-/// Поле ввода ярлыка замера. Значение хранится в AppSettings и используется как
-/// `label` для каждой сохраняемой записи истории, пока пользователь его не сменит.
-class _LabelEditor extends ConsumerStatefulWidget {
-  const _LabelEditor();
-
-  @override
-  ConsumerState<_LabelEditor> createState() => _LabelEditorState();
-}
-
-class _LabelEditorState extends ConsumerState<_LabelEditor> {
-  late final TextEditingController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController(
-      text: ref.read(appSettingsProvider).currentLabel ?? '',
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      child: TextField(
-        controller: _controller,
-        decoration: InputDecoration(
-          prefixIcon: const Icon(Icons.label_outline, size: 20),
-          labelText: 'Метка замера',
-          hintText: 'Например: Москва, квартира',
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-          isDense: true,
-        ),
-        style: theme.textTheme.bodyMedium,
-        onChanged: (value) =>
-            ref.read(appSettingsProvider.notifier).setCurrentLabel(value.trim()),
       ),
     );
   }

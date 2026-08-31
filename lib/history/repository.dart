@@ -92,3 +92,36 @@ class HistoryRepository {
 
   Future<void> clear({String? deviceId}) => _database.deleteAll(deviceId: deviceId);
 }
+
+/// Каталог мест замера. Отделён от [HistoryRepository], потому что это независимая
+/// сущность: места живут своей жизнью и не привязаны к конкретным записям истории.
+class PlacesRepository {
+  PlacesRepository(this._database);
+
+  final AppDatabase _database;
+
+  /// Список для выбора: недавно использованные сверху, остальные по алфавиту.
+  Stream<List<Place>> watchAll() => _database.watchPlaces();
+
+  Future<List<Place>> all() => _database.getPlaces();
+
+  /// Добавляет место или возвращает уже существующее с таким именем.
+  /// Пустое имя отвергается — безымянных мест в каталоге быть не должно.
+  Future<Place> add(String name, {DateTime? createdAt}) {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) {
+      throw ArgumentError.value(name, 'name', 'Название места не может быть пустым');
+    }
+    return _database.insertOrGetPlace(trimmed, createdAt ?? DateTime.now());
+  }
+
+  /// Помечает место использованным, чтобы оно поднялось в начало списка.
+  /// Неизвестное имя просто игнорируется (0 затронутых строк) — например, если
+  /// место удалили из каталога, но замеры с ним ещё сохраняются.
+  Future<int> markUsed(String name, {DateTime? usedAt}) =>
+      _database.touchPlace(name, usedAt ?? DateTime.now());
+
+  /// Удаляет место из каталога. История замеров не меняется — сохранённые записи
+  /// держат название места в своей колонке `label`.
+  Future<int> deleteById(int id) => _database.deletePlaceById(id);
+}

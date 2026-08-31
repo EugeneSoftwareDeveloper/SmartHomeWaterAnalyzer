@@ -64,6 +64,10 @@ dev_dependencies:
 
   # Тестирование.
   mocktail: ^1.0.4
+
+  # Прямой доступ к SQLite в тестах миграций: нужно создать базу в состоянии
+  # старой схемы до того, как её откроет drift.
+  sqlite3: ^2.4.6
   integration_test:
     sdk: flutter
 

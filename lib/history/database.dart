@@ -44,7 +44,42 @@ class Measurements extends Table {
   RealColumn get locationAccuracyMeters => real().nullable()();
 }
 
-@DriftDatabase(tables: [Measurements])
+/// Каталог мест замера — «Кран на кухне», «Аквариум», «Скважина».
+///
+/// Хранится отдельно от [Measurements] сознательно: сам замер держит **имя** места
+/// в своей колонке `label`, а не ссылку на строку этой таблицы. Так переименование
+/// или удаление места не переписывает историю задним числом — записанное «Кран на
+/// кухне» останется тем, чем было в момент замера.
+class Places extends Table {
+  IntColumn get id => integer().autoIncrement()();
+
+  /// Название места. Уникально — два одинаковых пункта в списке выбора бессмысленны.
+  TextColumn get name => text().unique()();
+
+  DateTimeColumn get createdAt => dateTime()();
+
+  /// Когда местом пользовались в последний раз. Недавние поднимаются в начало
+  /// списка выбора: на практике человек меряет 2-3 точки, остальные — редкий хвост.
+  DateTimeColumn get lastUsedAt => dateTime().nullable()();
+}
+
+/// Места, которые предлагаются при первом запуске. Подобраны под реальные сценарии
+/// бытового тестера воды и профили норм: питьевая вода (кран / фильтр / кулер /
+/// бутилированная), автономные источники (скважина, колодец, родник), аквариум и
+/// бассейн. Пользователь может удалить лишние и добавить свои.
+const List<String> defaultPlaceNames = <String>[
+  'Кран на кухне',
+  'После фильтра',
+  'Кулер',
+  'Бутилированная',
+  'Скважина',
+  'Колодец',
+  'Родник',
+  'Аквариум',
+  'Бассейн',
+];
+
+@DriftDatabase(tables: [Measurements, Places])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
@@ -54,10 +89,16 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) async {
+          await m.createAll();
+          // Свежая установка: предлагаем готовый набор мест, чтобы первый замер
+          // можно было подписать сразу, не придумывая названия.
+          await _seedDefaultPlaces();
+        },
         onUpgrade: (m, from, to) async {
           if (from < 2) {
             // v2: добавляем колонку label для пользовательских меток замеров.
@@ -70,8 +111,113 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(measurements, measurements.longitude);
             await m.addColumn(measurements, measurements.locationAccuracyMeters);
           }
+          if (from < 4) {
+            // v4: каталог мест замера.
+            await m.createTable(places);
+            await _seedDefaultPlaces();
+            // Метки, которые пользователь уже вводил руками, становятся местами —
+            // иначе после обновления его собственные названия исчезли бы из выбора.
+            await _importPlacesFromExistingLabels();
+          }
         },
       );
+
+  /// Вставляет дефолтные места. `insertOrIgnore` — потому что имя уникально:
+  /// повторный вызов или совпадение с уже импортированной меткой не должны падать.
+  Future<void> _seedDefaultPlaces() async {
+    final now = DateTime.now();
+    await batch((batch) {
+      batch.insertAll(
+        places,
+        [
+          for (final name in defaultPlaceNames)
+            PlacesCompanion.insert(name: name, createdAt: now),
+        ],
+        mode: InsertMode.insertOrIgnore,
+      );
+    });
+  }
+
+  /// Переносит уже использованные метки замеров в каталог мест.
+  ///
+  /// `lastUsedAt` берётся из времени последнего замера с этой меткой — так место,
+  /// которым пользовались недавно, окажется в начале списка выбора сразу после
+  /// обновления, а не только после первого повторного использования.
+  Future<void> _importPlacesFromExistingLabels() async {
+    final labelColumn = measurements.label;
+    final lastUsed = measurements.observedAt.max();
+
+    final rows = await (selectOnly(measurements)
+          ..addColumns([labelColumn, lastUsed])
+          ..where(labelColumn.isNotNull())
+          ..groupBy([labelColumn]))
+        .get();
+
+    final entries = <PlacesCompanion>[];
+    final now = DateTime.now();
+    for (final row in rows) {
+      final name = row.read(labelColumn)?.trim();
+      if (name == null || name.isEmpty) continue;
+      entries.add(
+        PlacesCompanion.insert(
+          name: name,
+          createdAt: now,
+          lastUsedAt: Value(row.read(lastUsed)),
+        ),
+      );
+    }
+    if (entries.isEmpty) return;
+
+    await batch((batch) {
+      batch.insertAll(places, entries, mode: InsertMode.insertOrIgnore);
+    });
+  }
+
+  /// Места для списка выбора: сначала недавно использованные, затем остальные
+  /// по алфавиту. В SQLite NULL меньше любого значения, поэтому при `DESC`
+  /// неиспользованные места естественным образом уходят в хвост.
+  Stream<List<Place>> watchPlaces() {
+    return (select(places)
+          ..orderBy([
+            (t) => OrderingTerm.desc(t.lastUsedAt),
+            (t) => OrderingTerm.asc(t.name),
+          ]))
+        .watch();
+  }
+
+  Future<List<Place>> getPlaces() {
+    return (select(places)
+          ..orderBy([
+            (t) => OrderingTerm.desc(t.lastUsedAt),
+            (t) => OrderingTerm.asc(t.name),
+          ]))
+        .get();
+  }
+
+  /// Добавляет место. Если такое имя уже есть — возвращает существующее,
+  /// а не создаёт дубликат и не падает на нарушении уникальности.
+  Future<Place> insertOrGetPlace(String name, DateTime createdAt) async {
+    final trimmed = name.trim();
+
+    final existing =
+        await (select(places)..where((t) => t.name.equals(trimmed))).getSingleOrNull();
+    if (existing != null) return existing;
+
+    final id = await into(places)
+        .insert(PlacesCompanion.insert(name: trimmed, createdAt: createdAt));
+    return (select(places)..where((t) => t.id.equals(id))).getSingle();
+  }
+
+  /// Отмечает место как только что использованное — оно поднимется в начало списка.
+  Future<int> touchPlace(String name, DateTime usedAt) {
+    return (update(places)..where((t) => t.name.equals(name.trim())))
+        .write(PlacesCompanion(lastUsedAt: Value(usedAt)));
+  }
+
+  /// Удаляет место из каталога. Замеры, сделанные в нём, сохраняют своё название
+  /// в `label` — история не переписывается.
+  Future<int> deletePlaceById(int id) =>
+      (delete(places)..where((t) => t.id.equals(id))).go();
 
   /// Все записи отсортированы по времени, новые сверху.
   Future<List<Measurement>> getAllMeasurements({String? deviceId, int? limit}) {
