@@ -23,6 +23,9 @@
 | `historyRepositoryProvider` | Provider | `history_provider.dart` | `HistoryRepository` — фасад над БД. |
 | `recentMeasurementsProvider` | StreamProvider | `history_provider.dart` | Стрим последних измерений. Auto-rebuild списка истории при `insert`/`delete`. |
 | `notificationServiceProvider` | Provider | `notification_provider.dart` | `NotificationService` с lazy-init (запрашивает разрешения, создаёт канал). |
+| `placesRepositoryProvider` | Provider | `history_provider.dart` | `PlacesRepository` — каталог мест замера. |
+| `placesProvider` | StreamProvider | `history_provider.dart` | Стрим каталога мест: недавно использованные сверху, остальные по алфавиту. |
+| `locationServiceProvider` | Provider | `location_provider.dart` | `LocationService` поверх `geolocator`. Состояния не имеет — в провайдере только ради подмены в тестах. |
 
 ### Как добавить новый провайдер
 
@@ -46,6 +49,8 @@
 - `settings.lastDeviceId` — string или null, BLE remoteId. Используется кнопкой быстрого переподключения на HomePage: `BluetoothDevice.fromId(id)` минует скан.
 - `settings.lastDeviceName` — string или null, имя прибора на момент подключения. Только для подписи кнопки; настройки версий ≤ 1.1.x без этого ключа читаются как null, и кнопка показывает MAC.
 - `settings.notificationsEnabled` — bool.
+- `settings.currentLabel` — string или null, выбранное место замера. Подставляется в `label` каждой сохраняемой записи. Хранится именно имя, а не id места — см. «Каталог мест и денормализация» ниже.
+- `settings.saveLocationEnabled` — bool, прикреплять ли координаты к замерам. По умолчанию `true`.
 
 Запись через `AppSettingsNotifier` синхронна для in-memory state, асинхронна для диска (`await _prefs.setX`). UI не ждёт диска — сразу видит изменения.
 
@@ -53,13 +58,33 @@
 
 История измерений — таблица `Measurements` в SQLite-файле `<app docs>/water_analyzer.sqlite`.
 
-**Текущая schemaVersion = 2.** v2 добавила колонку `label TEXT NULL` для пользовательских меток замеров (например, «Москва, квартира»). Миграция выполняется автоматически при первом запуске после обновления:
+**Текущая schemaVersion = 4.** История версий:
+
+| Версия | Что появилось |
+|---|---|
+| v2 | `label TEXT NULL` — пользовательская метка замера |
+| v3 | `latitude` / `longitude` / `locationAccuracyMeters` (все `REAL NULL`) — геометка |
+| v4 | таблица `Places` — каталог мест замера |
+
+Миграции выполняются автоматически при первом запуске после обновления:
 
 ```dart
 MigrationStrategy get migration => MigrationStrategy(
+      onCreate: (m) async {
+        await m.createAll();
+        await _seedDefaultPlaces();   // иначе на свежей установке каталог пуст
+      },
       onUpgrade: (m, from, to) async {
-        if (from < 2) {
-          await m.addColumn(measurements, measurements.label);
+        if (from < 2) await m.addColumn(measurements, measurements.label);
+        if (from < 3) {
+          await m.addColumn(measurements, measurements.latitude);
+          await m.addColumn(measurements, measurements.longitude);
+          await m.addColumn(measurements, measurements.locationAccuracyMeters);
+        }
+        if (from < 4) {
+          await m.createTable(places);
+          await _seedDefaultPlaces();
+          await _importPlacesFromExistingLabels();
         }
       },
     );
@@ -67,11 +92,29 @@ MigrationStrategy get migration => MigrationStrategy(
 
 Схема — в `lib/history/database.dart`. После изменения схемы нужно:
 
-1. Поднять `schemaVersion` в `AppDatabase` (например, до 3).
-2. Добавить ветку миграции в `migration` getter: `if (from < 3) await m.addColumn(...)`.
+1. Поднять `schemaVersion` в `AppDatabase` (например, до 5).
+2. Добавить ветку миграции в `migration` getter.
 3. Перегенерить через `dart run build_runner build --delete-conflicting-outputs`.
+4. Написать тест на миграцию по образцу `test/places_migration_test.dart` — он поднимает **настоящий файл БД** в старом состоянии (raw SQL + `PRAGMA user_version`), открывает его через `AppDatabase.forTesting(NativeDatabase(file))` и проверяет, что данные пользователя пережили обновление. In-memory база для этого не подходит: она пересоздаётся на каждое соединение.
 
 При откате версии БД (даунгрейд) drift не делает ничего — если установить старую версию приложения поверх новой схемы, она просто не увидит новые колонки. Безопасно.
+
+### Каталог мест и денормализация
+
+`Measurements.label` хранит **имя** места строкой, а не внешний ключ на `Places`. Это сделано намеренно: переименование или удаление места не должно переписывать историю задним числом — записанное «Кран на кухне» остаётся тем, чем было в момент замера. `Places` нужна только для списка выбора.
+
+Следствие: `PlacesRepository.deleteById` не трогает историю, а `markUsed` для отсутствующего в каталоге имени просто возвращает 0 затронутых строк.
+
+Сортировка каталога — недавно использованные сверху, затем по алфавиту:
+
+```dart
+..orderBy([
+  (t) => OrderingTerm.desc(t.lastUsedAt),
+  (t) => OrderingTerm.asc(t.name),
+])
+```
+
+В SQLite `NULL` меньше любого значения, поэтому при `DESC` места, которыми ещё не пользовались, естественным образом уходят в хвост — отдельный `NULLS LAST` не нужен.
 
 Репозиторий `HistoryRepository` — единственная точка работы с БД из UI. Принимает доменные `YinmikReading`, скрывает drift-специфику. Это означает:
 

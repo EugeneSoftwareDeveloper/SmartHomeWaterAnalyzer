@@ -15,7 +15,8 @@
 - Flutter: 3.41+, Dart: 3.11+.
 - State management: `flutter_riverpod` 2.x.
 - Навигация: `go_router` 14.x.
-- Локальное хранение: `shared_preferences` + `drift` (SQLite через типобезопасный wrapper) — schema v2.
+- Локальное хранение: `shared_preferences` + `drift` (SQLite через типобезопасный wrapper) — schema v4.
+- Геолокация: `geolocator` (геометка замера), `url_launcher` (открыть точку в картах).
 - Графики: `fl_chart`.
 - BLE: `flutter_blue_plus` 1.32+, `permission_handler` 11.x.
 - Уведомления: `flutter_local_notifications` 18.x.
@@ -56,10 +57,13 @@ lib/
 │   ├── catalog.dart                # WaterParameterCatalog.forProfile(profile)
 │   └── overview.dart               # WaterQualityOverview.compute(values, profile:)
 ├── history/                        # Локальное хранение измерений
-│   ├── database.dart               # Drift schema v2 + AppDatabase.forTesting (для in-memory тестов)
+│   ├── database.dart               # Drift schema v4 (Measurements + Places) + AppDatabase.forTesting
 │   ├── database.g.dart             # Auto-generated, не редактировать
 │   ├── grouping.dart               # groupMeasurementsByDay → группы «Сегодня»/«Вчера»/dd.MM.yyyy
-│   └── repository.dart             # HistoryRepository: save/updateLabel/deleteById/restoreFromMeasurement
+│   └── repository.dart             # HistoryRepository + PlacesRepository (каталог мест замера)
+├── location/                       # Геометка замера
+│   ├── measurement_location.dart   # MeasurementLocation + LocationFailure (без зависимости от плагина)
+│   └── location_service.dart       # Обёртка geolocator: таймаут, разрешения, graceful degradation
 ├── help/
 │   └── parameter_help.dart         # ParameterHelpCatalog: подробная справка с тонкой градацией
 ├── export/
@@ -74,21 +78,27 @@ lib/
     ├── history_detail_page.dart    # PageView со свайпом между записями
     ├── help_page.dart              # Справка (одна или все, с тонкой градацией)
     ├── debug_commands_page.dart    # Пресеты + ручной hex для подбора команд + лог попыток
-    ├── settings_page.dart          # Тема, профиль, уведомления, ссылка на справку
+    ├── settings_page.dart          # Тема, профиль, уведомления, координаты, ссылка на справку
     └── widgets/
         ├── color_gauge.dart        # Анимированная цветная шкала + метки концов
         ├── chart_axis.dart         # niceAxisInterval + formatChartAxisLabel (testable helpers)
         ├── parameter_card.dart     # Карточка параметра — тап ведёт в справку
         ├── summary_header.dart     # Hero-карточка общей оценки + статус прибора
+        ├── location_card.dart      # Геометка замера + mapUris (geo:-интент, https-fallback)
+        ├── place_picker.dart       # Выбор места замера: поле + bottom sheet каталога
         └── control_panel.dart      # Секция управления (подсветка, HOLD)
 
 test/
-├── yinmik_decoder_test.dart        # 5 регрессионных тестов декодера
-├── quality_overview_test.dart      # 7 тестов на сводную оценку и профили
-├── catalog_profiles_test.dart      # 5 тестов на зоны для разных профилей
-├── chart_axis_test.dart            # 9 тестов: niceAxisInterval + formatChartAxisLabel
-├── measurement_grouping_test.dart  # 8 тестов: «Сегодня»/«Вчера»/dd.MM.yyyy + порядок
-├── history_repository_test.dart    # 13 тестов CRUD через AppDatabase.forTesting(NativeDatabase.memory())
+├── yinmik_decoder_test.dart        # Регрессионные тесты декодера на эталонных кадрах
+├── quality_overview_test.dart      # Сводная оценка и профили норм
+├── catalog_profiles_test.dart      # Зоны качества для разных профилей
+├── chart_axis_test.dart            # niceAxisInterval + formatChartAxisLabel
+├── measurement_grouping_test.dart  # «Сегодня»/«Вчера»/dd.MM.yyyy + порядок групп
+├── app_settings_test.dart          # Запоминание последнего прибора (id + имя)
+├── measurement_location_test.dart  # Формат координат, geo-ссылки, экранирование метки
+├── history_repository_test.dart    # CRUD истории через AppDatabase.forTesting(memory)
+├── places_repository_test.dart     # Каталог мест: дефолты, дубликаты, сортировка
+├── places_migration_test.dart      # v3 → v4 на настоящем файле БД (импорт меток)
 └── widgets/
     └── color_gauge_test.dart       # Smoke-тесты рендеринга шкалы
 
@@ -98,7 +108,8 @@ docs/
 ├── 02-ble-protocol.md              # BLE-C600 GATT + декодер + эталонные кадры
 ├── 03-control-commands.md          # HCI snoop guide + debug-страница workflow
 ├── 04-ui-design.md                 # Material 3, виджеты, новые экраны
-└── 05-state-and-storage.md         # Riverpod, drift schema v2, SharedPreferences, l10n, навигация
+├── 05-state-and-storage.md         # Riverpod, drift schema v4, SharedPreferences, l10n, навигация
+└── 06-roadmap.md                   # Приоритезированные планы
 
 android/
 ├── key.properties.example          # Шаблон для release-подписи
@@ -145,7 +156,8 @@ flutter build apk --release --split-per-abi              # release APK по ар
 - **`areCommandsKnown = true` при спекулятивных байтах**: команды подсветки/HOLD в `lib/yinmik/commands.dart` — это догадка. Если не работают, использовать debug-страницу в приложении (Reading → 🧪 в шапке) для подбора, или снять HCI snoop log (см. `docs/03-control-commands.md`).
 - **Прибор держит одно BLE-подключение** — официальное приложение YINMIK блокирует наше и наоборот.
 - **Android 12+ permissions** — `BLUETOOTH_SCAN` + `BLUETOOTH_CONNECT` с `neverForLocation`. Manifest уже корректен.
-- **Drift schema v2** — добавлена колонка `label`. Миграция `onUpgrade` уже в `database.dart`. При следующем изменении схемы поднять `schemaVersion` до 3 и добавить ещё одну ветку миграции.
+- **Drift schema v4** — v2 добавила `label`, v3 геометку (`latitude`/`longitude`/`locationAccuracyMeters`), v4 таблицу `Places` с сидированием дефолтов и импортом ранее введённых меток. Все ветки в `onUpgrade` в `database.dart`; `onCreate` тоже сидирует места, иначе на свежей установке каталог был бы пуст. При следующем изменении схемы поднять `schemaVersion` до 5 и добавить ветку — и прогнать `test/places_migration_test.dart` как образец: он поднимает настоящий файл БД в старом состоянии и проверяет, что данные пользователя пережили миграцию.
+- **Замер хранит имя места, а не ссылку на каталог.** `Measurements.label` — денормализованная строка; `Places` нужна только для списка выбора. Не «чинить» это внешним ключом: тогда переименование или удаление места переписывало бы историю задним числом.
 - **Battery percent — оценка** по формуле BLE-YC01 (1950–3190 mV → 0–100%). Для BLE-C600 калибровка не подтверждена.
 - **Core library desugaring** включён в `android/app/build.gradle.kts` — нужно для `flutter_local_notifications`. Не отключать.
 - **R8 минификация включена**: при добавлении нового пакета с reflection (например, `objectbox` или `json_serializable`) проверь, не нужны ли новые `-keep` правила в `proguard-rules.pro`.
@@ -168,6 +180,9 @@ flutter build apk --release --split-per-abi              # release APK по ар
 - **Замеры сохраняются ТОЛЬКО при ручном нажатии FAB «Сохранить»** в `ReadingPage`. `_refresh()` и `ControlPanel.onReadingUpdated` обновляют только in-memory `_reading`. Если рефакторишь — не возвращай auto-save, это сознательное архитектурное решение.
 - **Чистая логика → top-level helpers, а не private методы UI**. `groupMeasurementsByDay` (`lib/history/grouping.dart`), `niceAxisInterval`/`formatChartAxisLabel` (`lib/ui/widgets/chart_axis.dart`) вынесены из `history_page.dart` именно для unit-тестов. Любая чистая функция, которую захочется протестировать, должна оказаться в `lib/` отдельным top-level методом, а не `_методом` внутри `StatefulWidget`.
 - **In-memory тесты БД**: используй `AppDatabase.forTesting(NativeDatabase.memory())`. Drift не требует sqlite-флага для тестов на Windows — работает «из коробки» (см. `test/history_repository_test.dart`).
+- **Геометка не должна блокировать сохранение.** `LocationService` возвращает `LocationResult` с причиной отказа вместо исключения, таймаут 5 секунд жёсткий: в помещении фикс может не прийти вовсе, а замер важнее координат. Если добавляешь новые источники данных о местоположении — сохраняй это свойство.
+- **Версия Flutter в CI запинена** (`flutter-version: 3.41.9` во всех трёх job'ах). Не менять на плавающий `channel: stable`: на нём сборка уже ломалась, когда апстрим уехал на Dart 3.13, а транзитивный `analyzer` из `pubspec.lock` не знал новых AST-узлов. Поднимать версию — вместе с `flutter pub upgrade` и одинаково в `ci.yml` и `release.yml`.
+- **`dart format` в CI стоит с `continue-on-error: true`** и падает — проект исторически не отформатирован (44 файла из 60). Это осознанный долг, а не сломанный шаг; если решишь форматировать — делай отдельным коммитом, не подмешивая к функциональным изменениям.
 
 ## Что не делать в первой версии
 
