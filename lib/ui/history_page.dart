@@ -287,6 +287,9 @@ class _MeasurementChart extends ConsumerStatefulWidget {
 class _MeasurementChartState extends ConsumerState<_MeasurementChart> {
   String _selectedKey = 'ph';
 
+  /// Выбранное место. `null` — показывать все замеры подряд.
+  String? _placeFilter;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -297,10 +300,20 @@ class _MeasurementChartState extends ConsumerState<_MeasurementChart> {
       orElse: () => parameters.first,
     );
 
+    final places = placesInHistory(widget.rows);
+    // Место могло исчезнуть из истории, пока фильтр был выставлен (удалили все
+    // замеры этого места) — тогда молча показываем все, а не пустой график.
+    final activeFilter =
+        _placeFilter != null && places.contains(_placeFilter) ? _placeFilter : null;
+
+    final filtered = activeFilter == null
+        ? widget.rows
+        : widget.rows.where((m) => m.label == activeFilter).toList();
+
     // rows отсортированы desc (новые сверху): сначала берём 50 ПОСЛЕДНИХ, потом
     // разворачиваем в хронологический порядок для оси X. Обратный порядок операций
     // (reversed.take) брал бы 50 СТАРЕЙШИХ, и график замирал бы в прошлом.
-    final chronological = widget.rows.take(50).toList().reversed.toList();
+    final chronological = filtered.take(50).toList().reversed.toList();
     final spots = <FlSpot>[
       for (var index = 0; index < chronological.length; index++)
         FlSpot(
@@ -345,6 +358,35 @@ class _MeasurementChartState extends ConsumerState<_MeasurementChart> {
               ),
             ],
           ),
+          // Фильтр по месту появляется, только когда в истории есть замеры
+          // из разных мест: иначе выбирать не из чего. Без него кран, бассейн
+          // и аквариум рисуются одной линией и выглядят как скачки качества воды.
+          if (places.length > 1)
+            SizedBox(
+              height: 40,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      label: const Text('Все места'),
+                      selected: activeFilter == null,
+                      onSelected: (_) => setState(() => _placeFilter = null),
+                    ),
+                  ),
+                  for (final place in places)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ChoiceChip(
+                        label: Text(place),
+                        selected: activeFilter == place,
+                        onSelected: (_) => setState(() => _placeFilter = place),
+                      ),
+                    ),
+                ],
+              ),
+            ),
           const SizedBox(height: 12),
           if (spots.length < 2)
             Padding(

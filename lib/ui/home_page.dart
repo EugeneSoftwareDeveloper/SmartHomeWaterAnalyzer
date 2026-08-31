@@ -194,7 +194,20 @@ class _HomePageState extends ConsumerState<HomePage> {
   Future<void> _reconnectToLastDevice(String deviceId) async {
     await HapticFeedback.selectionClick();
     await _stopScan();
+
+    // Разрешения проверяем и здесь, а не только перед сканом: без BLUETOOTH_CONNECT
+    // подключение упало бы уже на экране показаний невнятной платформенной ошибкой,
+    // где нет ни объяснения, ни кнопки «Открыть настройки».
+    final permission = await ref.read(yinmikBleClientProvider).ensurePermissions();
     if (!mounted) return;
+    if (!permission.isGranted) {
+      setState(() {
+        _error = permission.message;
+        _showSettingsButton = true;
+        _scanning = false;
+      });
+      return;
+    }
 
     await context.push('/device', extra: BluetoothDevice.fromId(deviceId));
   }

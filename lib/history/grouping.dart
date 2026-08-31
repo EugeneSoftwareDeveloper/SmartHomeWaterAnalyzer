@@ -18,6 +18,20 @@ class MeasurementDayGroup {
   });
 }
 
+/// Места, встречающиеся в переданных замерах, в порядке первого появления.
+///
+/// Нужен для фильтра графика: показывать в нём весь каталог мест бессмысленно —
+/// выбор места без замеров дал бы пустой график. Порядок «как в истории» ставит
+/// недавно использованные места первыми, потому что список отсортирован desc.
+List<String> placesInHistory(List<Measurement> rows) {
+  final places = <String>{};
+  for (final row in rows) {
+    final label = row.label?.trim();
+    if (label != null && label.isNotEmpty) places.add(label);
+  }
+  return places.toList(growable: false);
+}
+
 /// Группирует список измерений по календарной дате наблюдения.
 ///
 /// Параметр [now] — точка отсчёта для «Сегодня/Вчера». В production его не

@@ -53,6 +53,9 @@ dependencies:
   # Открыть координаты замера в картах (geo:-интент, fallback на maps.google.com).
   url_launcher: ^6.3.1
 
+  # Версия приложения для «О приложении» — чтобы не зашивать её строкой в код.
+  package_info_plus: ^8.1.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

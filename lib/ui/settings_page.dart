@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../l10n/generated/app_localizations.dart';
 import '../providers/app_settings.dart';
+import '../providers/app_version_provider.dart';
 import '../quality/profile.dart';
 
 class SettingsPage extends ConsumerWidget {
@@ -135,12 +136,16 @@ class SettingsPage extends ConsumerWidget {
   }
 }
 
-class _AboutSection extends StatelessWidget {
+class _AboutSection extends ConsumerWidget {
   const _AboutSection();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppL10n.of(context);
+    // Версия читается из package_info_plus, а не зашивается строкой: раньше здесь
+    // стояло «1.0.0», и «О приложении» врало о версии после каждого релиза.
+    final version = ref.watch(appVersionProvider);
+
     return ListTile(
       leading: const Icon(Icons.info_outline),
       title: Text(l10n.settingsAbout),
@@ -148,7 +153,7 @@ class _AboutSection extends StatelessWidget {
       onTap: () => showAboutDialog(
         context: context,
         applicationName: l10n.appTitle,
-        applicationVersion: '1.0.0',
+        applicationVersion: version.valueOrNull ?? '',
         applicationLegalese: 'Личный проект, лицензия будет определена позже.',
       ),
     );

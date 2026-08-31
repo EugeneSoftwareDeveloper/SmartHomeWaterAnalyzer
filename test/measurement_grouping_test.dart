@@ -4,11 +4,11 @@ import 'package:water_analyzer/history/grouping.dart';
 
 /// Хелпер для создания тестового [Measurement]. Конкретные значения параметров
 /// для группировки не важны — нам нужна только дата.
-Measurement _at(DateTime when, {int id = 0}) {
+Measurement _at(DateTime when, {int id = 0, String? label}) {
   return Measurement(
     id: id,
     deviceId: 'AA:BB:CC:DD:EE:FF',
-    label: null,
+    label: label,
     observedAt: when,
     ph: 7.0,
     electricalConductivityUsCm: 100,
@@ -25,6 +25,60 @@ Measurement _at(DateTime when, {int id = 0}) {
 }
 
 void main() {
+  group('placesInHistory', () {
+    test('пустая история — пустой список мест', () {
+      expect(placesInHistory(const []), isEmpty);
+    });
+
+    test('собирает уникальные места', () {
+      final rows = [
+        _at(DateTime(2026, 8, 31, 12), id: 3, label: 'Кран'),
+        _at(DateTime(2026, 8, 31, 11), id: 2, label: 'Аквариум'),
+        _at(DateTime(2026, 8, 31, 10), id: 1, label: 'Кран'),
+      ];
+
+      expect(placesInHistory(rows), ['Кран', 'Аквариум']);
+    });
+
+    test('порядок — от свежих замеров к старым', () {
+      // rows приходят desc, поэтому недавно использованные места идут первыми
+      // и попадают в начало ленты фильтров.
+      final rows = [
+        _at(DateTime(2026, 8, 31, 12), id: 2, label: 'Свежее'),
+        _at(DateTime(2026, 8, 30, 12), id: 1, label: 'Старое'),
+      ];
+
+      expect(placesInHistory(rows), ['Свежее', 'Старое']);
+    });
+
+    test('замеры без места не попадают в фильтр', () {
+      final rows = [
+        _at(DateTime(2026, 8, 31, 12), id: 2, label: 'Кран'),
+        _at(DateTime(2026, 8, 31, 11), id: 1),
+      ];
+
+      expect(placesInHistory(rows), ['Кран']);
+    });
+
+    test('пробельные метки игнорируются', () {
+      final rows = [
+        _at(DateTime(2026, 8, 31, 12), id: 2, label: '   '),
+        _at(DateTime(2026, 8, 31, 11), id: 1, label: 'Кран'),
+      ];
+
+      expect(placesInHistory(rows), ['Кран']);
+    });
+
+    test('метки, различающиеся пробелами по краям, — одно место', () {
+      final rows = [
+        _at(DateTime(2026, 8, 31, 12), id: 2, label: 'Кран'),
+        _at(DateTime(2026, 8, 31, 11), id: 1, label: ' Кран '),
+      ];
+
+      expect(placesInHistory(rows), ['Кран']);
+    });
+  });
+
   group('groupMeasurementsByDay', () {
     test('пустой ввод — пустой список групп', () {
       expect(groupMeasurementsByDay(const []), isEmpty);
