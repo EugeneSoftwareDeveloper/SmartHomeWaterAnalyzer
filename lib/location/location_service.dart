@@ -21,9 +21,27 @@ class LocationService {
 
   const LocationService();
 
+  /// Общий предел на весь вызов, включая ожидание ответа на системный диалог
+  /// разрешений. Без него первое сохранение замера могло зависнуть навсегда:
+  /// [defaultTimeout] ограничивает только получение фикса, а `requestPermission`
+  /// ждёт пользователя — если он свернёт приложение с открытым диалогом, ответа
+  /// не будет вообще.
+  static const Duration defaultTotalBudget = Duration(seconds: 30);
+
   Future<LocationResult> currentLocation({
     Duration timeout = defaultTimeout,
+    Duration totalBudget = defaultTotalBudget,
     LocationAccuracy accuracy = defaultAccuracy,
+  }) {
+    return _currentLocation(timeout: timeout, accuracy: accuracy)
+        .timeout(totalBudget, onTimeout: () {
+      return const LocationResult.failed(LocationFailure.unavailable);
+    });
+  }
+
+  Future<LocationResult> _currentLocation({
+    required Duration timeout,
+    required LocationAccuracy accuracy,
   }) async {
     try {
       if (!await Geolocator.isLocationServiceEnabled()) {

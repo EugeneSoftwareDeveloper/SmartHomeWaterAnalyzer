@@ -114,10 +114,15 @@ class AppDatabase extends _$AppDatabase {
           if (from < 4) {
             // v4: каталог мест замера.
             await m.createTable(places);
-            await _seedDefaultPlaces();
-            // Метки, которые пользователь уже вводил руками, становятся местами —
-            // иначе после обновления его собственные названия исчезли бы из выбора.
+            // Импорт идёт ПЕРЕД сидированием, и это важно. Обе вставки используют
+            // insertOrIgnore, поэтому выигрывает та, что пришла первой. Метка
+            // пользователя несёт lastUsedAt (время его последнего замера), а
+            // дефолт — нет; при обратном порядке метка «Аквариум» была бы
+            // проигнорирована как дубликат уже вставленного дефолта, потеряла бы
+            // lastUsedAt и уехала в конец списка ниже мест, которыми никогда не
+            // пользовались.
             await _importPlacesFromExistingLabels();
+            await _seedDefaultPlaces();
           }
         },
       );
@@ -196,16 +201,35 @@ class AppDatabase extends _$AppDatabase {
 
   /// Добавляет место. Если такое имя уже есть — возвращает существующее,
   /// а не создаёт дубликат и не падает на нарушении уникальности.
+  ///
+  /// Вставка идёт через `insertOrIgnore`, а не «сначала проверить, потом
+  /// вставить»: между проверкой и вставкой есть окно, в которое успевает
+  /// пролезть второй вызов (кнопка «+» и submit с клавиатуры срабатывают
+  /// почти одновременно), и БД отвечает `UNIQUE constraint failed`.
   Future<Place> insertOrGetPlace(String name, DateTime createdAt) async {
     final trimmed = name.trim();
 
-    final existing =
-        await (select(places)..where((t) => t.name.equals(trimmed))).getSingleOrNull();
-    if (existing != null) return existing;
+    await into(places).insert(
+      PlacesCompanion.insert(name: trimmed, createdAt: createdAt),
+      mode: InsertMode.insertOrIgnore,
+    );
 
-    final id = await into(places)
-        .insert(PlacesCompanion.insert(name: trimmed, createdAt: createdAt));
-    return (select(places)..where((t) => t.id.equals(id))).getSingle();
+    return (select(places)..where((t) => t.name.equals(trimmed))).getSingle();
+  }
+
+  /// Восстанавливает удалённое место целиком — с исходным id, датой создания и
+  /// `lastUsedAt`. Обычный `insertOrGetPlace` для undo не годится: он создал бы
+  /// место заново без `lastUsedAt`, и оно уехало бы в конец списка.
+  Future<int> restorePlace(Place place) {
+    return into(places).insert(
+      PlacesCompanion(
+        id: Value(place.id),
+        name: Value(place.name),
+        createdAt: Value(place.createdAt),
+        lastUsedAt: Value(place.lastUsedAt),
+      ),
+      mode: InsertMode.insertOrReplace,
+    );
   }
 
   /// Отмечает место как только что использованное — оно поднимется в начало списка.

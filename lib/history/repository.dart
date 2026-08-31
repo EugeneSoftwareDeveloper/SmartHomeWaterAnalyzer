@@ -121,6 +121,11 @@ class PlacesRepository {
   Future<int> markUsed(String name, {DateTime? usedAt}) =>
       _database.touchPlace(name, usedAt ?? DateTime.now());
 
+  /// Восстанавливает удалённое место со всеми полями — для undo после удаления.
+  /// В отличие от [add], сохраняет исходные id, дату создания и `lastUsedAt`,
+  /// поэтому место возвращается на своё прежнее положение в списке.
+  Future<int> restore(Place place) => _database.restorePlace(place);
+
   /// Удаляет место из каталога. История замеров не меняется — сохранённые записи
   /// держат название места в своей колонке `label`.
   Future<int> deleteById(int id) => _database.deletePlaceById(id);

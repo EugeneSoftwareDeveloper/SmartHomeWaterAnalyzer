@@ -110,6 +110,30 @@ void main() {
     expect(places.where((p) => p.name == 'Аквариум'), hasLength(1));
   });
 
+  test('метка, совпадающая с дефолтным местом, сохраняет время использования', () async {
+    // Регрессия: сидирование дефолтов шло перед импортом, и метка «Аквариум»
+    // отбрасывалась insertOrIgnore как дубликат уже вставленного дефолта.
+    // Место теряло lastUsedAt и уезжало в конец списка — ниже мест, которыми
+    // пользователь не пользовался ни разу.
+    createV3Database(['Аквариум']);
+
+    final db = await openMigrated();
+    addTearDown(db.close);
+    final places = await PlacesRepository(db).all();
+    final aquarium = places.firstWhere((p) => p.name == 'Аквариум');
+
+    expect(
+      aquarium.lastUsedAt,
+      isNotNull,
+      reason: 'использованное место должно помнить, когда им пользовались',
+    );
+    expect(
+      places.first.name,
+      'Аквариум',
+      reason: 'единственное использованное место обязано быть первым в списке',
+    );
+  });
+
   test('пустые и null-метки не попадают в каталог', () async {
     createV3Database([null, '', '   ', 'Реальное место']);
 

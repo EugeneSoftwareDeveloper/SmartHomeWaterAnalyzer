@@ -71,6 +71,12 @@ class _PlacePickerSheetState extends ConsumerState<_PlacePickerSheet> {
   final _controller = TextEditingController();
   String? _error;
 
+  /// Защита от повторного запуска, пока предыдущая операция в полёте.
+  /// «Добавить» висит и на кнопке «+», и на submit с клавиатуры — они
+  /// срабатывают почти одновременно, и без этого флага два параллельных
+  /// добавления одного имени упирались бы в уникальный индекс.
+  bool _busy = false;
+
   @override
   void dispose() {
     _controller.dispose();
@@ -78,48 +84,107 @@ class _PlacePickerSheetState extends ConsumerState<_PlacePickerSheet> {
   }
 
   Future<void> _select(String? name) async {
-    final notifier = ref.read(appSettingsProvider.notifier);
-    await notifier.setCurrentLabel(name);
+    if (_busy) return;
+    setState(() => _busy = true);
 
-    // Использованное место поднимается в начало списка — на практике человек
-    // меряет две-три точки, и они должны быть под рукой.
-    if (name != null) {
-      await ref.read(placesRepositoryProvider).markUsed(name);
+    final notifier = ref.read(appSettingsProvider.notifier);
+    final repository = ref.read(placesRepositoryProvider);
+    try {
+      await notifier.setCurrentLabel(name);
+
+      // Использованное место поднимается в начало списка — на практике человек
+      // меряет две-три точки, и они должны быть под рукой.
+      if (name != null) await repository.markUsed(name);
+    } on Object catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = 'Не удалось выбрать место: $error';
+      });
+      return;
     }
+
     if (mounted) Navigator.of(context).pop();
   }
 
   Future<void> _addAndSelect() async {
+    if (_busy) return;
+
     final name = _controller.text.trim();
     if (name.isEmpty) {
       setState(() => _error = 'Введите название места');
       return;
     }
 
-    await ref.read(placesRepositoryProvider).add(name);
+    setState(() => _busy = true);
+    try {
+      await ref.read(placesRepositoryProvider).add(name);
+    } on Object catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = 'Не удалось добавить место: $error';
+      });
+      return;
+    }
+
+    if (!mounted) return;
+    setState(() => _busy = false);
     await _select(name);
   }
 
-  Future<void> _delete(Place place) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final repository = ref.read(placesRepositoryProvider);
-    await repository.deleteById(place.id);
+  /// Удаление места подтверждается диалогом, а не откатывается через SnackBar:
+  /// лист занимает бóльшую часть экрана, и SnackBar с кнопкой «Отменить»
+  /// оказывался бы **под** ним — нажать его было бы физически невозможно,
+  /// а удаление на деле необратимым. Диалог рисуется поверх листа.
+  Future<void> _confirmDelete(Place place) async {
+    if (_busy) return;
 
-    // Если удалили выбранное место — снимаем выбор, иначе в поле осталось бы
-    // название, которого больше нет в каталоге.
-    if (ref.read(appSettingsProvider).currentLabel == place.name) {
-      await ref.read(appSettingsProvider.notifier).setCurrentLabel(null);
-    }
-
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text('Место «${place.name}» удалено'),
-        action: SnackBarAction(
-          label: 'Отменить',
-          onPressed: () => repository.add(place.name, createdAt: place.createdAt),
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Удалить «${place.name}»?'),
+        content: const Text(
+          'Место исчезнет из списка выбора. Замеры, сделанные в нём, '
+          'останутся в истории со своим названием.',
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Отмена'),
+          ),
+          FilledButton.tonal(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Удалить'),
+          ),
+        ],
       ),
     );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _busy = true);
+    final repository = ref.read(placesRepositoryProvider);
+    final settings = ref.read(appSettingsProvider);
+    final notifier = ref.read(appSettingsProvider.notifier);
+
+    try {
+      await repository.deleteById(place.id);
+
+      // Если удалили выбранное место — снимаем выбор, иначе в поле осталось бы
+      // название, которого больше нет в каталоге.
+      if (settings.currentLabel == place.name) {
+        await notifier.setCurrentLabel(null);
+      }
+    } on Object catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = 'Не удалось удалить место: $error';
+      });
+      return;
+    }
+
+    if (mounted) setState(() => _busy = false);
   }
 
   @override
@@ -166,7 +231,7 @@ class _PlacePickerSheetState extends ConsumerState<_PlacePickerSheet> {
                   IconButton.filledTonal(
                     icon: const Icon(Icons.add),
                     tooltip: 'Добавить место',
-                    onPressed: _addAndSelect,
+                    onPressed: _busy ? null : _addAndSelect,
                   ),
                 ],
               ),
@@ -193,9 +258,9 @@ class _PlacePickerSheetState extends ConsumerState<_PlacePickerSheet> {
                         trailing: IconButton(
                           icon: const Icon(Icons.delete_outline, size: 20),
                           tooltip: 'Удалить место',
-                          onPressed: () => _delete(place),
+                          onPressed: _busy ? null : () => _confirmDelete(place),
                         ),
-                        onTap: () => _select(place.name),
+                        onTap: _busy ? null : () => _select(place.name),
                       ),
                     const Divider(),
                     ListTile(
@@ -207,7 +272,7 @@ class _PlacePickerSheetState extends ConsumerState<_PlacePickerSheet> {
                       ),
                       title: const Text('Без места'),
                       subtitle: const Text('Замер сохранится без названия'),
-                      onTap: () => _select(null),
+                      onTap: _busy ? null : () => _select(null),
                     ),
                     const SizedBox(height: 16),
                   ],

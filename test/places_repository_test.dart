@@ -109,6 +109,40 @@ void main() {
       expect((await repo.all()).map((p) => p.name), isNot(contains('Временное')));
     });
 
+    test('параллельное добавление одного имени не падает на уникальном индексе',
+        () async {
+      // Регрессия: insertOrGetPlace был «проверить, потом вставить», и два
+      // одновременных вызова (кнопка «+» и submit с клавиатуры срабатывают
+      // почти вместе) упирались в UNIQUE constraint failed.
+      final results = await Future.wait([
+        repo.add('Одновременно'),
+        repo.add('Одновременно'),
+        repo.add('Одновременно'),
+      ]);
+
+      expect(results.map((p) => p.id).toSet(), hasLength(1));
+      expect(
+        (await repo.all()).where((p) => p.name == 'Одновременно'),
+        hasLength(1),
+      );
+    });
+
+    test('restore возвращает место с прежним id и временем использования', () async {
+      // Регрессия: undo после удаления пересоздавал место через add(), теряя
+      // lastUsedAt, — место возвращалось в конец списка вместо своего места.
+      await repo.markUsed('Родник', usedAt: DateTime(2026, 8, 31));
+      final original = (await repo.all()).firstWhere((p) => p.name == 'Родник');
+      await repo.deleteById(original.id);
+
+      await repo.restore(original);
+
+      final restored = (await repo.all()).firstWhere((p) => p.name == 'Родник');
+      expect(restored.id, original.id);
+      expect(restored.lastUsedAt, original.lastUsedAt);
+      expect(restored.createdAt, original.createdAt);
+      expect((await repo.all()).first.name, 'Родник');
+    });
+
     test('watchAll отдаёт обновления при добавлении', () async {
       final counts = <int>[];
       final subscription = repo.watchAll().listen((rows) => counts.add(rows.length));

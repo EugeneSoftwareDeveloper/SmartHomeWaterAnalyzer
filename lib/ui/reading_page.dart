@@ -130,8 +130,15 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
       );
 
       // Место поднимается в начало списка выбора — им только что пользовались.
+      // Свой try/catch: замер уже записан, и сбой этого косметического шага не
+      // должен выдаваться за неудачное сохранение — иначе пользователь нажал бы
+      // «Сохранить» повторно и получил дубликат в истории.
       if (place != null && place.trim().isNotEmpty) {
-        await ref.read(placesRepositoryProvider).markUsed(place);
+        try {
+          await ref.read(placesRepositoryProvider).markUsed(place);
+        } on Object catch (_) {
+          // Порядок списка мест — не то, ради чего стоит беспокоить пользователя.
+        }
       }
 
       if (!mounted) return;
