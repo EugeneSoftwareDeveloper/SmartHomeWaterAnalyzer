@@ -1,43 +1,111 @@
 # 01. Архитектура
 
-## Слоистая структура
+> **Схема ниже — часть контракта проекта, а не иллюстрация.** Если правка меняет состав слоёв или направление зависимостей между ними, схему нужно обновить тем же коммитом. Схема, разошедшаяся с кодом, хуже отсутствующей: по ней принимают решения.
 
-Приложение разбито на три слоя сверху вниз:
+## Карта модулей
 
+```mermaid
+graph TD
+    subgraph presentation["Presentation — lib/ui/"]
+        Screens["Экраны<br/>home · reading · history · settings · help · debug"]
+        Widgets["Виджеты<br/>gauge · parameter_card · place_picker · location_card"]
+    end
+
+    subgraph state["State — lib/providers/"]
+        Providers["Riverpod-провайдеры<br/>настройки · BLE-клиент · история · места · геолокация"]
+    end
+
+    subgraph domain["Домен — чистый Dart, без Flutter-виджетов"]
+        Quality["quality/<br/>параметры, профили норм,<br/>зоны, сводная оценка"]
+        Help["help/<br/>справка по параметрам"]
+    end
+
+    subgraph data["Данные и платформа"]
+        Yinmik["yinmik/<br/>BLE-протокол:<br/>декодер · клиент · команды"]
+        History["history/<br/>drift: замеры, места,<br/>миграции, группировка"]
+        Location["location/<br/>геометка замера"]
+        Export["export/<br/>выгрузка CSV"]
+        Notifications["notifications/<br/>уведомления вне нормы"]
+    end
+
+    subgraph platform["Платформа"]
+        BLE(["flutter_blue_plus"])
+        SQLite(["SQLite"])
+        Geo(["geolocator"])
+        Prefs(["SharedPreferences"])
+    end
+
+    Screens --> Widgets
+    Screens --> Providers
+    Widgets --> Providers
+    Screens --> Quality
+    Widgets --> Quality
+    Widgets --> Help
+
+    Providers --> Yinmik
+    Providers --> History
+    Providers --> Location
+    Providers --> Notifications
+    Providers --> Prefs
+
+    Screens --> Export
+    Export --> History
+    Notifications --> Quality
+    History --> Quality
+
+    Yinmik --> BLE
+    History --> SQLite
+    Location --> Geo
 ```
-┌────────────────────────────────────────────────────────────┐
-│  UI (lib/ui/)                                              │
-│  Flutter Material 3 виджеты, StatefulWidget, setState      │
-│  Зависит от: Quality + Yinmik                              │
-└──────────────────────┬─────────────────────────────────────┘
-                       │
-        ┌──────────────┴──────────────┐
-        ▼                             ▼
-┌──────────────────────┐    ┌────────────────────────────┐
-│  Quality             │    │  Yinmik                    │
-│  lib/quality/        │    │  lib/yinmik/               │
-│  Чистая Dart-логика  │    │  BLE-протокол              │
-│  Параметры, нормы,   │    │  Декодер, клиент, команды  │
-│  цветовые зоны       │    │                            │
-│                      │    │                            │
-│  Не знает про BLE    │    │  Декодер не зависит от     │
-│  Не знает про Flutter│    │  flutter_blue_plus         │
-│  виджеты (только Color│   │  (только dart:typed_data)  │
-│  из dart:ui)         │    │                            │
-└──────────────────────┘    └────────────────────────────┘
+
+## Правила зависимостей
+
+Их три, и они объясняют, почему модули нарезаны именно так:
+
+1. **`yinmik/` не знает про `quality/`.** Декодер возвращает числа, а не оценки. Поэтому его можно использовать вне приложения — он и портирован 1-в-1 из .NET-сервиса `SmartHomeService`, эталонные кадры в тестах общие.
+2. **`quality/` не знает про `yinmik/`.** Оценка качества работает на любом числе подходящей размерности, независимо от того, каким прибором оно получено. Добавить второй прибор — значит добавить декодер, а не переписывать нормы.
+3. **Домен не знает про Flutter-виджеты.** Из UI-мира `quality/` использует только `Color` из `dart:ui`. Это граница, за которой начинается тестируемость без `WidgetTester`.
+
+Ещё два правила касаются платформенных модулей:
+
+4. **`location/` не пускает плагин наружу.** `MeasurementLocation` и `LocationFailure` не импортируют `geolocator`; единственное место с этим импортом — `location_service.dart`. Отсюда же вытекает контракт: получение координат **никогда** не роняет и не задерживает сохранение замера.
+5. **UI не ходит в БД напрямую.** Между ними `HistoryRepository` / `PlacesRepository`, принимающие доменные типы. Замена drift на что-то другое — это переписывание `repository.dart`, а не экранов.
+
+## Поток данных: от прибора до истории
+
+```mermaid
+sequenceDiagram
+    participant U as Пользователь
+    participant R as ReadingPage
+    participant C as YinmikBleClient
+    participant D as YinmikDecoder
+    participant Q as WaterQuality
+    participant L as LocationService
+    participant H as HistoryRepository
+
+    U->>R: открыл экран / «Обновить»
+    R->>C: readOnce(device)
+    C->>C: connect → MTU → read FF02
+    C->>D: decodeRawFrame(bytes)
+    D-->>R: YinmikReading (числа)
+    R->>Q: compute(values, profile)
+    Q-->>R: оценка + зоны
+    R-->>U: карточки параметров
+
+    Note over R,U: замер НЕ сохраняется сам —<br/>решает пользователь
+
+    U->>R: «Сохранить замер»
+    R->>L: currentLocation()
+    L-->>R: координаты или причина отказа
+    R->>H: save(reading, место, координаты, профиль)
+    H-->>R: id записи
+    R-->>U: «Сохранён» + «Отменить»
 ```
 
-Правила:
+Два свойства этого потока заданы намеренно и не должны потеряться при доработках:
 
-- **Yinmik не зависит от Quality** — декодер просто возвращает числа.
-- **Quality не зависит от Yinmik** — оценка качества работает на любом числе с подходящей размерностью.
-- **UI зависит от обоих** — соединяет: берёт чтение из Yinmik, прогоняет через Quality, показывает виджетами.
-
-Это позволяет:
-
-- Декодер использовать в CLI-утилите, юнит-тестах, серверной части — без Flutter.
-- Quality-каталог расширять без правки BLE-кода.
-- Менять UI (например, перейти на другой state-management) без касания доменной логики.
+- **Чтение и сохранение разделены.** Прибор опрашивается сколько угодно раз, в историю попадает только то, что пользователь подтвердил. Иначе калибровочные и тестовые чтения засоряют графики.
+- **Геометка и профиль фиксируются в момент сохранения.** Профиль пишется в саму запись, потому что «опасно / норма» — свойство замера, а не текущей настройки приложения.
 
 ## Точки расширения
 
