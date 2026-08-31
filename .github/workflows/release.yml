@@ -54,6 +54,14 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
+          # Версия запинена намеренно — релиз обязан быть воспроизводимым и не
+          # зависеть от того, куда уехал канал stable. На плавающем stable сборка
+          # v1.1.2 упала: раннер взял Dart 3.13, а транзитивный `analyzer` из
+          # pubspec.lock не знает его AST-узлов
+          # («Missing implementation of visitDotShorthandPropertyAccess»).
+          # Поднимать версию — осознанно, вместе с `flutter pub upgrade`,
+          # и держать её одинаковой с ci.yml.
+          flutter-version: 3.41.9
           channel: stable
           cache: true
 
