@@ -217,21 +217,6 @@ class AppDatabase extends _$AppDatabase {
     return (select(places)..where((t) => t.name.equals(trimmed))).getSingle();
   }
 
-  /// Восстанавливает удалённое место целиком — с исходным id, датой создания и
-  /// `lastUsedAt`. Обычный `insertOrGetPlace` для undo не годится: он создал бы
-  /// место заново без `lastUsedAt`, и оно уехало бы в конец списка.
-  Future<int> restorePlace(Place place) {
-    return into(places).insert(
-      PlacesCompanion(
-        id: Value(place.id),
-        name: Value(place.name),
-        createdAt: Value(place.createdAt),
-        lastUsedAt: Value(place.lastUsedAt),
-      ),
-      mode: InsertMode.insertOrReplace,
-    );
-  }
-
   /// Отмечает место как только что использованное — оно поднимется в начало списка.
   Future<int> touchPlace(String name, DateTime usedAt) {
     return (update(places)..where((t) => t.name.equals(name.trim())))

@@ -127,22 +127,6 @@ void main() {
       );
     });
 
-    test('restore возвращает место с прежним id и временем использования', () async {
-      // Регрессия: undo после удаления пересоздавал место через add(), теряя
-      // lastUsedAt, — место возвращалось в конец списка вместо своего места.
-      await repo.markUsed('Родник', usedAt: DateTime(2026, 8, 31));
-      final original = (await repo.all()).firstWhere((p) => p.name == 'Родник');
-      await repo.deleteById(original.id);
-
-      await repo.restore(original);
-
-      final restored = (await repo.all()).firstWhere((p) => p.name == 'Родник');
-      expect(restored.id, original.id);
-      expect(restored.lastUsedAt, original.lastUsedAt);
-      expect(restored.createdAt, original.createdAt);
-      expect((await repo.all()).first.name, 'Родник');
-    });
-
     test('watchAll отдаёт обновления при добавлении', () async {
       final counts = <int>[];
       final subscription = repo.watchAll().listen((rows) => counts.add(rows.length));
