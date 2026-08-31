@@ -81,14 +81,40 @@ class YinmikBleClient {
     }
 
     final keepAlive = FlutterBluePlus.scanResults.listen((_) {});
+    final results = StreamIterator<List<ScanResult>>(FlutterBluePlus.scanResults);
+
+    // `scanResults` живёт всё время работы приложения и НЕ закрывается по окончании
+    // скана — обычный `await for` по нему никогда не завершился бы: UI-подписчик не
+    // получил бы onDone, `_scanning` остался бы true, и спиннер «Поиск...» крутился бы
+    // вечно после платформенного таймаута. Поэтому конец скана отслеживаем отдельно
+    // через `isScanning` и завершаем генератор сами.
+    final scanEnded = Completer<void>();
+    StreamSubscription<bool>? isScanningSub;
+
     try {
       await FlutterBluePlus.startScan(timeout: timeout);
 
-      await for (final results in FlutterBluePlus.scanResults) {
-        final matching = results.where(_looksLikeYinmik).toList(growable: false);
-        yield ScanState(matching: matching, totalScanned: results.length);
+      // Подписка строго ПОСЛЕ startScan: `isScanning` ре-эмитит текущее значение
+      // новому подписчику, так что первый же false после этой точки однозначно
+      // означает «скан завершился» (таймаут или stopScan).
+      isScanningSub = FlutterBluePlus.isScanning.listen((scanning) {
+        if (!scanning && !scanEnded.isCompleted) scanEnded.complete();
+      });
+
+      while (true) {
+        final hasNext = await Future.any<bool>([
+          results.moveNext(),
+          scanEnded.future.then((_) => false),
+        ]);
+        if (!hasNext) break;
+
+        final snapshot = results.current;
+        final matching = snapshot.where(_looksLikeYinmik).toList(growable: false);
+        yield ScanState(matching: matching, totalScanned: snapshot.length);
       }
     } finally {
+      await isScanningSub?.cancel();
+      await results.cancel();
       await keepAlive.cancel();
       if (FlutterBluePlus.isScanningNow) await FlutterBluePlus.stopScan();
     }

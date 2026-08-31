@@ -202,6 +202,12 @@ class _HistoryDetailPageState extends ConsumerState<HistoryDetailPage> {
         _currentIndex = _measurements.length - 1;
       }
     });
+    // PageController не следит за itemCount: после удаления последней страницы он
+    // остался бы на индексе за границей списка, и PageView показал бы пустоту.
+    // Синхронизируем явно; если список опустел — build сам закроет экран.
+    if (_measurements.isNotEmpty && _pageController.hasClients) {
+      _pageController.jumpToPage(_currentIndex.clamp(0, _measurements.length - 1));
+    }
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -217,7 +223,12 @@ class _HistoryDetailPageState extends ConsumerState<HistoryDetailPage> {
               final restored = [..._measurements, current]
                 ..sort((a, b) => b.observedAt.compareTo(a.observedAt));
               _measurements = restored;
+              _currentIndex = _measurements.indexWhere((m) => m.id == current.id);
             });
+            // Возвращаем пользователя на восстановленный замер.
+            if (_currentIndex >= 0 && _pageController.hasClients) {
+              _pageController.jumpToPage(_currentIndex);
+            }
           },
         ),
         duration: const Duration(seconds: 5),

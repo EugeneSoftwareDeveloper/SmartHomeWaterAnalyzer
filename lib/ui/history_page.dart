@@ -228,10 +228,22 @@ class _DismissibleTile extends ConsumerWidget {
           ],
         ),
       ),
-      onDismissed: (_) async {
+      // Удаление — в confirmDismiss, а не в onDismissed: к моменту `return true`
+      // запись уже удалена из БД и drift-стрим перестроил список без неё, поэтому
+      // dismissed-виджет не остаётся висеть в дереве (иначе при ребилде в окне
+      // «жест завершён, стрим ещё не эмитнул» Flutter бросает
+      // «A dismissed Dismissible widget is still part of the tree»).
+      confirmDismiss: (_) async {
         final repo = ref.read(historyRepositoryProvider);
         final messenger = ScaffoldMessenger.of(context);
-        await repo.deleteById(row.id);
+        try {
+          await repo.deleteById(row.id);
+        } on Object catch (error) {
+          messenger.showSnackBar(
+            SnackBar(content: Text('Не удалось удалить: $error')),
+          );
+          return false;
+        }
         await HapticFeedback.lightImpact();
         messenger.showSnackBar(
           SnackBar(
@@ -243,6 +255,7 @@ class _DismissibleTile extends ConsumerWidget {
             duration: const Duration(seconds: 5),
           ),
         );
+        return true;
       },
       child: _MeasurementTile(
         row: row,
@@ -284,7 +297,10 @@ class _MeasurementChartState extends ConsumerState<_MeasurementChart> {
       orElse: () => parameters.first,
     );
 
-    final chronological = widget.rows.reversed.take(50).toList();
+    // rows отсортированы desc (новые сверху): сначала берём 50 ПОСЛЕДНИХ, потом
+    // разворачиваем в хронологический порядок для оси X. Обратный порядок операций
+    // (reversed.take) брал бы 50 СТАРЕЙШИХ, и график замирал бы в прошлом.
+    final chronological = widget.rows.take(50).toList().reversed.toList();
     final spots = <FlSpot>[
       for (var index = 0; index < chronological.length; index++)
         FlSpot(

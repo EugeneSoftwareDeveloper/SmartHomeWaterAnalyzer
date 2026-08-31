@@ -51,6 +51,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     // зависает в промежуточном состоянии и больше ничего не отдаёт.
     await _scanSubscription?.cancel();
     _scanSubscription = null;
+    if (!mounted) return;
 
     setState(() {
       _devices = const [];
