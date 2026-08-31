@@ -511,8 +511,10 @@ class _MeasurementTile extends StatelessWidget {
               padding: const EdgeInsets.only(top: 2),
               child: Row(
                 children: [
+                  // Тот же значок, что у поля выбора места и в настройках —
+                  // прежний label_outline остался от времён свободной «метки».
                   Icon(
-                    Icons.label_outline,
+                    Icons.place_outlined,
                     size: 14,
                     color: theme.colorScheme.primary,
                   ),

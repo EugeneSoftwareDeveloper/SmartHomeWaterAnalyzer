@@ -148,7 +148,6 @@ class _HistoryDetailPageState extends ConsumerState<HistoryDetailPage> {
   Future<void> _editPlace(Measurement current) async {
     final newPlace = await showPlacePicker(
       context,
-      ref,
       initialSelection: current.label,
     );
     // null — пользователь закрыл лист, ничего не выбрав.

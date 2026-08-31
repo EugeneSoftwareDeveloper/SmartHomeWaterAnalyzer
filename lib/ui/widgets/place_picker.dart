@@ -35,15 +35,16 @@ class PlacePickerField extends ConsumerWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () async {
+          // Notifier берём ДО открытия листа: это ConsumerWidget, у него нет
+          // `mounted`, и обращение к `ref` после await упало бы StateError'ом,
+          // если экран успели закрыть, пока лист был открыт.
+          final notifier = ref.read(appSettingsProvider.notifier);
           final selection = await showPlacePicker(
             context,
-            ref,
             initialSelection: selected,
           );
           if (selection == null) return;
-          await ref
-              .read(appSettingsProvider.notifier)
-              .setCurrentLabel(selection.name);
+          await notifier.setCurrentLabel(selection.name);
         },
         child: InputDecorator(
           decoration: InputDecoration(
@@ -88,8 +89,7 @@ String? normalizePlaceName(String? name) {
 /// обслуживает оба сценария, и в истории не может появиться место, которого нет
 /// в списке выбора.
 Future<PlaceSelection?> showPlacePicker(
-  BuildContext context,
-  WidgetRef ref, {
+  BuildContext context, {
   String? initialSelection,
 }) {
   return showModalBottomSheet<PlaceSelection>(
