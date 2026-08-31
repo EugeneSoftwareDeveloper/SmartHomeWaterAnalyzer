@@ -11,6 +11,12 @@ class AppSettings {
   final ThemeMode themeMode;
   final NormsProfile normsProfile;
   final String? lastDeviceId;
+
+  /// Имя последнего прибора на момент подключения. Нужно только для подписи кнопки
+  /// быстрого переподключения — само подключение идёт по [lastDeviceId]. Может быть
+  /// null для записей, сохранённых до появления этого поля, или если прибор
+  /// подключался без имени (тогда UI показывает MAC).
+  final String? lastDeviceName;
   final bool notificationsEnabled;
   final String? currentLabel;
 
@@ -18,6 +24,7 @@ class AppSettings {
     required this.themeMode,
     required this.normsProfile,
     required this.lastDeviceId,
+    required this.lastDeviceName,
     required this.notificationsEnabled,
     required this.currentLabel,
   });
@@ -26,15 +33,23 @@ class AppSettings {
     ThemeMode? themeMode,
     NormsProfile? normsProfile,
     String? lastDeviceId,
+    String? lastDeviceName,
     bool? notificationsEnabled,
     String? currentLabel,
     bool clearLastDevice = false,
+    // Отдельный флаг для имени: подключение к безымянному прибору должно стирать имя
+    // предыдущего, а `lastDeviceName: null` из-за `??` ниже откатился бы к старому
+    // значению — и кнопка показала бы чужое имя рядом с новым MAC.
+    bool clearLastDeviceName = false,
     bool clearLabel = false,
   }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
       normsProfile: normsProfile ?? this.normsProfile,
       lastDeviceId: clearLastDevice ? null : (lastDeviceId ?? this.lastDeviceId),
+      lastDeviceName: (clearLastDevice || clearLastDeviceName)
+          ? null
+          : (lastDeviceName ?? this.lastDeviceName),
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
       currentLabel: clearLabel ? null : (currentLabel ?? this.currentLabel),
     );
@@ -49,6 +64,7 @@ class AppSettingsNotifier extends StateNotifier<AppSettings> {
   static const _kThemeMode = 'settings.themeMode';
   static const _kProfile = 'settings.normsProfile';
   static const _kLastDevice = 'settings.lastDeviceId';
+  static const _kLastDeviceName = 'settings.lastDeviceName';
   static const _kNotifications = 'settings.notificationsEnabled';
   static const _kCurrentLabel = 'settings.currentLabel';
 
@@ -63,6 +79,7 @@ class AppSettingsNotifier extends StateNotifier<AppSettings> {
         orElse: () => NormsProfile.drinking,
       ),
       lastDeviceId: prefs.getString(_kLastDevice),
+      lastDeviceName: prefs.getString(_kLastDeviceName),
       notificationsEnabled: prefs.getBool(_kNotifications) ?? false,
       currentLabel: prefs.getString(_kCurrentLabel),
     );
@@ -88,14 +105,31 @@ class AppSettingsNotifier extends StateNotifier<AppSettings> {
     await _prefs.setString(_kProfile, profile.name);
   }
 
-  Future<void> rememberDevice(String deviceId) async {
-    state = state.copyWith(lastDeviceId: deviceId);
+  /// Запоминает прибор для быстрого переподключения. [deviceName] — то, как прибор
+  /// назвался при подключении; пустое имя не сохраняем, чтобы кнопка не показывала
+  /// пустую строку вместо названия.
+  Future<void> rememberDevice(String deviceId, {String? deviceName}) async {
+    final name = (deviceName == null || deviceName.trim().isEmpty)
+        ? null
+        : deviceName.trim();
+
+    state = state.copyWith(
+      lastDeviceId: deviceId,
+      lastDeviceName: name,
+      clearLastDeviceName: name == null,
+    );
     await _prefs.setString(_kLastDevice, deviceId);
+    if (name == null) {
+      await _prefs.remove(_kLastDeviceName);
+    } else {
+      await _prefs.setString(_kLastDeviceName, name);
+    }
   }
 
   Future<void> forgetDevice() async {
     state = state.copyWith(clearLastDevice: true);
     await _prefs.remove(_kLastDevice);
+    await _prefs.remove(_kLastDeviceName);
   }
 
   Future<void> setNotificationsEnabled(bool enabled) async {

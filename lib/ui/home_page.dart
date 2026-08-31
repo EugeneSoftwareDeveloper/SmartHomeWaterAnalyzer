@@ -153,7 +153,10 @@ class _HomePageState extends ConsumerState<HomePage> {
                           trailing: const Icon(Icons.chevron_right),
                           onTap: () {
                             Navigator.of(sheetContext).pop();
-                            _openReading(result.device);
+                            _openReading(
+                              result.device,
+                              advertisedName: result.advertisementData.advName,
+                            );
                           },
                         );
                       },
@@ -168,16 +171,32 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
-  Future<void> _openReading(BluetoothDevice device) async {
+  Future<void> _openReading(BluetoothDevice device, {String? advertisedName}) async {
     await HapticFeedback.selectionClick();
-    await FlutterBluePlus.stopScan();
+    await _stopScan();
     if (!mounted) return;
-    setState(() => _scanning = false);
 
-    await ref.read(appSettingsProvider.notifier).rememberDevice(device.remoteId.str);
+    // Имя берём из advertisement, если платформа ещё не закэшировала platformName —
+    // на холодном скане второе часто пустое.
+    final name = device.platformName.isNotEmpty ? device.platformName : advertisedName;
+    await ref
+        .read(appSettingsProvider.notifier)
+        .rememberDevice(device.remoteId.str, deviceName: name);
     if (!mounted) return;
 
     await context.push('/device', extra: device);
+  }
+
+  /// Быстрое переподключение к последнему прибору: минуя скан, собираем
+  /// `BluetoothDevice` прямо из сохранённого remoteId. Если прибора нет рядом или он
+  /// занят официальным приложением — ошибка будет показана уже на экране показаний
+  /// (там есть «Повторить»), а список сканирования остаётся под рукой.
+  Future<void> _reconnectToLastDevice(String deviceId) async {
+    await HapticFeedback.selectionClick();
+    await _stopScan();
+    if (!mounted) return;
+
+    await context.push('/device', extra: BluetoothDevice.fromId(deviceId));
   }
 
   @override
@@ -226,6 +245,25 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   Widget _buildScanBody(AppL10n l10n) {
+    final settings = ref.watch(appSettingsProvider);
+    final lastDeviceId = settings.lastDeviceId;
+
+    return Column(
+      children: [
+        if (lastDeviceId != null)
+          _LastDeviceCard(
+            deviceId: lastDeviceId,
+            deviceName: settings.lastDeviceName,
+            onConnect: () => _reconnectToLastDevice(lastDeviceId),
+            onForget: () =>
+                ref.read(appSettingsProvider.notifier).forgetDevice(),
+          ),
+        Expanded(child: _buildScanContent(l10n)),
+      ],
+    );
+  }
+
+  Widget _buildScanContent(AppL10n l10n) {
     if (_error != null) {
       return Padding(
         padding: const EdgeInsets.all(24),
@@ -333,9 +371,94 @@ class _HomePageState extends ConsumerState<HomePage> {
           title: Text(name),
           subtitle: Text('${result.device.remoteId.str}  •  RSSI ${result.rssi}'),
           trailing: const Icon(Icons.chevron_right),
-          onTap: () => _openReading(result.device),
+          onTap: () => _openReading(
+            result.device,
+            advertisedName: result.advertisementData.advName,
+          ),
         );
       },
+    );
+  }
+}
+
+/// Карточка быстрого переподключения к последнему прибору. Показывается поверх
+/// экрана сканирования, пока в настройках есть `lastDeviceId` — обычный путь
+/// «сканировать → выбрать из списка» остаётся доступен ниже.
+class _LastDeviceCard extends StatelessWidget {
+  final String deviceId;
+  final String? deviceName;
+  final VoidCallback onConnect;
+  final VoidCallback onForget;
+
+  const _LastDeviceCard({
+    required this.deviceId,
+    required this.deviceName,
+    required this.onConnect,
+    required this.onForget,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final title = deviceName ?? deviceId;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+      child: Card(
+        elevation: 0,
+        color: theme.colorScheme.primaryContainer,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onConnect,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.bluetooth_connected,
+                  color: theme.colorScheme.onPrimaryContainer,
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Подключиться к $title',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          color: theme.colorScheme.onPrimaryContainer,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        deviceName == null
+                            ? 'Последний прибор — без сканирования'
+                            : '$deviceId • без сканирования',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onPrimaryContainer
+                              .withValues(alpha: 0.75),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, size: 20),
+                  color: theme.colorScheme.onPrimaryContainer.withValues(alpha: 0.7),
+                  tooltip: 'Забыть прибор',
+                  onPressed: onForget,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
