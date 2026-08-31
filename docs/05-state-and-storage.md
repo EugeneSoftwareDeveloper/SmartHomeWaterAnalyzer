@@ -16,7 +16,7 @@
 | Провайдер | Тип | Файл | Что делает |
 |---|---|---|---|
 | `sharedPreferencesProvider` | Provider (override) | `preferences_provider.dart` | Доступ к `SharedPreferences`. Override-нут в `main.dart` после `await SharedPreferences.getInstance()`. |
-| `appSettingsProvider` | StateNotifierProvider | `app_settings.dart` | Тема, профиль норм, lastDeviceId, флаг уведомлений. Persist через SharedPreferences. |
+| `appSettingsProvider` | StateNotifierProvider | `app_settings.dart` | Тема, профиль норм, lastDeviceId + lastDeviceName, флаг уведомлений. Persist через SharedPreferences. |
 | `yinmikBleClientProvider` | Provider | `yinmik_client_provider.dart` | Singleton `YinmikBleClient` на всё приложение. |
 | `bluetoothAdapterStateProvider` | StreamProvider | `bluetooth_state_provider.dart` | Состояние Bluetooth-адаптера (включён/выключен). UI реагирует на изменение в реальном времени. |
 | `appDatabaseProvider` | Provider | `history_provider.dart` | Drift `AppDatabase` singleton. Закрывается через `ref.onDispose`. |
@@ -43,7 +43,8 @@
 `AppSettings` хранятся в системном KV-сторе через `shared_preferences`. Ключи:
 - `settings.themeMode` — string, имя enum-значения `ThemeMode`.
 - `settings.normsProfile` — string, имя enum-значения `NormsProfile`.
-- `settings.lastDeviceId` — string или null, BLE remoteId.
+- `settings.lastDeviceId` — string или null, BLE remoteId. Используется кнопкой быстрого переподключения на HomePage: `BluetoothDevice.fromId(id)` минует скан.
+- `settings.lastDeviceName` — string или null, имя прибора на момент подключения. Только для подписи кнопки; настройки версий ≤ 1.1.x без этого ключа читаются как null, и кнопка показывает MAC.
 - `settings.notificationsEnabled` — bool.
 
 Запись через `AppSettingsNotifier` синхронна для in-memory state, асинхронна для диска (`await _prefs.setX`). UI не ждёт диска — сразу видит изменения.

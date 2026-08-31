@@ -38,7 +38,7 @@ lib/
 │   └── generated/                  # auto-generated, не редактировать
 ├── providers/                      # Riverpod-провайдеры
 │   ├── preferences_provider.dart
-│   ├── app_settings.dart           # тема, профиль, lastDeviceId, currentLabel, notifications
+│   ├── app_settings.dart           # тема, профиль, lastDeviceId + lastDeviceName, currentLabel, notifications
 │   ├── yinmik_client_provider.dart
 │   ├── bluetooth_state_provider.dart
 │   ├── history_provider.dart       # AppDatabase + HistoryRepository + recentMeasurementsProvider
@@ -186,8 +186,8 @@ flutter build apk --release --split-per-abi              # release APK по ар
 Приоритезированный roadmap — в [`docs/06-roadmap.md`](./docs/06-roadmap.md). Топ-3 на сейчас:
 
 1. **Реальные байты команд** (`commands.dart`) — через debug-страницу в Reading или HCI snoop. Самая близкая к пользе для пользователя дыра.
-2. **Auto-reconnect** к `lastDeviceId` — один тап вместо скана. Данные уже сохраняются, осталось UI-кнопка.
-3. **Trend indicators ↑↓** — под значением каждой карточки показывать дельту относительно последнего сохранённого замера.
+2. **Trend indicators ↑↓** — под значением каждой карточки показывать дельту относительно последнего сохранённого замера.
+3. **Серия чтений со стабилизацией** — pH-электрод стабилизируется десятки секунд, одиночный кадр это случайная точка на кривой дрейфа.
 
 Остальное (режим сравнения, iOS, Sentry, ...) — в roadmap по приоритетам.
 
