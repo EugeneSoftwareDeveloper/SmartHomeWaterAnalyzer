@@ -42,6 +42,17 @@ class Measurements extends Table {
   /// в UI не показывать «точку на карте» там, где на самом деле известен только
   /// район (по сети это сотни метров).
   RealColumn get locationAccuracyMeters => real().nullable()();
+
+  /// Профиль норм, по которому замер оценивался в момент сохранения (имя
+  /// значения `NormsProfile`).
+  ///
+  /// Хранится в самой записи, потому что «опасно / норма» — свойство замера, а
+  /// не текущей настройки приложения. Без этого замер в бассейне, просмотренный
+  /// после переключения профиля на питьевую воду, задним числом краснел бы.
+  ///
+  /// Nullable: у записей, сделанных до версии 1.2.0, профиль неизвестен — для
+  /// них UI берёт текущий из настроек, то есть ведёт себя как раньше.
+  TextColumn get normsProfile => text().nullable()();
 }
 
 /// Каталог мест замера — «Кран на кухне», «Аквариум», «Скважина».
@@ -89,7 +100,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -123,6 +134,12 @@ class AppDatabase extends _$AppDatabase {
             // пользовались.
             await _importPlacesFromExistingLabels();
             await _seedDefaultPlaces();
+          }
+          if (from < 5) {
+            // v5: профиль норм, по которому оценивался замер. Старые записи
+            // остаются с null — для них UI берёт текущий профиль из настроек,
+            // то есть ведёт себя ровно как до обновления.
+            await m.addColumn(measurements, measurements.normsProfile);
           }
         },
       );
@@ -158,16 +175,31 @@ class AppDatabase extends _$AppDatabase {
           ..groupBy([labelColumn]))
         .get();
 
-    final entries = <PlacesCompanion>[];
-    final now = DateTime.now();
+    // Группировка в SQL идёт по сырому значению, поэтому «Дача» и «Дача »
+    // приходят разными строками, а после trim() схлопываются в одно место.
+    // Сводим их здесь сами и берём НАИБОЛЕЕ СВЕЖЕЕ время использования, иначе
+    // место унаследовало бы время той метки, которая случайно оказалась первой.
+    final lastUsedByName = <String, DateTime?>{};
     for (final row in rows) {
       final name = row.read(labelColumn)?.trim();
       if (name == null || name.isEmpty) continue;
+
+      final rowLastUsed = row.read(lastUsed);
+      final known = lastUsedByName[name];
+      if (!lastUsedByName.containsKey(name) ||
+          (rowLastUsed != null && (known == null || rowLastUsed.isAfter(known)))) {
+        lastUsedByName[name] = rowLastUsed;
+      }
+    }
+
+    final entries = <PlacesCompanion>[];
+    final now = DateTime.now();
+    for (final entry in lastUsedByName.entries) {
       entries.add(
         PlacesCompanion.insert(
-          name: name,
+          name: entry.key,
           createdAt: now,
-          lastUsedAt: Value(row.read(lastUsed)),
+          lastUsedAt: Value(entry.value),
         ),
       );
     }
@@ -208,6 +240,11 @@ class AppDatabase extends _$AppDatabase {
   /// почти одновременно), и БД отвечает `UNIQUE constraint failed`.
   Future<Place> insertOrGetPlace(String name, DateTime createdAt) async {
     final trimmed = name.trim();
+    if (trimmed.isEmpty) {
+      // Без этой проверки пустое имя молча создавало бы безымянное место:
+      // пустая строка проходит в TEXT NOT NULL и занимает уникальный индекс.
+      throw ArgumentError.value(name, 'name', 'Название места не может быть пустым');
+    }
 
     await into(places).insert(
       PlacesCompanion.insert(name: trimmed, createdAt: createdAt),

@@ -212,6 +212,17 @@ class $MeasurementsTable extends Measurements
         type: DriftSqlType.double,
         requiredDuringInsert: false,
       );
+  static const VerificationMeta _normsProfileMeta = const VerificationMeta(
+    'normsProfile',
+  );
+  @override
+  late final GeneratedColumn<String> normsProfile = GeneratedColumn<String>(
+    'norms_profile',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -232,6 +243,7 @@ class $MeasurementsTable extends Measurements
     latitude,
     longitude,
     locationAccuracyMeters,
+    normsProfile,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -402,6 +414,15 @@ class $MeasurementsTable extends Measurements
         ),
       );
     }
+    if (data.containsKey('norms_profile')) {
+      context.handle(
+        _normsProfileMeta,
+        normsProfile.isAcceptableOrUnknown(
+          data['norms_profile']!,
+          _normsProfileMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -483,6 +504,10 @@ class $MeasurementsTable extends Measurements
         DriftSqlType.double,
         data['${effectivePrefix}location_accuracy_meters'],
       ),
+      normsProfile: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}norms_profile'],
+      ),
     );
   }
 
@@ -524,6 +549,17 @@ class Measurement extends DataClass implements Insertable<Measurement> {
   /// в UI не показывать «точку на карте» там, где на самом деле известен только
   /// район (по сети это сотни метров).
   final double? locationAccuracyMeters;
+
+  /// Профиль норм, по которому замер оценивался в момент сохранения (имя
+  /// значения `NormsProfile`).
+  ///
+  /// Хранится в самой записи, потому что «опасно / норма» — свойство замера, а
+  /// не текущей настройки приложения. Без этого замер в бассейне, просмотренный
+  /// после переключения профиля на питьевую воду, задним числом краснел бы.
+  ///
+  /// Nullable: у записей, сделанных до версии 1.2.0, профиль неизвестен — для
+  /// них UI берёт текущий из настроек, то есть ведёт себя как раньше.
+  final String? normsProfile;
   const Measurement({
     required this.id,
     required this.deviceId,
@@ -543,6 +579,7 @@ class Measurement extends DataClass implements Insertable<Measurement> {
     this.latitude,
     this.longitude,
     this.locationAccuracyMeters,
+    this.normsProfile,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -579,6 +616,9 @@ class Measurement extends DataClass implements Insertable<Measurement> {
         locationAccuracyMeters,
       );
     }
+    if (!nullToAbsent || normsProfile != null) {
+      map['norms_profile'] = Variable<String>(normsProfile);
+    }
     return map;
   }
 
@@ -612,6 +652,9 @@ class Measurement extends DataClass implements Insertable<Measurement> {
       locationAccuracyMeters: locationAccuracyMeters == null && nullToAbsent
           ? const Value.absent()
           : Value(locationAccuracyMeters),
+      normsProfile: normsProfile == null && nullToAbsent
+          ? const Value.absent()
+          : Value(normsProfile),
     );
   }
 
@@ -651,6 +694,7 @@ class Measurement extends DataClass implements Insertable<Measurement> {
       locationAccuracyMeters: serializer.fromJson<double?>(
         json['locationAccuracyMeters'],
       ),
+      normsProfile: serializer.fromJson<String?>(json['normsProfile']),
     );
   }
   @override
@@ -683,6 +727,7 @@ class Measurement extends DataClass implements Insertable<Measurement> {
       'locationAccuracyMeters': serializer.toJson<double?>(
         locationAccuracyMeters,
       ),
+      'normsProfile': serializer.toJson<String?>(normsProfile),
     };
   }
 
@@ -705,6 +750,7 @@ class Measurement extends DataClass implements Insertable<Measurement> {
     Value<double?> latitude = const Value.absent(),
     Value<double?> longitude = const Value.absent(),
     Value<double?> locationAccuracyMeters = const Value.absent(),
+    Value<String?> normsProfile = const Value.absent(),
   }) => Measurement(
     id: id ?? this.id,
     deviceId: deviceId ?? this.deviceId,
@@ -730,6 +776,7 @@ class Measurement extends DataClass implements Insertable<Measurement> {
     locationAccuracyMeters: locationAccuracyMeters.present
         ? locationAccuracyMeters.value
         : this.locationAccuracyMeters,
+    normsProfile: normsProfile.present ? normsProfile.value : this.normsProfile,
   );
   Measurement copyWithCompanion(MeasurementsCompanion data) {
     return Measurement(
@@ -776,6 +823,9 @@ class Measurement extends DataClass implements Insertable<Measurement> {
       locationAccuracyMeters: data.locationAccuracyMeters.present
           ? data.locationAccuracyMeters.value
           : this.locationAccuracyMeters,
+      normsProfile: data.normsProfile.present
+          ? data.normsProfile.value
+          : this.normsProfile,
     );
   }
 
@@ -801,7 +851,8 @@ class Measurement extends DataClass implements Insertable<Measurement> {
           ..write('holdReadingOn: $holdReadingOn, ')
           ..write('latitude: $latitude, ')
           ..write('longitude: $longitude, ')
-          ..write('locationAccuracyMeters: $locationAccuracyMeters')
+          ..write('locationAccuracyMeters: $locationAccuracyMeters, ')
+          ..write('normsProfile: $normsProfile')
           ..write(')'))
         .toString();
   }
@@ -826,6 +877,7 @@ class Measurement extends DataClass implements Insertable<Measurement> {
     latitude,
     longitude,
     locationAccuracyMeters,
+    normsProfile,
   );
   @override
   bool operator ==(Object other) =>
@@ -849,7 +901,8 @@ class Measurement extends DataClass implements Insertable<Measurement> {
           other.holdReadingOn == this.holdReadingOn &&
           other.latitude == this.latitude &&
           other.longitude == this.longitude &&
-          other.locationAccuracyMeters == this.locationAccuracyMeters);
+          other.locationAccuracyMeters == this.locationAccuracyMeters &&
+          other.normsProfile == this.normsProfile);
 }
 
 class MeasurementsCompanion extends UpdateCompanion<Measurement> {
@@ -871,6 +924,7 @@ class MeasurementsCompanion extends UpdateCompanion<Measurement> {
   final Value<double?> latitude;
   final Value<double?> longitude;
   final Value<double?> locationAccuracyMeters;
+  final Value<String?> normsProfile;
   const MeasurementsCompanion({
     this.id = const Value.absent(),
     this.deviceId = const Value.absent(),
@@ -890,6 +944,7 @@ class MeasurementsCompanion extends UpdateCompanion<Measurement> {
     this.latitude = const Value.absent(),
     this.longitude = const Value.absent(),
     this.locationAccuracyMeters = const Value.absent(),
+    this.normsProfile = const Value.absent(),
   });
   MeasurementsCompanion.insert({
     this.id = const Value.absent(),
@@ -910,6 +965,7 @@ class MeasurementsCompanion extends UpdateCompanion<Measurement> {
     this.latitude = const Value.absent(),
     this.longitude = const Value.absent(),
     this.locationAccuracyMeters = const Value.absent(),
+    this.normsProfile = const Value.absent(),
   }) : deviceId = Value(deviceId),
        observedAt = Value(observedAt),
        ph = Value(ph),
@@ -942,6 +998,7 @@ class MeasurementsCompanion extends UpdateCompanion<Measurement> {
     Expression<double>? latitude,
     Expression<double>? longitude,
     Expression<double>? locationAccuracyMeters,
+    Expression<String>? normsProfile,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -968,6 +1025,7 @@ class MeasurementsCompanion extends UpdateCompanion<Measurement> {
       if (longitude != null) 'longitude': longitude,
       if (locationAccuracyMeters != null)
         'location_accuracy_meters': locationAccuracyMeters,
+      if (normsProfile != null) 'norms_profile': normsProfile,
     });
   }
 
@@ -990,6 +1048,7 @@ class MeasurementsCompanion extends UpdateCompanion<Measurement> {
     Value<double?>? latitude,
     Value<double?>? longitude,
     Value<double?>? locationAccuracyMeters,
+    Value<String?>? normsProfile,
   }) {
     return MeasurementsCompanion(
       id: id ?? this.id,
@@ -1015,6 +1074,7 @@ class MeasurementsCompanion extends UpdateCompanion<Measurement> {
       longitude: longitude ?? this.longitude,
       locationAccuracyMeters:
           locationAccuracyMeters ?? this.locationAccuracyMeters,
+      normsProfile: normsProfile ?? this.normsProfile,
     );
   }
 
@@ -1083,6 +1143,9 @@ class MeasurementsCompanion extends UpdateCompanion<Measurement> {
         locationAccuracyMeters.value,
       );
     }
+    if (normsProfile.present) {
+      map['norms_profile'] = Variable<String>(normsProfile.value);
+    }
     return map;
   }
 
@@ -1108,7 +1171,8 @@ class MeasurementsCompanion extends UpdateCompanion<Measurement> {
           ..write('holdReadingOn: $holdReadingOn, ')
           ..write('latitude: $latitude, ')
           ..write('longitude: $longitude, ')
-          ..write('locationAccuracyMeters: $locationAccuracyMeters')
+          ..write('locationAccuracyMeters: $locationAccuracyMeters, ')
+          ..write('normsProfile: $normsProfile')
           ..write(')'))
         .toString();
   }
@@ -1455,6 +1519,7 @@ typedef $$MeasurementsTableCreateCompanionBuilder =
       Value<double?> latitude,
       Value<double?> longitude,
       Value<double?> locationAccuracyMeters,
+      Value<String?> normsProfile,
     });
 typedef $$MeasurementsTableUpdateCompanionBuilder =
     MeasurementsCompanion Function({
@@ -1476,6 +1541,7 @@ typedef $$MeasurementsTableUpdateCompanionBuilder =
       Value<double?> latitude,
       Value<double?> longitude,
       Value<double?> locationAccuracyMeters,
+      Value<String?> normsProfile,
     });
 
 class $$MeasurementsTableFilterComposer
@@ -1575,6 +1641,11 @@ class $$MeasurementsTableFilterComposer
 
   ColumnFilters<double> get locationAccuracyMeters => $composableBuilder(
     column: $table.locationAccuracyMeters,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get normsProfile => $composableBuilder(
+    column: $table.normsProfile,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -1678,6 +1749,11 @@ class $$MeasurementsTableOrderingComposer
     column: $table.locationAccuracyMeters,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get normsProfile => $composableBuilder(
+    column: $table.normsProfile,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$MeasurementsTableAnnotationComposer
@@ -1767,6 +1843,11 @@ class $$MeasurementsTableAnnotationComposer
     column: $table.locationAccuracyMeters,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get normsProfile => $composableBuilder(
+    column: $table.normsProfile,
+    builder: (column) => column,
+  );
 }
 
 class $$MeasurementsTableTableManager
@@ -1819,6 +1900,7 @@ class $$MeasurementsTableTableManager
                 Value<double?> latitude = const Value.absent(),
                 Value<double?> longitude = const Value.absent(),
                 Value<double?> locationAccuracyMeters = const Value.absent(),
+                Value<String?> normsProfile = const Value.absent(),
               }) => MeasurementsCompanion(
                 id: id,
                 deviceId: deviceId,
@@ -1839,6 +1921,7 @@ class $$MeasurementsTableTableManager
                 latitude: latitude,
                 longitude: longitude,
                 locationAccuracyMeters: locationAccuracyMeters,
+                normsProfile: normsProfile,
               ),
           createCompanionCallback:
               ({
@@ -1860,6 +1943,7 @@ class $$MeasurementsTableTableManager
                 Value<double?> latitude = const Value.absent(),
                 Value<double?> longitude = const Value.absent(),
                 Value<double?> locationAccuracyMeters = const Value.absent(),
+                Value<String?> normsProfile = const Value.absent(),
               }) => MeasurementsCompanion.insert(
                 id: id,
                 deviceId: deviceId,
@@ -1880,6 +1964,7 @@ class $$MeasurementsTableTableManager
                 latitude: latitude,
                 longitude: longitude,
                 locationAccuracyMeters: locationAccuracyMeters,
+                normsProfile: normsProfile,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

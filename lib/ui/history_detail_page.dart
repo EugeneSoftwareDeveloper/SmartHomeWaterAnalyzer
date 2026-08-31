@@ -10,9 +10,11 @@ import '../providers/app_settings.dart';
 import '../providers/history_provider.dart';
 import '../quality/catalog.dart';
 import '../quality/overview.dart';
+import '../quality/profile.dart';
 import '../yinmik/reading_values.dart';
 import 'widgets/location_card.dart';
 import 'widgets/parameter_card.dart';
+import 'widgets/place_picker.dart';
 import 'widgets/summary_header.dart';
 
 /// Детальный просмотр одного замера из истории с возможностью свайпа влево/вправо
@@ -98,12 +100,12 @@ class _HistoryDetailPageState extends ConsumerState<HistoryDetailPage> {
             onSelected: (action) => _onMenuAction(action, current),
             itemBuilder: (context) => const [
               PopupMenuItem(
-                value: _DetailAction.editLabel,
+                value: _DetailAction.editPlace,
                 child: Row(
                   children: [
-                    Icon(Icons.edit_outlined),
+                    Icon(Icons.place_outlined),
                     SizedBox(width: 12),
-                    Text('Изменить метку'),
+                    Text('Изменить место'),
                   ],
                 ),
               ),
@@ -133,27 +135,39 @@ class _HistoryDetailPageState extends ConsumerState<HistoryDetailPage> {
 
   Future<void> _onMenuAction(_DetailAction action, Measurement current) async {
     switch (action) {
-      case _DetailAction.editLabel:
-        await _editLabel(current);
+      case _DetailAction.editPlace:
+        await _editPlace(current);
       case _DetailAction.delete:
         await _delete(current);
     }
   }
 
-  Future<void> _editLabel(Measurement current) async {
-    final newLabel = await showDialog<String?>(
-      context: context,
-      builder: (dialogContext) => _LabelDialog(initialValue: current.label ?? ''),
+  /// Смена места у сохранённого замера — через тот же каталог, что и на экране
+  /// показаний. Раньше здесь было свободное текстовое поле: оно писало прямо в
+  /// базу мимо каталога, и получалось «место», которого нет в списке выбора.
+  Future<void> _editPlace(Measurement current) async {
+    final newPlace = await showPlacePicker(
+      context,
+      ref,
+      initialSelection: current.label,
     );
-    // null — пользователь нажал «Отмена». Пустая строка — пользователь стёр метку.
-    if (newLabel == null) return;
+    // null — пользователь закрыл лист, ничего не выбрав.
+    if (newPlace == null || !mounted) return;
 
-    final trimmed = newLabel.trim();
-    final newValue = trimmed.isEmpty ? null : trimmed;
+    final newValue = newPlace.name;
     if (newValue == current.label) return;
 
+    final messenger = ScaffoldMessenger.of(context);
     final repo = ref.read(historyRepositoryProvider);
-    await repo.updateLabel(current.id, newValue);
+    try {
+      await repo.updateLabel(current.id, newValue);
+    } on Object catch (error) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text('Не удалось сменить место: $error')),
+      );
+      return;
+    }
 
     if (!mounted) return;
     setState(() {
@@ -165,8 +179,12 @@ class _HistoryDetailPageState extends ConsumerState<HistoryDetailPage> {
             m,
       ];
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Метка обновлена')),
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          newValue == null ? 'Место убрано' : 'Место изменено на «$newValue»',
+        ),
+      ),
     );
   }
 
@@ -239,54 +257,7 @@ class _HistoryDetailPageState extends ConsumerState<HistoryDetailPage> {
   }
 }
 
-enum _DetailAction { editLabel, delete }
-
-class _LabelDialog extends StatefulWidget {
-  final String initialValue;
-
-  const _LabelDialog({required this.initialValue});
-
-  @override
-  State<_LabelDialog> createState() => _LabelDialogState();
-}
-
-class _LabelDialogState extends State<_LabelDialog> {
-  late final TextEditingController _controller =
-      TextEditingController(text: widget.initialValue);
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Метка замера'),
-      content: TextField(
-        controller: _controller,
-        autofocus: true,
-        decoration: const InputDecoration(
-          hintText: 'Например: Москва, квартира',
-          border: OutlineInputBorder(),
-        ),
-        textInputAction: TextInputAction.done,
-        onSubmitted: (value) => Navigator.of(context).pop(value),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Отмена'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(_controller.text),
-          child: const Text('Сохранить'),
-        ),
-      ],
-    );
-  }
-}
+enum _DetailAction { editPlace, delete }
 
 class _MeasurementDetailView extends ConsumerWidget {
   final Measurement measurement;
@@ -295,7 +266,14 @@ class _MeasurementDetailView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final profile = ref.watch(appSettingsProvider).normsProfile;
+    // Замер судим по профилю, с которым он был сделан, а не по текущей настройке:
+    // иначе замер в бассейне после переключения на «питьевую воду» задним числом
+    // краснел бы. У записей до версии 1.2.0 профиль неизвестен — для них берём
+    // текущий, то есть поведение остаётся прежним.
+    final profile = NormsProfile.resolve(
+      measurement.normsProfile,
+      fallback: ref.watch(appSettingsProvider).normsProfile,
+    );
     final parameters = WaterParameterCatalog.forProfile(profile);
     final values = measurementValues(measurement);
     final overview = WaterQualityOverview.compute(values, profile: profile);

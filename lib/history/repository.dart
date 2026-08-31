@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../location/measurement_location.dart';
+import '../quality/profile.dart';
 import '../yinmik/reading.dart';
 import 'database.dart';
 
@@ -22,15 +23,22 @@ class HistoryRepository {
     DateTime observedAt, {
     String? label,
     MeasurementLocation? location,
+    NormsProfile? normsProfile,
   }) {
+    final place = label?.trim();
+
     return _database.insertMeasurement(
       MeasurementsCompanion.insert(
         deviceId: deviceId,
-        label: Value(label),
+        // Пустое место сохраняем как отсутствие места, а не как пустую строку:
+        // иначе в истории появлялись бы записи с «пробельной» меткой, которые
+        // UI показывает как названные.
+        label: Value(place == null || place.isEmpty ? null : place),
         observedAt: observedAt,
         latitude: Value(location?.latitude),
         longitude: Value(location?.longitude),
         locationAccuracyMeters: Value(location?.accuracyMeters),
+        normsProfile: Value(normsProfile?.name),
         ph: reading.ph,
         electricalConductivityUsCm: reading.electricalConductivityUsCm,
         totalDissolvedSolidsPpm: reading.totalDissolvedSolidsPpm,
@@ -80,6 +88,7 @@ class HistoryRepository {
         latitude: Value(m.latitude),
         longitude: Value(m.longitude),
         locationAccuracyMeters: Value(m.locationAccuracyMeters),
+        normsProfile: Value(m.normsProfile),
       ),
     );
   }

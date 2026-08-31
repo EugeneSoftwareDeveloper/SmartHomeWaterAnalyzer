@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sqlite3/sqlite3.dart';
 import 'package:water_analyzer/history/database.dart';
 import 'package:water_analyzer/history/repository.dart';
+import 'package:water_analyzer/quality/profile.dart';
+import 'package:water_analyzer/yinmik/reading.dart';
 
 /// Миграция v3 → v4 на «боевой» базе: у пользователя уже есть история с метками,
 /// и после обновления его собственные названия должны оказаться в каталоге мест,
@@ -186,5 +188,78 @@ void main() {
     final places = await PlacesRepository(db).all();
 
     expect(places, hasLength(defaultPlaceNames.length));
+  });
+
+  test('метки, различающиеся пробелами, схлопываются в одно место', () async {
+    // GROUP BY в SQL идёт по сырому значению, поэтому «Дача» и «Дача » приходят
+    // разными строками и после trim() дали бы конфликт по уникальному имени.
+    createV3Database(['Дача', 'Дача ', ' Дача']);
+
+    final db = await openMigrated();
+    addTearDown(db.close);
+    final places = await PlacesRepository(db).all();
+
+    expect(places.where((p) => p.name == 'Дача'), hasLength(1));
+    expect(places, hasLength(defaultPlaceNames.length + 1));
+  });
+
+  test('схлопнутое место получает самое свежее время использования', () async {
+    // Замеры создаются с шагом в час, последний — самый свежий. Место должно
+    // унаследовать именно его время, а не время первой попавшейся метки.
+    createV3Database(['Дача ', 'Дача']);
+
+    final db = await openMigrated();
+    addTearDown(db.close);
+    final dacha = (await PlacesRepository(db).all())
+        .firstWhere((p) => p.name == 'Дача');
+    final rows = await HistoryRepository(db).recent();
+    final newest = rows
+        .map((m) => m.observedAt)
+        .reduce((a, b) => a.isAfter(b) ? a : b);
+
+    expect(dacha.lastUsedAt, newest);
+  });
+
+  test('миграция v3 → v5 оставляет старые замеры без профиля норм', () async {
+    // Профиль появился в v5. У записей, сделанных раньше, он неизвестен —
+    // и это валидное состояние: UI для них берёт текущий профиль из настроек.
+    createV3Database(['Кухня, кран']);
+
+    final db = await openMigrated();
+    addTearDown(db.close);
+    final rows = await HistoryRepository(db).recent();
+
+    expect(rows, isNotEmpty);
+    expect(rows.every((m) => m.normsProfile == null), isTrue);
+  });
+
+  test('после миграции новые замеры сохраняют профиль', () async {
+    createV3Database(['Кухня, кран']);
+
+    final db = await openMigrated();
+    addTearDown(db.close);
+    final repo = HistoryRepository(db);
+    await repo.save(
+      'AA:BB',
+      const YinmikReading(
+        ph: 7.2,
+        electricalConductivityUsCm: 250,
+        totalDissolvedSolidsPpm: 125,
+        salinityPpm: 60,
+        salinityPercent: 0.006,
+        temperatureCelsius: 21.5,
+        batteryRawMillivolts: 3050,
+        statusFlags: 0,
+        backlightOn: false,
+        holdReadingOn: false,
+        specificGravity: 1.001,
+        oxidationReductionPotentialMillivolts: 380,
+      ),
+      DateTime(2026, 9),
+      normsProfile: NormsProfile.pool,
+    );
+
+    final newest = (await repo.recent()).first;
+    expect(newest.normsProfile, 'pool');
   });
 }

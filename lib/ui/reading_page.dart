@@ -120,13 +120,19 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
           ? await ref.read(locationServiceProvider).currentLocation()
           : null;
 
-      final place = settings.currentLabel;
+      // Настройки перечитываем ПОСЛЕ ожидания координат: между тапом «Сохранить»
+      // и этой точкой могло пройти до 30 секунд (медленный фикс, системный диалог
+      // разрешений), и пользователь успел бы сменить место или профиль. Со старым
+      // снапшотом замер ушёл бы с прежним местом.
+      final current = ref.read(appSettingsProvider);
+      final place = current.currentLabel;
       final id = await history.save(
         widget.device.remoteId.str,
         reading,
         DateTime.now(),
         label: place,
         location: locationResult?.location,
+        normsProfile: current.normsProfile,
       );
 
       // Место поднимается в начало списка выбора — им только что пользовались.
