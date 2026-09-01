@@ -164,35 +164,58 @@ jobs:
           done
           ls -la "$OUT"
 
-      # Вытаскиваем changelog для текущей версии из CHANGELOG.md. Берём блок между
-      # «## [<VERSION>]» (или «## [Unreleased]» для первого релиза) и следующим «## [».
-      # Если такого раздела нет — ставим заглушку.
+      # Вытаскиваем раздел текущей версии из CHANGELOG.md — блок между
+      # «## [<VERSION>]» и следующим «## [».
+      #
+      # Порядок попыток важен. Раньше один awk искал «[VERSION] ИЛИ [Unreleased]»
+      # и натыкался на [Unreleased] первой, потому что она всегда сверху: релиз
+      # v1.2.0 получил её содержимое, то есть пустоту, а GitHub на пустом body
+      # подставил текст последнего коммита вместо описания версии. Поэтому
+      # сначала ищем строго свой раздел и только потом откатываемся к
+      # [Unreleased] — он нужен, когда версию ещё не успели проставить.
       - name: Extract release notes from CHANGELOG.md
         id: notes
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           NOTES_FILE="release-notes.md"
-          if [ -f CHANGELOG.md ]; then
-            awk -v ver="$VERSION" '
-              BEGIN { in_section = 0 }
-              /^## \[/ {
-                if (in_section) { exit }
-                if (index($0, "[" ver "]") > 0 || (index($0, "[Unreleased]") > 0 && !found)) {
-                  in_section = 1
-                  found = 1
-                  next
-                }
+
+          # Печатает содержимое раздела «## [$1]» из CHANGELOG.md.
+          extract_section() {
+            awk -v header="## [$1]" '
+              index($0, "## [") == 1 {
+                if (in_section) exit
+                in_section = (index($0, header) == 1)
+                next
               }
               in_section { print }
-            ' CHANGELOG.md > "$NOTES_FILE"
-            if [ ! -s "$NOTES_FILE" ]; then
-              echo "Release ${VERSION}." > "$NOTES_FILE"
-              echo "" >> "$NOTES_FILE"
-              echo "См. [CHANGELOG.md](./CHANGELOG.md) с подробностями." >> "$NOTES_FILE"
+            ' CHANGELOG.md
+          }
+
+          # Раздел считается заполненным, только если в нём есть непробельный
+          # текст: пустая секция — это один перевод строки, и проверка `test -s`
+          # принимала её за содержимое.
+          has_text() {
+            grep -q '[^[:space:]]' "$1" 2>/dev/null
+          }
+
+          : > "$NOTES_FILE"
+          if [ -f CHANGELOG.md ]; then
+            extract_section "$VERSION" > "$NOTES_FILE"
+            if ! has_text "$NOTES_FILE"; then
+              echo "CHANGELOG: раздел [$VERSION] пуст, беру [Unreleased]"
+              extract_section "Unreleased" > "$NOTES_FILE"
             fi
-          else
-            echo "Release ${VERSION}." > "$NOTES_FILE"
           fi
+
+          if ! has_text "$NOTES_FILE"; then
+            echo "CHANGELOG: подходящего раздела нет, ставлю заглушку"
+            {
+              echo "Release ${VERSION}."
+              echo ""
+              echo "См. [CHANGELOG.md](./CHANGELOG.md) с подробностями."
+            } > "$NOTES_FILE"
+          fi
+
           echo "notes_file=$NOTES_FILE" >> "$GITHUB_OUTPUT"
           echo "=== Release notes preview ==="
           cat "$NOTES_FILE"
