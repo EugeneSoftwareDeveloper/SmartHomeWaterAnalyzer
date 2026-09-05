@@ -6,6 +6,13 @@ on:
   pull_request:
     branches: [master, main]
 
+# Новый пуш отменяет предыдущий прогон той же ветки: раннер платный, а
+# результат устаревшего прогона всё равно никому не нужен. Релизы сюда не
+# попадают — у них свой workflow по тегу.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   analyze-and-test:
     name: Analyze and test
