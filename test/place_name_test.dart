@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:water_analyzer/history/place_name.dart';
 import 'package:water_analyzer/ui/widgets/place_picker.dart';
 
 /// Нормализация имени места. Функция маленькая, но стоит на стыке двух версий:

@@ -73,6 +73,8 @@ abstract final class WaterParameterCatalog {
       scaleMin: 0,
       scaleMax: 14,
       fractionDigits: 2,
+      // ±0.1 между соседними кадрами даже в идеальной среде — см. docs/02-ble-protocol.md.
+      noiseThreshold: 0.1,
       description: _phDescription(profile),
       zones: zones,
     );
@@ -132,6 +134,8 @@ abstract final class WaterParameterCatalog {
       scaleMin: -500,
       scaleMax: 1000,
       fractionDigits: 0,
+      // Редокс-электрод шумит единицами милливольт; 5 мВ — консервативная оценка.
+      noiseThreshold: 5,
       description: profile == NormsProfile.pool
           ? 'Окислительный потенциал бассейна. ВОЗ рекомендует ≥650 мВ для безопасности.'
           : 'Окислительно-восстановительный потенциал. Для питьевой воды обычно 200–600 мВ.',
@@ -169,6 +173,8 @@ abstract final class WaterParameterCatalog {
       scaleMin: 0,
       scaleMax: 3000,
       fractionDigits: 0,
+      // Паспортные ±2%: на водопроводных ~300–500 µС/см это 6–10 единиц.
+      noiseThreshold: 10,
       description: profile == NormsProfile.hydroponics
           ? 'Концентрация раствора. Большинство культур 1200–2000 µС/см.'
           : 'Электропроводность. Для питьевой воды до 1500 µС/см.',
@@ -189,6 +195,8 @@ abstract final class WaterParameterCatalog {
       scaleMin: 0,
       scaleMax: 2000,
       fractionDigits: 0,
+      // TDS считается из EC тем же трактом: ±2% от типичных 250 ppm.
+      noiseThreshold: 5,
       description: switch (profile) {
         NormsProfile.drinking => 'Общая минерализация. Для питьевой воды до 1000 ppm.',
         NormsProfile.pool => 'Минерализация бассейна.',
@@ -218,6 +226,8 @@ abstract final class WaterParameterCatalog {
       scaleMin: 0,
       scaleMax: 2000,
       fractionDigits: 0,
+      // Тот же тракт, что у EC и TDS.
+      noiseThreshold: 5,
       description: profile == NormsProfile.pool
           ? 'Соленость бассейна. Для соляных систем 2700–3400 ppm (вне шкалы).'
           : 'Соленость в ppm. Для пресной воды близко к нулю.',
@@ -272,6 +282,8 @@ abstract final class WaterParameterCatalog {
       scaleMin: 0,
       scaleMax: 50,
       fractionDigits: 1,
+      // Паспортная точность термодатчика ±0.5 °C.
+      noiseThreshold: 0.5,
       description: 'Температура воды.',
       zones: zones,
     );
@@ -290,6 +302,8 @@ abstract final class WaterParameterCatalog {
       scaleMin: 0.990,
       scaleMax: 1.040,
       fractionDigits: 3,
+      // Плотность выводится с тремя знаками; меньше единицы вывода различить нечем.
+      noiseThreshold: 0.001,
       description: 'Удельная плотность. Для пресной воды близко к 1.000.',
       zones: [
         QualityZone(min: 0.990, max: 0.998, category: QualityCategory.acceptable, label: 'Низкая'),

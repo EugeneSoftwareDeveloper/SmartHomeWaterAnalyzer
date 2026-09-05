@@ -16,6 +16,18 @@ class WaterParameter {
   final int fractionDigits;
   final String? description;
 
+  /// Наименьшая разница между двумя замерами, которую прибор способен различить.
+  ///
+  /// Берётся из паспортной погрешности BLE-C600, а не из разрядности вывода:
+  /// pH печатается с двумя знаками, но точность электрода ±0.1, поэтому разницу
+  /// 7.21 − 7.19 показывать как изменение — значит выдавать шум за результат.
+  /// Сравнение с предыдущим замером ниже этого порога считается отсутствием
+  /// изменений (см. `quality/trend.dart`).
+  ///
+  /// Инвариант: порог не меньше единицы вывода (10^−[fractionDigits]) — иначе
+  /// в интерфейсе появилась бы дельта «+0.00». Проверяется тестом.
+  final double noiseThreshold;
+
   const WaterParameter({
     required this.key,
     required this.label,
@@ -24,6 +36,7 @@ class WaterParameter {
     required this.scaleMin,
     required this.scaleMax,
     required this.zones,
+    required this.noiseThreshold,
     this.fractionDigits = 1,
     this.description,
   });
@@ -43,5 +56,15 @@ class WaterParameter {
   String formatValue(double value) {
     final number = value.toStringAsFixed(fractionDigits);
     return unit == null ? number : '$number $unit';
+  }
+
+  /// Разница между замерами со знаком: «+0.12», «−45». Единицу не добавляет —
+  /// в карточке дельта стоит рядом со значением, и повторять «ppm» дважды незачем.
+  ///
+  /// Минус берётся типографский (U+2212), а не дефис: в колонке цифр дефис
+  /// выглядит как перенос, а не как знак числа.
+  String formatDelta(double delta) {
+    final number = delta.abs().toStringAsFixed(fractionDigits);
+    return delta < 0 ? '−$number' : '+$number';
   }
 }

@@ -1,9 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
+import '../history/database.dart';
+import '../history/place_name.dart';
 import '../providers/app_settings.dart';
 import '../providers/history_provider.dart';
 import '../providers/location_provider.dart';
@@ -11,6 +16,8 @@ import '../providers/notification_provider.dart';
 import '../providers/yinmik_client_provider.dart';
 import '../quality/catalog.dart';
 import '../quality/overview.dart';
+import '../quality/parameter.dart';
+import '../quality/trend.dart';
 import '../yinmik/reading.dart';
 import '../yinmik/reading_values.dart';
 import 'widgets/control_panel.dart';
@@ -49,10 +56,53 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
   /// после первого объяснения повторять её при каждом сохранении — это шум.
   bool _locationFailureReported = false;
 
+  /// Прошлый сохранённый замер в выбранном месте — с ним сравниваются свежие
+  /// показания. `null` при [_baselineLoaded] = true означает «здесь ещё не
+  /// сохраняли», и это разные состояния: пока база не загружена, дельту
+  /// показывать нельзя, иначе первое, что увидит пользователь, — «изменений нет».
+  Measurement? _baseline;
+  bool _baselineLoaded = false;
+
+  /// Место, для которого запрошена [_baseline]. Нужно, чтобы ответ устаревшего
+  /// запроса не перетёр базу: пока БД отвечает, пользователь успевает сменить
+  /// место в списке, и тогда пришедший результат относится уже не к тому месту.
+  String? _baselineRequestedFor;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _refresh());
+  }
+
+  /// Перечитывает базу сравнения из истории.
+  ///
+  /// Вызывается при каждом чтении и при смене места, но **не после сохранения**:
+  /// иначе только что записанный замер сам стал бы базой, и дельта, которую
+  /// пользователь секунду назад видел, схлопнулась бы в ноль.
+  Future<void> _loadBaseline() async {
+    final place = normalizePlaceName(ref.read(appSettingsProvider).currentLabel);
+    _baselineRequestedFor = place;
+
+    try {
+      final found = await ref
+          .read(historyRepositoryProvider)
+          .latestForPlace(widget.device.remoteId.str, place);
+
+      // Пока ждали БД, место могли сменить — ответ уже не про то место.
+      if (!mounted || _baselineRequestedFor != place) return;
+      setState(() {
+        _baseline = found;
+        _baselineLoaded = true;
+      });
+    } on Object catch (_) {
+      // Сравнение — украшение поверх показаний. Сбой чтения истории не должен
+      // мешать смотреть свежий замер, поэтому просто остаёмся без дельт.
+      if (!mounted || _baselineRequestedFor != place) return;
+      setState(() {
+        _baseline = null;
+        _baselineLoaded = true;
+      });
+    }
   }
 
   Future<void> _refresh() async {
@@ -60,6 +110,10 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
       _loading = true;
       _error = null;
     });
+
+    // База сравнения читается параллельно с прибором: она не нужна для показа
+    // самих значений, и ждать SQLite перед BLE-чтением незачем.
+    unawaited(_loadBaseline());
 
     final client = ref.read(yinmikBleClientProvider);
 
@@ -187,6 +241,14 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Сменили место — сравнивать надо уже с историей нового места, иначе замер
+    // на кухне сопоставлялся бы с прошлым замером в бассейне. Ровно та причина,
+    // по которой у графика в 1.2.0 появился фильтр по месту.
+    ref.listen<String?>(
+      appSettingsProvider.select((settings) => settings.currentLabel),
+      (_, _) => unawaited(_loadBaseline()),
+    );
+
     final deviceName = widget.device.platformName.isEmpty
         ? widget.device.remoteId.str
         : widget.device.platformName;
@@ -239,6 +301,20 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
     );
   }
 
+  /// Тренд по одному параметру. `null`, если базы нет или в ней нет этого
+  /// параметра — карточка тогда просто не показывает дельту.
+  ParameterTrend? _trendFor(
+    WaterParameter parameter,
+    Map<String, double> current,
+    Map<String, double>? baseline,
+  ) {
+    final previous = baseline?[parameter.key];
+    final value = current[parameter.key];
+    if (previous == null || value == null) return null;
+
+    return ParameterTrend.between(parameter: parameter, previous: previous, current: value);
+  }
+
   Widget _buildBody() {
     if (_loading && _reading == null) {
       return const Center(child: CircularProgressIndicator());
@@ -274,6 +350,11 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
     final values = readingValues(reading);
     final overview = WaterQualityOverview.compute(values, profile: profile);
 
+    // Значения базы берём тем же маппингом, что и свежий кадр, — иначе дельта
+    // считалась бы между разными полями при добавлении нового параметра.
+    final baseline = _baseline;
+    final baselineValues = baseline == null ? null : measurementValues(baseline);
+
     return RefreshIndicator(
       onRefresh: _refresh,
       child: ListView(
@@ -282,9 +363,14 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
         children: [
           const PlacePickerField(),
           SummaryHeader(overview: overview, reading: reading),
+          if (_baselineLoaded) _TrendBaselineNote(baseline: baseline),
           for (final parameter in parameters)
             if (values[parameter.key] != null)
-              ParameterCard(parameter: parameter, value: values[parameter.key]!),
+              ParameterCard(
+                parameter: parameter,
+                value: values[parameter.key]!,
+                trend: _trendFor(parameter, values, baselineValues),
+              ),
           const SizedBox(height: 8),
           ControlPanel(
             device: widget.device,
@@ -304,5 +390,59 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
         ],
       ),
     );
+  }
+}
+
+/// Одна строка «с чем сравниваем» над карточками.
+///
+/// Стоит здесь, а не на каждой карточке: время базы одно на весь экран, и
+/// повторять его семь раз — шум. Без этой строки дельты выглядели бы как
+/// сравнение неизвестно с чем.
+class _TrendBaselineNote extends StatelessWidget {
+  /// Замер, взятый за базу. `null` — в этом месте ещё ничего не сохраняли.
+  final Measurement? baseline;
+
+  const _TrendBaselineNote({required this.baseline});
+
+  // Локаль-нейтральный формат: не требует initializeDateFormatting и не падает
+  // на устройствах без российских locale data.
+  static final _dateFormat = DateFormat('dd.MM.yyyy HH:mm');
+  static final _timeFormat = DateFormat('HH:mm');
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final previous = baseline;
+
+    final text = previous == null
+        ? 'Первый замер в этом месте — сравнивать не с чем'
+        : 'Сравнение с замером ${_describe(previous.observedAt)}';
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+      child: Row(
+        children: [
+          Icon(Icons.history, size: 14, color: theme.colorScheme.onSurfaceVariant),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              text,
+              maxLines: 2,
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// «сегодня в 14:20» для замера того же дня, полная дата — для остальных.
+  /// Перемер одной и той же воды в течение дня — самый частый сценарий, и
+  /// «05.09.2026 14:20» в нём читается хуже.
+  String _describe(DateTime moment) {
+    final now = DateTime.now();
+    final sameDay = moment.year == now.year && moment.month == now.month && moment.day == now.day;
+
+    return sameDay ? 'сегодня в ${_timeFormat.format(moment)}' : _dateFormat.format(moment);
   }
 }

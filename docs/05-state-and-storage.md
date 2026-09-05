@@ -143,6 +143,7 @@ MigrationStrategy get migration => MigrationStrategy(
 | `save(deviceId, reading, observedAt, {label})` | Вставка новой записи | `int` — id вставленной строки. Нужен для undo. |
 | `recent({deviceId, limit})` | Список последних, `desc by observedAt`. | `List<Measurement>` |
 | `watchRecent({deviceId, limit})` | Стрим последних с реактивным обновлением при insert/delete. | `Stream<List<Measurement>>` |
+| `latestForPlace(deviceId, place)` | Последний замер этого прибора в этом месте — база для сравнения «стало / было» на экране показаний. Место нормализуется тем же правилом, что при записи; отсутствие места ищется через `IS NULL`, иначе такие замеры никогда не находили бы базу. | `Measurement?` |
 | `updateLabel(id, label)` | Меняет только колонку `label`. Пустая строка из пробелов автоматически становится `null`. | `int` — затронутых строк (0 / 1). |
 | `deleteById(id)` | Удаляет одну запись. | `int` — затронутых строк (0 / 1). |
 | `restoreFromMeasurement(m)` | Восстанавливает удалённую запись с её исходным id через `InsertMode.insertOrReplace`. Используется в undo для swipe-to-delete и FAB «Сохранить → Отменить». | `int` — затронутых строк. |

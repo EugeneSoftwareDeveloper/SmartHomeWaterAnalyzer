@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../history/database.dart';
+import '../../history/place_name.dart';
 import '../../providers/app_settings.dart';
 import '../../providers/history_provider.dart';
 
@@ -65,18 +66,6 @@ class PlacePickerField extends ConsumerWidget {
       ),
     );
   }
-}
-
-/// Приводит хранимое имя места к каноничному виду: пустое и «пробельное»
-/// становятся `null`.
-///
-/// Нужно, потому что до версии 1.2.0 место было свободным вводом, и в
-/// `SharedPreferences` могла остаться строка из одних пробелов. Без нормализации
-/// поле показывало бы пустоту, в списке не был бы отмечен ни один пункт, а замер
-/// сохранялся бы с «пробельным» местом.
-String? normalizePlaceName(String? name) {
-  final trimmed = name?.trim();
-  return (trimmed == null || trimmed.isEmpty) ? null : trimmed;
 }
 
 /// Открывает лист выбора места и возвращает выбор.

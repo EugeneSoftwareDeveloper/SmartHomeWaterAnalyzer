@@ -237,4 +237,93 @@ void main() {
       expect(events, containsAllInOrder([0, 1, 0]));
     });
   });
+
+  /// База сравнения для трендов на экране показаний: последний сохранённый замер
+  /// того же прибора в том же месте.
+  group('HistoryRepository.latestForPlace', () {
+    late AppDatabase db;
+    late HistoryRepository repo;
+
+    setUp(() {
+      db = AppDatabase.forTesting(NativeDatabase.memory());
+      repo = HistoryRepository(db);
+    });
+
+    tearDown(() async {
+      await db.close();
+    });
+
+    test('в пустой истории базы нет', () async {
+      expect(await repo.latestForPlace('AA:BB', 'Кран на кухне'), isNull);
+    });
+
+    test('возвращает самый свежий замер места, а не первый попавшийся', () async {
+      await repo.save('AA:BB', _reading(ph: 7.0), DateTime(2026, 9, 1, 10), label: 'Кран на кухне');
+      await repo.save('AA:BB', _reading(ph: 7.6), DateTime(2026, 9, 3, 10), label: 'Кран на кухне');
+      await repo.save('AA:BB', _reading(ph: 7.2), DateTime(2026, 9, 2, 10), label: 'Кран на кухне');
+
+      final latest = await repo.latestForPlace('AA:BB', 'Кран на кухне');
+
+      expect(latest?.ph, 7.6);
+      expect(latest?.observedAt, DateTime(2026, 9, 3, 10));
+    });
+
+    test('места не смешиваются между собой', () async {
+      // Ровно та причина, по которой тренд считается по месту: pH крана и
+      // бассейна отличаются на постоянку, и сравнение их между собой рисовало бы
+      // скачок качества там, где просто сменили точку забора.
+      await repo.save('AA:BB', _reading(ph: 7.2), DateTime(2026, 9, 1), label: 'Кран');
+      await repo.save('AA:BB', _reading(ph: 7.8), DateTime(2026, 9, 2), label: 'Бассейн');
+
+      expect((await repo.latestForPlace('AA:BB', 'Кран'))?.ph, 7.2);
+      expect((await repo.latestForPlace('AA:BB', 'Бассейн'))?.ph, 7.8);
+    });
+
+    test('замеры без места находят свою базу через IS NULL', () async {
+      // В SQL `label = NULL` не истинно никогда: без отдельной ветки такие
+      // замеры вечно выглядели бы как первые.
+      await repo.save('AA:BB', _reading(ph: 6.9), DateTime(2026, 9, 1));
+      await repo.save('AA:BB', _reading(ph: 7.1), DateTime(2026, 9, 2), label: 'Кран');
+
+      final latest = await repo.latestForPlace('AA:BB', null);
+
+      expect(latest, isNotNull);
+      expect(latest?.ph, 6.9);
+      expect(latest?.label, isNull);
+    });
+
+    test('пробельное место ищется как отсутствие места', () async {
+      // Нормализация та же, что при записи, — иначе выбранное «  » не нашло бы
+      // сохранённое `null`.
+      await repo.save('AA:BB', _reading(ph: 6.9), DateTime(2026, 9, 1));
+
+      expect((await repo.latestForPlace('AA:BB', '   '))?.ph, 6.9);
+      expect((await repo.latestForPlace('AA:BB', ''))?.ph, 6.9);
+    });
+
+    test('место с пробелами по краям находит сохранённое без них', () async {
+      await repo.save('AA:BB', _reading(ph: 7.4), DateTime(2026, 9, 1), label: 'Кулер');
+
+      expect((await repo.latestForPlace('AA:BB', '  Кулер  '))?.ph, 7.4);
+    });
+
+    test('приборы не смешиваются: у каждого своя калибровка электрода', () async {
+      await repo.save('AA:BB', _reading(ph: 7.0), DateTime(2026, 9, 2), label: 'Кран');
+      await repo.save('CC:DD', _reading(ph: 8.0), DateTime(2026, 9, 3), label: 'Кран');
+
+      expect((await repo.latestForPlace('AA:BB', 'Кран'))?.ph, 7.0);
+      expect((await repo.latestForPlace('CC:DD', 'Кран'))?.ph, 8.0);
+    });
+
+    test('удаление последнего замера возвращает базу к предыдущему', () async {
+      await repo.save('AA:BB', _reading(ph: 7.0), DateTime(2026, 9, 1), label: 'Кран');
+      final id = await repo.save('AA:BB', _reading(ph: 7.5), DateTime(2026, 9, 2), label: 'Кран');
+
+      expect((await repo.latestForPlace('AA:BB', 'Кран'))?.ph, 7.5);
+
+      await repo.deleteById(id);
+
+      expect((await repo.latestForPlace('AA:BB', 'Кран'))?.ph, 7.0);
+    });
+  });
 }

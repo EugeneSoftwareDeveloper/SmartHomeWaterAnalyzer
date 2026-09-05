@@ -32,4 +32,19 @@ enum QualityCategory {
 
   final Color color;
   final String label;
+
+  /// Порядок категорий от худшей к лучшей: `danger` < `caution` < `acceptable`
+  /// < `good` < `excellent`. По нему тренд решает, стало лучше или хуже.
+  ///
+  /// Задан явным switch, а не через `index`, потому что порядок объявления
+  /// в enum однажды переставят — например, вставив категорию в середину, — и
+  /// сравнение по `index` молча начнёт врать. Здесь компилятор потребует
+  /// дописать новую категорию.
+  int get rank => switch (this) {
+    QualityCategory.danger => 0,
+    QualityCategory.caution => 1,
+    QualityCategory.acceptable => 2,
+    QualityCategory.good => 3,
+    QualityCategory.excellent => 4,
+  };
 }

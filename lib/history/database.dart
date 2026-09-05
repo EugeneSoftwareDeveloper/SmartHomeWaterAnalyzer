@@ -260,6 +260,30 @@ class AppDatabase extends _$AppDatabase {
     return query.get();
   }
 
+  /// Последний сохранённый замер этого прибора в этом месте — база для сравнения
+  /// «стало / было» на экране показаний.
+  ///
+  /// Место сравнивается точным равенством, а отсутствие места — через `IS NULL`:
+  /// в SQL `label = NULL` не истинно никогда, поэтому замеры без места иначе
+  /// не находили бы базу вовсе и вечно выглядели бы как первые.
+  ///
+  /// Прибор входит в условие, потому что у разных экземпляров своя калибровка
+  /// электрода: сравнивать замер нового тестера со старым — сравнивать приборы,
+  /// а не воду.
+  Future<Measurement?> latestMeasurement({required String deviceId, String? label}) {
+    final query = select(measurements)..where((tbl) => tbl.deviceId.equals(deviceId));
+
+    if (label == null) {
+      query.where((tbl) => tbl.label.isNull());
+    } else {
+      query.where((tbl) => tbl.label.equals(label));
+    }
+
+    query.orderBy([(t) => OrderingTerm.desc(t.observedAt)]);
+    query.limit(1);
+    return query.getSingleOrNull();
+  }
+
   /// Стрим: UI получает свежий список без явного refresh при каждом insert/delete.
   Stream<List<Measurement>> watchAllMeasurements({String? deviceId, int? limit}) {
     final query = select(measurements);

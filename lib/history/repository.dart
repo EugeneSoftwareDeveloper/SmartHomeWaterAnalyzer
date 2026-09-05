@@ -4,6 +4,7 @@ import '../location/measurement_location.dart';
 import '../quality/profile.dart';
 import '../yinmik/reading.dart';
 import 'database.dart';
+import 'place_name.dart';
 
 /// Уровень абстракции над `AppDatabase`: принимает доменные `YinmikReading`, скрывает
 /// drift-специфику. UI зависит от этого класса, а не от database.dart напрямую.
@@ -25,15 +26,15 @@ class HistoryRepository {
     MeasurementLocation? location,
     NormsProfile? normsProfile,
   }) {
-    final place = label?.trim();
+    // Пустое место сохраняем как отсутствие места, а не как пустую строку: иначе
+    // в истории появлялись бы записи с «пробельной» меткой, которые UI показывает
+    // как названные. Тем же правилом ищется база для тренда — см. place_name.dart.
+    final place = normalizePlaceName(label);
 
     return _database.insertMeasurement(
       MeasurementsCompanion.insert(
         deviceId: deviceId,
-        // Пустое место сохраняем как отсутствие места, а не как пустую строку:
-        // иначе в истории появлялись бы записи с «пробельной» меткой, которые
-        // UI показывает как названные.
-        label: Value(place == null || place.isEmpty ? null : place),
+        label: Value(place),
         observedAt: observedAt,
         latitude: Value(location?.latitude),
         longitude: Value(location?.longitude),
@@ -93,6 +94,14 @@ class HistoryRepository {
 
   Future<List<Measurement>> recent({String? deviceId, int limit = 200}) =>
       _database.getAllMeasurements(deviceId: deviceId, limit: limit);
+
+  /// Предыдущий замер этого прибора в этом же месте — то, с чем экран показаний
+  /// сравнивает свежее чтение. `null`, если в этом месте ещё не сохраняли.
+  ///
+  /// Место нормализуется тем же правилом, что и при записи: иначе выбранное
+  /// «` Кулер `» не нашло бы сохранённое «`Кулер`», и тренд молча не появлялся бы.
+  Future<Measurement?> latestForPlace(String deviceId, String? place) =>
+      _database.latestMeasurement(deviceId: deviceId, label: normalizePlaceName(place));
 
   Stream<List<Measurement>> watchRecent({String? deviceId, int limit = 200}) =>
       _database.watchAllMeasurements(deviceId: deviceId, limit: limit);
