@@ -71,11 +71,7 @@ class HistoryPage extends ConsumerWidget {
     );
   }
 
-  Future<void> _onMenuAction(
-    BuildContext context,
-    WidgetRef ref,
-    _HistoryAction action,
-  ) async {
+  Future<void> _onMenuAction(BuildContext context, WidgetRef ref, _HistoryAction action) async {
     final l10n = AppL10n.of(context);
     final messenger = ScaffoldMessenger.of(context);
     switch (action) {
@@ -135,19 +131,15 @@ class _HistoryBody extends ConsumerWidget {
           child: Text(
             'Последние ${rows.length} измерений',
             style: theme.textTheme.titleSmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
-                ),
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
         for (final group in groups) ...[
           _DayHeader(label: group.label),
           for (final row in group.measurements)
-            _DismissibleTile(
-              key: ValueKey(row.id),
-              row: row,
-              allRows: rows,
-            ),
+            _DismissibleTile(key: ValueKey(row.id), row: row, allRows: rows),
         ],
         const SizedBox(height: 16),
       ],
@@ -170,18 +162,14 @@ class _DayHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
       child: Row(
         children: [
-          Icon(
-            Icons.event_outlined,
-            size: 16,
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
+          Icon(Icons.event_outlined, size: 16, color: theme.colorScheme.onSurfaceVariant),
           const SizedBox(width: 6),
           Text(
             label,
             style: theme.textTheme.labelMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
-                ),
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
@@ -197,11 +185,7 @@ class _DismissibleTile extends ConsumerWidget {
   final Measurement row;
   final List<Measurement> allRows;
 
-  const _DismissibleTile({
-    required super.key,
-    required this.row,
-    required this.allRows,
-  });
+  const _DismissibleTile({required super.key, required this.row, required this.allRows});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -219,9 +203,9 @@ class _DismissibleTile extends ConsumerWidget {
             Text(
               'Удалить',
               style: theme.textTheme.labelLarge?.copyWith(
-                    color: theme.colorScheme.onErrorContainer,
-                    fontWeight: FontWeight.w600,
-                  ),
+                color: theme.colorScheme.onErrorContainer,
+                fontWeight: FontWeight.w600,
+              ),
             ),
             const SizedBox(width: 8),
             Icon(Icons.delete_outline, color: theme.colorScheme.onErrorContainer),
@@ -239,9 +223,7 @@ class _DismissibleTile extends ConsumerWidget {
         try {
           await repo.deleteById(row.id);
         } on Object catch (error) {
-          messenger.showSnackBar(
-            SnackBar(content: Text('Не удалось удалить: $error')),
-          );
+          messenger.showSnackBar(SnackBar(content: Text('Не удалось удалить: $error')));
           return false;
         }
         await HapticFeedback.lightImpact();
@@ -303,8 +285,9 @@ class _MeasurementChartState extends ConsumerState<_MeasurementChart> {
     final places = placesInHistory(widget.rows);
     // Место могло исчезнуть из истории, пока фильтр был выставлен (удалили все
     // замеры этого места) — тогда молча показываем все, а не пустой график.
-    final activeFilter =
-        _placeFilter != null && places.contains(_placeFilter) ? _placeFilter : null;
+    final activeFilter = _placeFilter != null && places.contains(_placeFilter)
+        ? _placeFilter
+        : null;
 
     final filtered = activeFilter == null
         ? widget.rows
@@ -316,10 +299,7 @@ class _MeasurementChartState extends ConsumerState<_MeasurementChart> {
     final chronological = filtered.take(50).toList().reversed.toList();
     final spots = <FlSpot>[
       for (var index = 0; index < chronological.length; index++)
-        FlSpot(
-          index.toDouble(),
-          measurementValues(chronological[index])[parameter.key] ?? 0,
-        ),
+        FlSpot(index.toDouble(), measurementValues(chronological[index])[parameter.key] ?? 0),
     ];
 
     return Padding(
@@ -332,9 +312,7 @@ class _MeasurementChartState extends ConsumerState<_MeasurementChart> {
               Expanded(
                 child: Text(
                   '${parameter.displayLabel} во времени',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -345,10 +323,7 @@ class _MeasurementChartState extends ConsumerState<_MeasurementChart> {
                 underline: const SizedBox.shrink(),
                 items: [
                   for (final p in parameters)
-                    DropdownMenuItem(
-                      value: p.key,
-                      child: Text(p.shortLabel),
-                    ),
+                    DropdownMenuItem(value: p.key, child: Text(p.shortLabel)),
                 ],
                 onChanged: (value) {
                   if (value != null) {
@@ -396,37 +371,26 @@ class _MeasurementChartState extends ConsumerState<_MeasurementChart> {
                   'Нужно минимум 2 измерения для построения графика',
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ),
             )
           else
-            SizedBox(
-              height: 200,
-              child: LineChart(
-                _buildChartData(theme, parameter, spots),
-              ),
-            ),
+            SizedBox(height: 200, child: LineChart(_buildChartData(theme, parameter, spots))),
         ],
       ),
     );
   }
 
-  LineChartData _buildChartData(
-    ThemeData theme,
-    WaterParameter parameter,
-    List<FlSpot> spots,
-  ) {
+  LineChartData _buildChartData(ThemeData theme, WaterParameter parameter, List<FlSpot> spots) {
     final interval = niceAxisInterval(parameter.scaleMax - parameter.scaleMin);
 
     return LineChartData(
       gridData: FlGridData(
         drawVerticalLine: false,
-        getDrawingHorizontalLine: (_) => FlLine(
-          color: theme.colorScheme.outlineVariant,
-          strokeWidth: 0.5,
-        ),
+        getDrawingHorizontalLine: (_) =>
+            FlLine(color: theme.colorScheme.outlineVariant, strokeWidth: 0.5),
       ),
       borderData: FlBorderData(
         show: true,
@@ -440,10 +404,8 @@ class _MeasurementChartState extends ConsumerState<_MeasurementChart> {
             showTitles: true,
             reservedSize: 44,
             interval: interval,
-            getTitlesWidget: (value, _) => Text(
-              formatChartAxisLabel(value, parameter),
-              style: theme.textTheme.bodySmall,
-            ),
+            getTitlesWidget: (value, _) =>
+                Text(formatChartAxisLabel(value, parameter), style: theme.textTheme.bodySmall),
           ),
         ),
         bottomTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
@@ -489,10 +451,7 @@ class _MeasurementTile extends StatelessWidget {
             style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(width: 12),
-          Text(
-            '${row.temperatureCelsius.toStringAsFixed(1)}°C',
-            style: theme.textTheme.bodyMedium,
-          ),
+          Text('${row.temperatureCelsius.toStringAsFixed(1)}°C', style: theme.textTheme.bodyMedium),
           const SizedBox(width: 12),
           Text(
             'ORP ${row.oxidationReductionPotentialMillivolts} мВ',
@@ -513,11 +472,7 @@ class _MeasurementTile extends StatelessWidget {
                 children: [
                   // Тот же значок, что у поля выбора места и в настройках —
                   // прежний label_outline остался от времён свободной «метки».
-                  Icon(
-                    Icons.place_outlined,
-                    size: 14,
-                    color: theme.colorScheme.primary,
-                  ),
+                  Icon(Icons.place_outlined, size: 14, color: theme.colorScheme.primary),
                   const SizedBox(width: 4),
                   Text(
                     row.label!,
@@ -554,9 +509,7 @@ class _EmptyState extends StatelessWidget {
           Text(
             l10n.historyEmpty,
             textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
         ],
       ),

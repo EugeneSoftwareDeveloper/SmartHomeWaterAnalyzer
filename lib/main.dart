@@ -10,9 +10,7 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
 
     return ProviderScope(
-      overrides: [
-        sharedPreferencesProvider.overrideWithValue(prefs),
-      ],
+      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
       child: const WaterAnalyzerApp(),
     );
   });

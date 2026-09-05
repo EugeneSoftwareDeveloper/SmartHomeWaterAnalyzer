@@ -25,10 +25,8 @@ class HelpPage extends ConsumerWidget {
       body: ListView.builder(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         itemCount: entries.length,
-        itemBuilder: (context, index) => _HelpCard(
-          help: entries[index],
-          initiallyExpanded: focusedKey != null,
-        ),
+        itemBuilder: (context, index) =>
+            _HelpCard(help: entries[index], initiallyExpanded: focusedKey != null),
       ),
     );
   }
@@ -55,16 +53,12 @@ class _HelpCard extends StatelessWidget {
           padding: const EdgeInsets.only(top: 4),
           child: Text(
             help.summary,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
         ),
         initiallyExpanded: initiallyExpanded,
         childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        children: [
-          for (final section in help.sections) _HelpSectionView(section: section),
-        ],
+        children: [for (final section in help.sections) _HelpSectionView(section: section)],
       ),
     );
   }
@@ -121,10 +115,7 @@ class _RangeRow extends StatelessWidget {
             width: 6,
             margin: const EdgeInsets.only(top: 4, right: 12),
             height: 36,
-            decoration: BoxDecoration(
-              color: range.color,
-              borderRadius: BorderRadius.circular(3),
-            ),
+            decoration: BoxDecoration(color: range.color, borderRadius: BorderRadius.circular(3)),
           ),
           Expanded(
             child: Column(
@@ -134,9 +125,7 @@ class _RangeRow extends StatelessWidget {
                   children: [
                     Text(
                       range.label,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                      style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(width: 8),
                     Text(

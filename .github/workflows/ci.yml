@@ -44,9 +44,22 @@ jobs:
       - name: Generate code (drift)
         run: dart run build_runner build --delete-conflicting-outputs
 
+      # Ширину берёт из analysis_options.yaml (page_width: 100) — специально без флага -l,
+      # чтобы CI и локальный `dart format` не могли разойтись.
+      #
+      # Шаг блокирующий: раньше стоял continue-on-error, и проверка молча пропускала
+      # 47 неотформатированных файлов из 64 — то есть создавала видимость контроля.
+      #
+      # Сгенерированное исключено тем же списком, что и в analyzer'е: предыдущий шаг
+      # только что перегенерировал *.g.dart и l10n, и требовать от генератора нашей
+      # ширины строки — значит ронять сборку из-за файлов, которые никто не пишет руками.
       - name: Verify formatting
-        run: dart format --output=none --set-exit-if-changed lib test
-        continue-on-error: true # форматирование можно не блокировать
+        run: |
+          find lib test -name '*.dart' \
+            ! -name '*.g.dart' \
+            ! -name '*.freezed.dart' \
+            ! -path 'lib/l10n/generated/*' \
+            -print0 | xargs -0 dart format --output=none --set-exit-if-changed
 
       - name: Static analysis
         run: flutter analyze

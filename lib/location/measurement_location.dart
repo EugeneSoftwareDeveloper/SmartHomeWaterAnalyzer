@@ -10,11 +10,7 @@ class MeasurementLocation {
   /// платформа не дала оценку.
   final double? accuracyMeters;
 
-  const MeasurementLocation({
-    required this.latitude,
-    required this.longitude,
-    this.accuracyMeters,
-  });
+  const MeasurementLocation({required this.latitude, required this.longitude, this.accuracyMeters});
 
   /// Собирает координаты из записи истории. Возвращает `null`, если замер сохранён
   /// без геометки — так вызывающему коду не нужно проверять поля по отдельности.
@@ -33,8 +29,7 @@ class MeasurementLocation {
 
   /// «55.763118, 37.828288» — шесть знаков это ~11 см, заведомо больше точности
   /// бытового GPS, но привычный вид для копирования в карты.
-  String get formatted =>
-      '${latitude.toStringAsFixed(6)}, ${longitude.toStringAsFixed(6)}';
+  String get formatted => '${latitude.toStringAsFixed(6)}, ${longitude.toStringAsFixed(6)}';
 
   /// Человеческая оценка точности: «±12 м». `null`, если платформа её не дала.
   String? get formattedAccuracy {
@@ -60,16 +55,16 @@ enum LocationFailure {
   unavailable;
 
   String get message => switch (this) {
-        LocationFailure.permissionDenied =>
-          'Замер сохранён без координат: нет разрешения на геолокацию.',
-        LocationFailure.permissionPermanentlyDenied =>
-          'Замер сохранён без координат: доступ к геолокации запрещён. '
-              'Разрешить можно в настройках приложения.',
-        LocationFailure.serviceDisabled =>
-          'Замер сохранён без координат: геолокация выключена в системе.',
-        LocationFailure.unavailable =>
-          'Замер сохранён без координат: не удалось определить местоположение.',
-      };
+    LocationFailure.permissionDenied =>
+      'Замер сохранён без координат: нет разрешения на геолокацию.',
+    LocationFailure.permissionPermanentlyDenied =>
+      'Замер сохранён без координат: доступ к геолокации запрещён. '
+          'Разрешить можно в настройках приложения.',
+    LocationFailure.serviceDisabled =>
+      'Замер сохранён без координат: геолокация выключена в системе.',
+    LocationFailure.unavailable =>
+      'Замер сохранён без координат: не удалось определить местоположение.',
+  };
 }
 
 /// Результат попытки получить координаты: либо координаты, либо причина отказа.

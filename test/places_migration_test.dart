@@ -163,10 +163,7 @@ void main() {
     // Обе метки использовались, поэтому у них есть lastUsedAt и они идут
     // впереди неиспользованных дефолтных мест.
     expect(imported.every((p) => p.lastUsedAt != null), isTrue);
-    expect(
-      places.take(2).map((p) => p.name),
-      containsAll(<String>['Старое место', 'Новое место']),
-    );
+    expect(places.take(2).map((p) => p.name), containsAll(<String>['Старое место', 'Новое место']));
   });
 
   test('история замеров переживает миграцию без потерь', () async {
@@ -210,12 +207,9 @@ void main() {
 
     final db = await openMigrated();
     addTearDown(db.close);
-    final dacha = (await PlacesRepository(db).all())
-        .firstWhere((p) => p.name == 'Дача');
+    final dacha = (await PlacesRepository(db).all()).firstWhere((p) => p.name == 'Дача');
     final rows = await HistoryRepository(db).recent();
-    final newest = rows
-        .map((m) => m.observedAt)
-        .reduce((a, b) => a.isAfter(b) ? a : b);
+    final newest = rows.map((m) => m.observedAt).reduce((a, b) => a.isAfter(b) ? a : b);
 
     expect(dacha.lastUsedAt, newest);
   });

@@ -125,9 +125,7 @@ class AppSettingsNotifier extends StateNotifier<AppSettings> {
   /// назвался при подключении; пустое имя не сохраняем, чтобы кнопка не показывала
   /// пустую строку вместо названия.
   Future<void> rememberDevice(String deviceId, {String? deviceName}) async {
-    final name = (deviceName == null || deviceName.trim().isEmpty)
-        ? null
-        : deviceName.trim();
+    final name = (deviceName == null || deviceName.trim().isEmpty) ? null : deviceName.trim();
 
     state = state.copyWith(
       lastDeviceId: deviceId,

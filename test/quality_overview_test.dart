@@ -18,8 +18,11 @@ void main() {
 
       // Хотя бы один параметр в good — суммарная оценка тоже good (худшая).
       expect(overview.isAllGood, isTrue);
-      expect(overview.worstCategory.index, lessThanOrEqualTo(QualityCategory.good.index + 1),
-          reason: 'Все параметры должны быть excellent или good');
+      expect(
+        overview.worstCategory.index,
+        lessThanOrEqualTo(QualityCategory.good.index + 1),
+        reason: 'Все параметры должны быть excellent или good',
+      );
       expect(overview.problematicParameters, isEmpty);
     });
 
@@ -54,34 +57,28 @@ void main() {
       expect(overview.problematicParameters.first.key, 'tds');
     });
 
-    test('пустой ввод — overview без параметров, остаётся excellent (нет данных = ничего плохого)', () {
-      final overview = WaterQualityOverview.compute({});
+    test(
+      'пустой ввод — overview без параметров, остаётся excellent (нет данных = ничего плохого)',
+      () {
+        final overview = WaterQualityOverview.compute({});
 
-      expect(overview.totalParameters, 0);
-      expect(overview.worstCategory, QualityCategory.excellent);
-    });
+        expect(overview.totalParameters, 0);
+        expect(overview.worstCategory, QualityCategory.excellent);
+      },
+    );
 
     test('профиль pool: pH 7.4 — оптимум', () {
-      final overview = WaterQualityOverview.compute(
-        {'ph': 7.4},
-        profile: NormsProfile.pool,
-      );
+      final overview = WaterQualityOverview.compute({'ph': 7.4}, profile: NormsProfile.pool);
       expect(overview.worstCategory, QualityCategory.excellent);
     });
 
     test('профиль pool: pH 8.5 — danger (для бассейна это уже щелочная)', () {
-      final overview = WaterQualityOverview.compute(
-        {'ph': 8.5},
-        profile: NormsProfile.pool,
-      );
+      final overview = WaterQualityOverview.compute({'ph': 8.5}, profile: NormsProfile.pool);
       expect(overview.worstCategory, QualityCategory.danger);
     });
 
     test('профиль hydroponics: pH 6.0 — оптимум', () {
-      final overview = WaterQualityOverview.compute(
-        {'ph': 6.0},
-        profile: NormsProfile.hydroponics,
-      );
+      final overview = WaterQualityOverview.compute({'ph': 6.0}, profile: NormsProfile.hydroponics);
       expect(overview.worstCategory, QualityCategory.excellent);
     });
 

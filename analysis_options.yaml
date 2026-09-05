@@ -3,6 +3,14 @@
 
 include: package:flutter_lints/flutter.yaml
 
+# Ширина форматирования. Задана явно, потому что дефолт `dart format` — 80 колонок,
+# а код проекта написан под ~100: таблицы зон качества в `quality/catalog.dart`
+# на 80 колонках разлетаются с одной строки на шесть и перестают читаться как таблица.
+# Значение живёт здесь, а не флагом в CI, чтобы IDE, локальный `dart format`
+# и пайплайн форматировали одинаково.
+formatter:
+  page_width: 100
+
 analyzer:
   language:
     strict-casts: true
@@ -20,6 +28,8 @@ analyzer:
     - "**/*.gr.dart"
     - "**/generated_plugin_registrant.dart"
     - "lib/l10n/generated/**"
+    - build/**
+    - android/**
 
 linter:
   rules:

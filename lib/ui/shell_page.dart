@@ -23,11 +23,7 @@ class _ShellPageState extends State<ShellPage> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppL10n.of(context);
-    final pages = [
-      ReadingPage(device: widget.device),
-      const HistoryPage(),
-      const SettingsPage(),
-    ];
+    final pages = [ReadingPage(device: widget.device), const HistoryPage(), const SettingsPage()];
 
     return Scaffold(
       body: IndexedStack(index: _index, children: pages),

@@ -14,11 +14,7 @@ class ParameterCard extends StatefulWidget {
   final WaterParameter parameter;
   final double value;
 
-  const ParameterCard({
-    super.key,
-    required this.parameter,
-    required this.value,
-  });
+  const ParameterCard({super.key, required this.parameter, required this.value});
 
   @override
   State<ParameterCard> createState() => _ParameterCardState();
@@ -66,11 +62,7 @@ class _ParameterCardState extends State<ParameterCard> {
                   ),
                   _ZoneBadge(zone: zone),
                   const SizedBox(width: 4),
-                  Icon(
-                    Icons.help_outline,
-                    size: 18,
-                    color: theme.colorScheme.outline,
-                  ),
+                  Icon(Icons.help_outline, size: 18, color: theme.colorScheme.outline),
                 ],
               ),
               const SizedBox(height: 14),
@@ -110,9 +102,7 @@ class _ValueDisplay extends StatelessWidget {
           const SizedBox(width: 6),
           Text(
             unit,
-            style: theme.textTheme.titleSmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+            style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
         ],
       ],
@@ -145,11 +135,7 @@ class _ZoneBadge extends StatelessWidget {
           const SizedBox(width: 6),
           Text(
             zone.label,
-            style: TextStyle(
-              color: zone.color,
-              fontWeight: FontWeight.w600,
-              fontSize: 12,
-            ),
+            style: TextStyle(color: zone.color, fontWeight: FontWeight.w600, fontSize: 12),
           ),
         ],
       ),

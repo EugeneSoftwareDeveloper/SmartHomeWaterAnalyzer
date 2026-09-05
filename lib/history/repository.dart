@@ -46,8 +46,7 @@ class HistoryRepository {
         salinityPercent: reading.salinityPercent,
         temperatureCelsius: reading.temperatureCelsius,
         specificGravity: reading.specificGravity,
-        oxidationReductionPotentialMillivolts:
-            reading.oxidationReductionPotentialMillivolts,
+        oxidationReductionPotentialMillivolts: reading.oxidationReductionPotentialMillivolts,
         batteryRawMillivolts: reading.batteryRawMillivolts,
         backlightOn: Value(reading.backlightOn),
         holdReadingOn: Value(reading.holdReadingOn),
@@ -80,8 +79,7 @@ class HistoryRepository {
         salinityPercent: Value(m.salinityPercent),
         temperatureCelsius: Value(m.temperatureCelsius),
         specificGravity: Value(m.specificGravity),
-        oxidationReductionPotentialMillivolts:
-            Value(m.oxidationReductionPotentialMillivolts),
+        oxidationReductionPotentialMillivolts: Value(m.oxidationReductionPotentialMillivolts),
         batteryRawMillivolts: Value(m.batteryRawMillivolts),
         backlightOn: Value(m.backlightOn),
         holdReadingOn: Value(m.holdReadingOn),

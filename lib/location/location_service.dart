@@ -33,10 +33,12 @@ class LocationService {
     Duration totalBudget = defaultTotalBudget,
     LocationAccuracy accuracy = defaultAccuracy,
   }) {
-    return _currentLocation(timeout: timeout, accuracy: accuracy)
-        .timeout(totalBudget, onTimeout: () {
-      return const LocationResult.failed(LocationFailure.unavailable);
-    });
+    return _currentLocation(timeout: timeout, accuracy: accuracy).timeout(
+      totalBudget,
+      onTimeout: () {
+        return const LocationResult.failed(LocationFailure.unavailable);
+      },
+    );
   }
 
   Future<LocationResult> _currentLocation({
@@ -52,10 +54,7 @@ class LocationService {
       if (permission != null) return LocationResult.failed(permission);
 
       final position = await Geolocator.getCurrentPosition(
-        locationSettings: LocationSettings(
-          accuracy: accuracy,
-          timeLimit: timeout,
-        ),
+        locationSettings: LocationSettings(accuracy: accuracy, timeLimit: timeout),
       );
 
       return LocationResult.success(
@@ -83,8 +82,7 @@ class LocationService {
 
     return switch (permission) {
       LocationPermission.always || LocationPermission.whileInUse => null,
-      LocationPermission.deniedForever =>
-        LocationFailure.permissionPermanentlyDenied,
+      LocationPermission.deniedForever => LocationFailure.permissionPermanentlyDenied,
       _ => LocationFailure.permissionDenied,
     };
   }

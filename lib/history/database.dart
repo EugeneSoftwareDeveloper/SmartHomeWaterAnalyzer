@@ -104,59 +104,54 @@ class AppDatabase extends _$AppDatabase {
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-        onCreate: (m) async {
-          await m.createAll();
-          // Свежая установка: предлагаем готовый набор мест, чтобы первый замер
-          // можно было подписать сразу, не придумывая названия.
-          await _seedDefaultPlaces();
-        },
-        onUpgrade: (m, from, to) async {
-          if (from < 2) {
-            // v2: добавляем колонку label для пользовательских меток замеров.
-            await m.addColumn(measurements, measurements.label);
-          }
-          if (from < 3) {
-            // v3: геометка замера. Все три колонки nullable — существующие записи
-            // остаются без координат, это валидное состояние.
-            await m.addColumn(measurements, measurements.latitude);
-            await m.addColumn(measurements, measurements.longitude);
-            await m.addColumn(measurements, measurements.locationAccuracyMeters);
-          }
-          if (from < 4) {
-            // v4: каталог мест замера.
-            await m.createTable(places);
-            // Импорт идёт ПЕРЕД сидированием, и это важно. Обе вставки используют
-            // insertOrIgnore, поэтому выигрывает та, что пришла первой. Метка
-            // пользователя несёт lastUsedAt (время его последнего замера), а
-            // дефолт — нет; при обратном порядке метка «Аквариум» была бы
-            // проигнорирована как дубликат уже вставленного дефолта, потеряла бы
-            // lastUsedAt и уехала в конец списка ниже мест, которыми никогда не
-            // пользовались.
-            await _importPlacesFromExistingLabels();
-            await _seedDefaultPlaces();
-          }
-          if (from < 5) {
-            // v5: профиль норм, по которому оценивался замер. Старые записи
-            // остаются с null — для них UI берёт текущий профиль из настроек,
-            // то есть ведёт себя ровно как до обновления.
-            await m.addColumn(measurements, measurements.normsProfile);
-          }
-        },
-      );
+    onCreate: (m) async {
+      await m.createAll();
+      // Свежая установка: предлагаем готовый набор мест, чтобы первый замер
+      // можно было подписать сразу, не придумывая названия.
+      await _seedDefaultPlaces();
+    },
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        // v2: добавляем колонку label для пользовательских меток замеров.
+        await m.addColumn(measurements, measurements.label);
+      }
+      if (from < 3) {
+        // v3: геометка замера. Все три колонки nullable — существующие записи
+        // остаются без координат, это валидное состояние.
+        await m.addColumn(measurements, measurements.latitude);
+        await m.addColumn(measurements, measurements.longitude);
+        await m.addColumn(measurements, measurements.locationAccuracyMeters);
+      }
+      if (from < 4) {
+        // v4: каталог мест замера.
+        await m.createTable(places);
+        // Импорт идёт ПЕРЕД сидированием, и это важно. Обе вставки используют
+        // insertOrIgnore, поэтому выигрывает та, что пришла первой. Метка
+        // пользователя несёт lastUsedAt (время его последнего замера), а
+        // дефолт — нет; при обратном порядке метка «Аквариум» была бы
+        // проигнорирована как дубликат уже вставленного дефолта, потеряла бы
+        // lastUsedAt и уехала в конец списка ниже мест, которыми никогда не
+        // пользовались.
+        await _importPlacesFromExistingLabels();
+        await _seedDefaultPlaces();
+      }
+      if (from < 5) {
+        // v5: профиль норм, по которому оценивался замер. Старые записи
+        // остаются с null — для них UI берёт текущий профиль из настроек,
+        // то есть ведёт себя ровно как до обновления.
+        await m.addColumn(measurements, measurements.normsProfile);
+      }
+    },
+  );
 
   /// Вставляет дефолтные места. `insertOrIgnore` — потому что имя уникально:
   /// повторный вызов или совпадение с уже импортированной меткой не должны падать.
   Future<void> _seedDefaultPlaces() async {
     final now = DateTime.now();
     await batch((batch) {
-      batch.insertAll(
-        places,
-        [
-          for (final name in defaultPlaceNames)
-            PlacesCompanion.insert(name: name, createdAt: now),
-        ],
-        mode: InsertMode.insertOrIgnore,
-      );
+      batch.insertAll(places, [
+        for (final name in defaultPlaceNames) PlacesCompanion.insert(name: name, createdAt: now),
+      ], mode: InsertMode.insertOrIgnore);
     });
   }
 
@@ -169,11 +164,12 @@ class AppDatabase extends _$AppDatabase {
     final labelColumn = measurements.label;
     final lastUsed = measurements.observedAt.max();
 
-    final rows = await (selectOnly(measurements)
-          ..addColumns([labelColumn, lastUsed])
-          ..where(labelColumn.isNotNull())
-          ..groupBy([labelColumn]))
-        .get();
+    final rows =
+        await (selectOnly(measurements)
+              ..addColumns([labelColumn, lastUsed])
+              ..where(labelColumn.isNotNull())
+              ..groupBy([labelColumn]))
+            .get();
 
     // Группировка в SQL идёт по сырому значению, поэтому «Дача» и «Дача »
     // приходят разными строками, а после trim() схлопываются в одно место.
@@ -196,11 +192,7 @@ class AppDatabase extends _$AppDatabase {
     final now = DateTime.now();
     for (final entry in lastUsedByName.entries) {
       entries.add(
-        PlacesCompanion.insert(
-          name: entry.key,
-          createdAt: now,
-          lastUsedAt: Value(entry.value),
-        ),
+        PlacesCompanion.insert(name: entry.key, createdAt: now, lastUsedAt: Value(entry.value)),
       );
     }
     if (entries.isEmpty) return;
@@ -214,21 +206,15 @@ class AppDatabase extends _$AppDatabase {
   /// по алфавиту. В SQLite NULL меньше любого значения, поэтому при `DESC`
   /// неиспользованные места естественным образом уходят в хвост.
   Stream<List<Place>> watchPlaces() {
-    return (select(places)
-          ..orderBy([
-            (t) => OrderingTerm.desc(t.lastUsedAt),
-            (t) => OrderingTerm.asc(t.name),
-          ]))
-        .watch();
+    return (select(
+      places,
+    )..orderBy([(t) => OrderingTerm.desc(t.lastUsedAt), (t) => OrderingTerm.asc(t.name)])).watch();
   }
 
   Future<List<Place>> getPlaces() {
-    return (select(places)
-          ..orderBy([
-            (t) => OrderingTerm.desc(t.lastUsedAt),
-            (t) => OrderingTerm.asc(t.name),
-          ]))
-        .get();
+    return (select(
+      places,
+    )..orderBy([(t) => OrderingTerm.desc(t.lastUsedAt), (t) => OrderingTerm.asc(t.name)])).get();
   }
 
   /// Добавляет место. Если такое имя уже есть — возвращает существующее,
@@ -256,14 +242,14 @@ class AppDatabase extends _$AppDatabase {
 
   /// Отмечает место как только что использованное — оно поднимется в начало списка.
   Future<int> touchPlace(String name, DateTime usedAt) {
-    return (update(places)..where((t) => t.name.equals(name.trim())))
-        .write(PlacesCompanion(lastUsedAt: Value(usedAt)));
+    return (update(
+      places,
+    )..where((t) => t.name.equals(name.trim()))).write(PlacesCompanion(lastUsedAt: Value(usedAt)));
   }
 
   /// Удаляет место из каталога. Замеры, сделанные в нём, сохраняют своё название
   /// в `label` — история не переписывается.
-  Future<int> deletePlaceById(int id) =>
-      (delete(places)..where((t) => t.id.equals(id))).go();
+  Future<int> deletePlaceById(int id) => (delete(places)..where((t) => t.id.equals(id))).go();
 
   /// Все записи отсортированы по времени, новые сверху.
   Future<List<Measurement>> getAllMeasurements({String? deviceId, int? limit}) {
@@ -283,15 +269,14 @@ class AppDatabase extends _$AppDatabase {
     return query.watch();
   }
 
-  Future<int> insertMeasurement(MeasurementsCompanion entry) =>
-      into(measurements).insert(entry);
+  Future<int> insertMeasurement(MeasurementsCompanion entry) => into(measurements).insert(entry);
 
   /// Меняет только колонку `label` у одной строки. Возвращает количество затронутых записей
   /// (0 если запись с таким id не найдена, 1 при успехе).
   Future<int> updateMeasurementLabel(int id, String? label) {
-    return (update(measurements)..where((tbl) => tbl.id.equals(id))).write(
-      MeasurementsCompanion(label: Value(label)),
-    );
+    return (update(
+      measurements,
+    )..where((tbl) => tbl.id.equals(id))).write(MeasurementsCompanion(label: Value(label)));
   }
 
   /// Удаляет одну запись по id. Возвращает количество затронутых записей.

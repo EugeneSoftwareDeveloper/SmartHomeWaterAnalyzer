@@ -7,9 +7,7 @@ import 'package:water_analyzer/providers/app_settings.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  Future<AppSettingsNotifier> createNotifier([
-    Map<String, Object> initialValues = const {},
-  ]) async {
+  Future<AppSettingsNotifier> createNotifier([Map<String, Object> initialValues = const {}]) async {
     SharedPreferences.setMockInitialValues(initialValues);
     return AppSettingsNotifier(await SharedPreferences.getInstance());
   }
@@ -56,15 +54,17 @@ void main() {
       await notifier.rememberDevice('CC:DD');
 
       expect(notifier.state.lastDeviceId, 'CC:DD');
-      expect(notifier.state.lastDeviceName, isNull,
-          reason: 'иначе кнопка предложила бы подключиться к CC:DD под именем BLE-C600');
+      expect(
+        notifier.state.lastDeviceName,
+        isNull,
+        reason: 'иначе кнопка предложила бы подключиться к CC:DD под именем BLE-C600',
+      );
     });
 
     test('значения переживают пересоздание notifier (persist в prefs)', () async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
-      await AppSettingsNotifier(prefs)
-          .rememberDevice('AA:BB', deviceName: 'BLE-C600');
+      await AppSettingsNotifier(prefs).rememberDevice('AA:BB', deviceName: 'BLE-C600');
 
       final restored = AppSettingsNotifier(prefs);
 

@@ -149,11 +149,7 @@ class _GaugePainter extends CustomPainter {
     final tickPaint = Paint()
       ..color = markerColor
       ..strokeWidth = 2;
-    canvas.drawLine(
-      Offset(markerX, barTop - 1),
-      Offset(markerX, barBottom + 1),
-      tickPaint,
-    );
+    canvas.drawLine(Offset(markerX, barTop - 1), Offset(markerX, barBottom + 1), tickPaint);
   }
 
   @override

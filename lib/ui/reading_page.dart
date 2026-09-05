@@ -182,9 +182,7 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
 
   void _showSnackBar(String message, {SnackBarAction? action}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), action: action),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), action: action));
   }
 
   @override
@@ -308,4 +306,3 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
     );
   }
 }
-

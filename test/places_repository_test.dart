@@ -49,10 +49,7 @@ void main() {
       final second = await repo.add('Дача');
 
       expect(second.id, first.id);
-      expect(
-        (await repo.all()).where((p) => p.name == 'Дача'),
-        hasLength(1),
-      );
+      expect((await repo.all()).where((p) => p.name == 'Дача'), hasLength(1));
     });
 
     test('add обрезает пробелы — «Дача » и «Дача» это одно место', () async {
@@ -109,8 +106,7 @@ void main() {
       expect((await repo.all()).map((p) => p.name), isNot(contains('Временное')));
     });
 
-    test('параллельное добавление одного имени не падает на уникальном индексе',
-        () async {
+    test('параллельное добавление одного имени не падает на уникальном индексе', () async {
       // Регрессия: insertOrGetPlace был «проверить, потом вставить», и два
       // одновременных вызова (кнопка «+» и submit с клавиатуры срабатывают
       // почти вместе) упирались в UNIQUE constraint failed.
@@ -121,10 +117,7 @@ void main() {
       ]);
 
       expect(results.map((p) => p.id).toSet(), hasLength(1));
-      expect(
-        (await repo.all()).where((p) => p.name == 'Одновременно'),
-        hasLength(1),
-      );
+      expect((await repo.all()).where((p) => p.name == 'Одновременно'), hasLength(1));
     });
 
     test('watchAll отдаёт обновления при добавлении', () async {

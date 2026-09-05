@@ -18,10 +18,7 @@ import 'ui/shell_page.dart';
 final appRouter = GoRouter(
   initialLocation: '/',
   routes: [
-    GoRoute(
-      path: '/',
-      builder: (context, state) => const HomePage(),
-    ),
+    GoRoute(path: '/', builder: (context, state) => const HomePage()),
     GoRoute(
       path: '/device',
       builder: (context, state) {
@@ -29,10 +26,7 @@ final appRouter = GoRouter(
         return ShellPage(device: device);
       },
     ),
-    GoRoute(
-      path: '/history',
-      builder: (context, state) => const HistoryPage(standalone: true),
-    ),
+    GoRoute(path: '/history', builder: (context, state) => const HistoryPage(standalone: true)),
     GoRoute(
       path: '/history/detail',
       builder: (context, state) {

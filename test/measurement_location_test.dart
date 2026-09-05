@@ -36,10 +36,7 @@ void main() {
 
   group('форматирование', () {
     test('координаты — шесть знаков после точки', () {
-      const location = MeasurementLocation(
-        latitude: 55.7631176800056,
-        longitude: 37.8282875782027,
-      );
+      const location = MeasurementLocation(latitude: 55.7631176800056, longitude: 37.8282875782027);
 
       expect(location.formatted, '55.763118, 37.828288');
     });
@@ -51,11 +48,7 @@ void main() {
     });
 
     test('точность округляется до целых метров', () {
-      const location = MeasurementLocation(
-        latitude: 55.76,
-        longitude: 37.82,
-        accuracyMeters: 12.4,
-      );
+      const location = MeasurementLocation(latitude: 55.76, longitude: 37.82, accuracyMeters: 12.4);
 
       expect(location.formattedAccuracy, '±12 м');
     });
@@ -68,10 +61,7 @@ void main() {
   });
 
   group('mapUris', () {
-    const location = MeasurementLocation(
-      latitude: 55.7631176800056,
-      longitude: 37.8282875782027,
-    );
+    const location = MeasurementLocation(latitude: 55.7631176800056, longitude: 37.8282875782027);
 
     test('первым идёт geo:-интент, вторым https-fallback', () {
       final uris = mapUris(location);

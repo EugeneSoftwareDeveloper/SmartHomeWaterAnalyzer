@@ -12,10 +12,7 @@ class MeasurementDayGroup {
   final String label;
   final List<Measurement> measurements;
 
-  const MeasurementDayGroup({
-    required this.label,
-    required this.measurements,
-  });
+  const MeasurementDayGroup({required this.label, required this.measurements});
 }
 
 /// Места, встречающиеся в переданных замерах, в порядке первого появления.
@@ -41,21 +38,14 @@ List<String> placesInHistory(List<Measurement> rows) {
 /// Возвращает список групп в порядке первого появления записи каждого дня
 /// во входном списке. Если `rows` отсортирован `desc by observedAt`, то первая
 /// группа — самая свежая.
-List<MeasurementDayGroup> groupMeasurementsByDay(
-  List<Measurement> rows, {
-  DateTime? now,
-}) {
+List<MeasurementDayGroup> groupMeasurementsByDay(List<Measurement> rows, {DateTime? now}) {
   final reference = now ?? DateTime.now();
   final today = DateTime(reference.year, reference.month, reference.day);
   final dateFormat = DateFormat('dd.MM.yyyy');
   final buckets = <String, List<Measurement>>{};
 
   for (final row in rows) {
-    final day = DateTime(
-      row.observedAt.year,
-      row.observedAt.month,
-      row.observedAt.day,
-    );
+    final day = DateTime(row.observedAt.year, row.observedAt.month, row.observedAt.day);
     final diff = today.difference(day).inDays;
     final String label;
     if (diff == 0) {

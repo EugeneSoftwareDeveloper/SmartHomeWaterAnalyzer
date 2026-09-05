@@ -23,10 +23,7 @@ class SummaryHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            color.withValues(alpha: 0.18),
-            color.withValues(alpha: 0.06),
-          ],
+          colors: [color.withValues(alpha: 0.18), color.withValues(alpha: 0.06)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -53,9 +50,7 @@ class SummaryHeader extends StatelessWidget {
                   children: [
                     Text(
                       overview.headline,
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                      style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -99,10 +94,10 @@ class _DeviceStatusBar extends StatelessWidget {
     final batteryIcon = percent > 75
         ? Icons.battery_full
         : percent > 50
-            ? Icons.battery_5_bar
-            : percent > 25
-                ? Icons.battery_3_bar
-                : Icons.battery_alert;
+        ? Icons.battery_5_bar
+        : percent > 25
+        ? Icons.battery_3_bar
+        : Icons.battery_alert;
     final batteryColor = percent > 25 ? theme.colorScheme.onSurfaceVariant : Colors.redAccent;
 
     return Row(
@@ -119,9 +114,7 @@ class _DeviceStatusBar extends StatelessWidget {
         const SizedBox(width: 4),
         Text(
           '(${reading.batteryRawMillivolts} мВ)',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
+          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
         ),
         const Spacer(),
         if (reading.holdReadingOn) const _StatusChip(icon: Icons.lock, label: 'HOLD'),

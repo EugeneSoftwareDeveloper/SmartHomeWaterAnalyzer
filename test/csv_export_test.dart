@@ -33,8 +33,7 @@ Measurement _measurement({
   );
 }
 
-List<String> _rowsOf(String csv) =>
-    csv.trim().split('\n').map((line) => line.trimRight()).toList();
+List<String> _rowsOf(String csv) => csv.trim().split('\n').map((line) => line.trimRight()).toList();
 
 void main() {
   group('buildMeasurementsCsv', () {
@@ -70,8 +69,11 @@ void main() {
 
       final row = _rowsOf(csv)[1];
       expect(row, contains('"Дача, колодец"'));
-      expect(row.split(',').length, csvColumns.length + 1,
-          reason: 'экранированная запятая всё равно делит строку при наивном split');
+      expect(
+        row.split(',').length,
+        csvColumns.length + 1,
+        reason: 'экранированная запятая всё равно делит строку при наивном split',
+      );
     });
 
     test('кавычка в названии удваивается', () {
@@ -106,9 +108,7 @@ void main() {
     });
 
     test('нулевые координаты сохраняются как 0, а не как пусто', () {
-      final csv = buildMeasurementsCsv([
-        _measurement(latitude: 0, longitude: 0),
-      ]);
+      final csv = buildMeasurementsCsv([_measurement(latitude: 0, longitude: 0)]);
 
       final cells = _rowsOf(csv)[1].split(',');
       expect(cells[csvColumns.indexOf('latitude')], '0.000000');
@@ -145,11 +145,7 @@ void main() {
 
   group('Measurement.copyWith сохраняет новые поля', () {
     test('label меняется, координаты остаются', () {
-      final original = _measurement(
-        label: 'Старое',
-        latitude: 55.76,
-        longitude: 37.82,
-      );
+      final original = _measurement(label: 'Старое', latitude: 55.76, longitude: 37.82);
 
       final updated = original.copyWith(label: const Value('Новое'));
 

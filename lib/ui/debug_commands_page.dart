@@ -142,7 +142,11 @@ class _DebugCommandsPageState extends State<DebugCommandsPage> {
                   avatar: const Icon(Icons.send, size: 16),
                   onPressed: _busy
                       ? null
-                      : () => _tryPattern(preset.bytes, label: preset.label, verifyBit: preset.verifyBit),
+                      : () => _tryPattern(
+                          preset.bytes,
+                          label: preset.label,
+                          verifyBit: preset.verifyBit,
+                        ),
                 ),
             ],
           ),
@@ -190,18 +194,15 @@ class _DebugCommandsPageState extends State<DebugCommandsPage> {
       child: Text(
         text,
         style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: Theme.of(context).colorScheme.primary,
-            ),
+          fontWeight: FontWeight.w600,
+          color: Theme.of(context).colorScheme.primary,
+        ),
       ),
     );
   }
 
   Future<void> _sendManual() async {
-    final tokens = _hexController.text
-        .split(RegExp(r'\s+'))
-        .where((t) => t.isNotEmpty)
-        .toList();
+    final tokens = _hexController.text.split(RegExp(r'\s+')).where((t) => t.isNotEmpty).toList();
     if (tokens.isEmpty) return;
 
     final messenger = ScaffoldMessenger.of(context);
@@ -213,11 +214,7 @@ class _DebugCommandsPageState extends State<DebugCommandsPage> {
     }
   }
 
-  Future<void> _tryPattern(
-    List<int> bytes, {
-    required String label,
-    required int verifyBit,
-  }) async {
+  Future<void> _tryPattern(List<int> bytes, {required String label, required int verifyBit}) async {
     if (_busy) return;
     setState(() => _busy = true);
     await HapticFeedback.selectionClick();
@@ -326,7 +323,8 @@ class _AttemptLog {
     return before != after;
   }
 
-  String get bytesHex => bytes.map((b) => b.toRadixString(16).padLeft(2, '0').toUpperCase()).join(' ');
+  String get bytesHex =>
+      bytes.map((b) => b.toRadixString(16).padLeft(2, '0').toUpperCase()).join(' ');
 }
 
 class _Preset {
@@ -358,13 +356,15 @@ class _LogEntry extends StatelessWidget {
     } else if (success) {
       color = const Color(0xFF388E3C);
       icon = Icons.check_circle;
-      status = 'Бит ${attempt.verifyBit.toRadixString(16)} изменился: '
+      status =
+          'Бит ${attempt.verifyBit.toRadixString(16)} изменился: '
           '${(attempt.statusBefore! & attempt.verifyBit) != 0 ? "ON" : "OFF"} → '
           '${(attempt.statusAfter! & attempt.verifyBit) != 0 ? "ON" : "OFF"}';
     } else {
       color = theme.colorScheme.outline;
       icon = Icons.remove_circle_outline;
-      status = 'Без изменений (status ${attempt.statusBefore?.toRadixString(16) ?? "?"} → '
+      status =
+          'Без изменений (status ${attempt.statusBefore?.toRadixString(16) ?? "?"} → '
           '${attempt.statusAfter?.toRadixString(16) ?? "?"})';
     }
 

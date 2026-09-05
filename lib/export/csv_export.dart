@@ -75,10 +75,8 @@ String buildMeasurementsCsv(List<Measurement> rows) {
 /// Нужно прежде всего для названий мест: «Дача, колодец» без экранирования
 /// разъехалось бы на два столбца и сдвинуло всю строку.
 String _csvField(String value) {
-  final needsQuoting = value.contains(',') ||
-      value.contains('"') ||
-      value.contains('\n') ||
-      value.contains('\r');
+  final needsQuoting =
+      value.contains(',') || value.contains('"') || value.contains('\n') || value.contains('\r');
   if (!needsQuoting) return value;
 
   return '"${value.replaceAll('"', '""')}"';
@@ -94,10 +92,9 @@ abstract final class CsvExporter {
 
     await file.writeAsString(buildMeasurementsCsv(rows));
 
-    await Share.shareXFiles(
-      [XFile(file.path, mimeType: 'text/csv')],
-      subject: 'Water Analyzer history',
-    );
+    await Share.shareXFiles([
+      XFile(file.path, mimeType: 'text/csv'),
+    ], subject: 'Water Analyzer history');
 
     return file.path;
   }

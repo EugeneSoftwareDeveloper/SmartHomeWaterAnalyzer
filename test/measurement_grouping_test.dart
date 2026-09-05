@@ -135,16 +135,15 @@ void main() {
       final now = DateTime(2026, 5, 24, 12, 0);
       final rows = [
         _at(DateTime(2026, 5, 24, 10, 0), id: 5), // сегодня
-        _at(DateTime(2026, 5, 24, 9, 0), id: 4),  // сегодня
+        _at(DateTime(2026, 5, 24, 9, 0), id: 4), // сегодня
         _at(DateTime(2026, 5, 23, 18, 0), id: 3), // вчера
         _at(DateTime(2026, 5, 21, 10, 0), id: 2), // 21.05
-        _at(DateTime(2026, 5, 21, 9, 0), id: 1),  // 21.05
+        _at(DateTime(2026, 5, 21, 9, 0), id: 1), // 21.05
       ];
 
       final groups = groupMeasurementsByDay(rows, now: now);
 
-      expect(groups.map((g) => g.label).toList(),
-          ['Сегодня', 'Вчера', '21.05.2026']);
+      expect(groups.map((g) => g.label).toList(), ['Сегодня', 'Вчера', '21.05.2026']);
     });
 
     test('записи каждой группы остаются в исходном порядке', () {
@@ -164,7 +163,7 @@ void main() {
     test('границы дня: 23:59:59 и 00:00:00 — разные группы', () {
       final now = DateTime(2026, 5, 24, 12, 0);
       final rows = [
-        _at(DateTime(2026, 5, 24, 0, 0, 0), id: 2),    // сегодня (полночь)
+        _at(DateTime(2026, 5, 24, 0, 0, 0), id: 2), // сегодня (полночь)
         _at(DateTime(2026, 5, 23, 23, 59, 59), id: 1), // вчера (последняя секунда)
       ];
 

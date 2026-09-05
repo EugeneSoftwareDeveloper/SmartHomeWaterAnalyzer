@@ -67,17 +67,17 @@ class SettingsPage extends ConsumerWidget {
   }
 
   String _profileLabel(AppL10n l10n, NormsProfile profile) => switch (profile) {
-        NormsProfile.drinking => l10n.profileDrinking,
-        NormsProfile.pool => l10n.profilePool,
-        NormsProfile.aquariumFresh => l10n.profileAquariumFresh,
-        NormsProfile.hydroponics => l10n.profileHydroponics,
-      };
+    NormsProfile.drinking => l10n.profileDrinking,
+    NormsProfile.pool => l10n.profilePool,
+    NormsProfile.aquariumFresh => l10n.profileAquariumFresh,
+    NormsProfile.hydroponics => l10n.profileHydroponics,
+  };
 
   String _themeLabel(AppL10n l10n, ThemeMode mode) => switch (mode) {
-        ThemeMode.system => l10n.settingsThemeSystem,
-        ThemeMode.light => l10n.settingsThemeLight,
-        ThemeMode.dark => l10n.settingsThemeDark,
-      };
+    ThemeMode.system => l10n.settingsThemeSystem,
+    ThemeMode.light => l10n.settingsThemeLight,
+    ThemeMode.dark => l10n.settingsThemeDark,
+  };
 
   void _showProfilePicker(BuildContext context, WidgetRef ref) {
     final l10n = AppL10n.of(context);

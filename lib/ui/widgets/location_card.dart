@@ -36,11 +36,7 @@ class LocationCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Icon(
-                    Icons.place_outlined,
-                    size: 20,
-                    color: theme.colorScheme.primary,
-                  ),
+                  Icon(Icons.place_outlined, size: 20, color: theme.colorScheme.primary),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(
@@ -55,9 +51,7 @@ class LocationCard extends StatelessWidget {
                         const SizedBox(height: 2),
                         Text(
                           location.formatted,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
                         ),
                         if (accuracy != null)
                           Text(
@@ -98,9 +92,7 @@ class LocationCard extends StatelessWidget {
   Future<void> _copyCoordinates(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
     await Clipboard.setData(ClipboardData(text: location.formatted));
-    messenger.showSnackBar(
-      const SnackBar(content: Text('Координаты скопированы')),
-    );
+    messenger.showSnackBar(const SnackBar(content: Text('Координаты скопированы')));
   }
 
   Future<void> _openInMaps(BuildContext context) async {
@@ -112,9 +104,7 @@ class LocationCard extends StatelessWidget {
         // Пробуем следующий вариант — например, если geo:-интент никто не принял.
       }
     }
-    messenger.showSnackBar(
-      const SnackBar(content: Text('Не нашлось приложения для карт')),
-    );
+    messenger.showSnackBar(const SnackBar(content: Text('Не нашлось приложения для карт')));
   }
 }
 
@@ -133,9 +123,7 @@ List<Uri> mapUris(MeasurementLocation location, {String? label}) {
   final trimmedLabel = label?.trim();
   final hasLabel = trimmedLabel != null && trimmedLabel.isNotEmpty;
 
-  final query = hasLabel
-      ? '$point(${Uri.encodeComponent(trimmedLabel)})'
-      : point;
+  final query = hasLabel ? '$point(${Uri.encodeComponent(trimmedLabel)})' : point;
 
   return [
     Uri.parse('geo:$point?q=$query'),

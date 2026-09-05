@@ -24,11 +24,7 @@ class HistoryDetailPage extends ConsumerStatefulWidget {
   final List<Measurement> measurements;
   final int initialIndex;
 
-  const HistoryDetailPage({
-    super.key,
-    required this.measurements,
-    required this.initialIndex,
-  });
+  const HistoryDetailPage({super.key, required this.measurements, required this.initialIndex});
 
   @override
   ConsumerState<HistoryDetailPage> createState() => _HistoryDetailPageState();
@@ -40,8 +36,7 @@ class _HistoryDetailPageState extends ConsumerState<HistoryDetailPage> {
   static final _timeFormat = DateFormat('dd.MM.yyyy HH:mm');
 
   late int _currentIndex = widget.initialIndex;
-  late final PageController _pageController =
-      PageController(initialPage: widget.initialIndex);
+  late final PageController _pageController = PageController(initialPage: widget.initialIndex);
 
   /// Локальная копия списка — позволяет обновить метку и удалить запись «на месте»,
   /// не выходя из детального просмотра. После любого изменения мы синхронизируем
@@ -75,11 +70,7 @@ class _HistoryDetailPageState extends ConsumerState<HistoryDetailPage> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              hasLabel ? current.label! : 'Замер',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
+            Text(hasLabel ? current.label! : 'Замер', maxLines: 1, overflow: TextOverflow.ellipsis),
             Text(
               _timeFormat.format(current.observedAt),
               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
@@ -127,8 +118,7 @@ class _HistoryDetailPageState extends ConsumerState<HistoryDetailPage> {
         controller: _pageController,
         itemCount: _measurements.length,
         onPageChanged: (index) => setState(() => _currentIndex = index),
-        itemBuilder: (context, index) =>
-            _MeasurementDetailView(measurement: _measurements[index]),
+        itemBuilder: (context, index) => _MeasurementDetailView(measurement: _measurements[index]),
       ),
     );
   }
@@ -146,10 +136,7 @@ class _HistoryDetailPageState extends ConsumerState<HistoryDetailPage> {
   /// показаний. Раньше здесь было свободное текстовое поле: оно писало прямо в
   /// базу мимо каталога, и получалось «место», которого нет в списке выбора.
   Future<void> _editPlace(Measurement current) async {
-    final newPlace = await showPlacePicker(
-      context,
-      initialSelection: current.label,
-    );
+    final newPlace = await showPlacePicker(context, initialSelection: current.label);
     // null — пользователь закрыл лист, ничего не выбрав.
     if (newPlace == null || !mounted) return;
 
@@ -162,9 +149,7 @@ class _HistoryDetailPageState extends ConsumerState<HistoryDetailPage> {
       await repo.updateLabel(current.id, newValue);
     } on Object catch (error) {
       if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text('Не удалось сменить место: $error')),
-      );
+      messenger.showSnackBar(SnackBar(content: Text('Не удалось сменить место: $error')));
       return;
     }
 
@@ -172,18 +157,11 @@ class _HistoryDetailPageState extends ConsumerState<HistoryDetailPage> {
     setState(() {
       _measurements = [
         for (final m in _measurements)
-          if (m.id == current.id)
-            current.copyWith(label: Value(newValue))
-          else
-            m,
+          if (m.id == current.id) current.copyWith(label: Value(newValue)) else m,
       ];
     });
     messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          newValue == null ? 'Место убрано' : 'Место изменено на «$newValue»',
-        ),
-      ),
+      SnackBar(content: Text(newValue == null ? 'Место убрано' : 'Место изменено на «$newValue»')),
     );
   }
 
@@ -287,8 +265,7 @@ class _MeasurementDetailView extends ConsumerWidget {
     return ListView(
       children: [
         SummaryHeader(overview: overview, reading: reading),
-        if (location != null)
-          LocationCard(location: location, label: measurement.label),
+        if (location != null) LocationCard(location: location, label: measurement.label),
         for (final parameter in parameters)
           if (values[parameter.key] != null)
             ParameterCard(parameter: parameter, value: values[parameter.key]!),

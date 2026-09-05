@@ -39,10 +39,7 @@ class PlacePickerField extends ConsumerWidget {
           // `mounted`, и обращение к `ref` после await упало бы StateError'ом,
           // если экран успели закрыть, пока лист был открыт.
           final notifier = ref.read(appSettingsProvider.notifier);
-          final selection = await showPlacePicker(
-            context,
-            initialSelection: selected,
-          );
+          final selection = await showPlacePicker(context, initialSelection: selected);
           if (selection == null) return;
           await notifier.setCurrentLabel(selection.name);
         },
@@ -88,17 +85,12 @@ String? normalizePlaceName(String? name) {
 /// детальный просмотр истории — в конкретную запись. Так один и тот же каталог
 /// обслуживает оба сценария, и в истории не может появиться место, которого нет
 /// в списке выбора.
-Future<PlaceSelection?> showPlacePicker(
-  BuildContext context, {
-  String? initialSelection,
-}) {
+Future<PlaceSelection?> showPlacePicker(BuildContext context, {String? initialSelection}) {
   return showModalBottomSheet<PlaceSelection>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
-    builder: (_) => _PlacePickerSheet(
-      initialSelection: normalizePlaceName(initialSelection),
-    ),
+    builder: (_) => _PlacePickerSheet(initialSelection: normalizePlaceName(initialSelection)),
   );
 }
 
@@ -245,9 +237,7 @@ class _PlacePickerSheetState extends ConsumerState<_PlacePickerSheet> {
                       decoration: InputDecoration(
                         hintText: 'Новое место',
                         errorText: _error,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         isDense: true,
                       ),
                       onChanged: (_) {
@@ -275,8 +265,7 @@ class _PlacePickerSheetState extends ConsumerState<_PlacePickerSheet> {
                   // после того, как замер был сохранён. Показываем его отдельной
                   // строкой, иначе в списке не был бы отмечен ни один пункт и
                   // текущее место выглядело бы потерянным.
-                  final missing = selected != null &&
-                          !items.any((place) => place.name == selected)
+                  final missing = selected != null && !items.any((place) => place.name == selected)
                       ? selected
                       : null;
 

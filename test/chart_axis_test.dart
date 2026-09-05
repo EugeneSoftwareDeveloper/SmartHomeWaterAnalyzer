@@ -33,8 +33,11 @@ void main() {
 
     test('шаг всегда положительный', () {
       for (final range in [1.0, 5.0, 20.0, 100.0, 500.0, 3000.0, 10000.0]) {
-        expect(niceAxisInterval(range), greaterThan(0),
-            reason: 'range=$range дал не-положительный шаг');
+        expect(
+          niceAxisInterval(range),
+          greaterThan(0),
+          reason: 'range=$range дал не-положительный шаг',
+        );
       }
     });
   });

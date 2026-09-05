@@ -66,10 +66,11 @@ void main() {
       await repo.save('AA:BB', _reading(), DateTime(2026, 5, 22));
 
       final rows = await repo.recent();
-      expect(
-        rows.map((m) => m.observedAt).toList(),
-        [DateTime(2026, 5, 24), DateTime(2026, 5, 22), DateTime(2026, 5, 20)],
-      );
+      expect(rows.map((m) => m.observedAt).toList(), [
+        DateTime(2026, 5, 24),
+        DateTime(2026, 5, 22),
+        DateTime(2026, 5, 20),
+      ]);
     });
 
     test('recent с deviceId фильтрует только записи указанного устройства', () async {
@@ -100,12 +101,7 @@ void main() {
     });
 
     test('updateLabel со строкой из одних пробелов делает label = null', () async {
-      final id = await repo.save(
-        'AA:BB',
-        _reading(),
-        DateTime(2026, 5, 24, 10),
-        label: 'Кухня',
-      );
+      final id = await repo.save('AA:BB', _reading(), DateTime(2026, 5, 24, 10), label: 'Кухня');
 
       await repo.updateLabel(id, '   ');
 
@@ -189,11 +185,7 @@ void main() {
         'AA:BB',
         _reading(),
         DateTime(2026, 5, 24, 10),
-        location: const MeasurementLocation(
-          latitude: 55.76,
-          longitude: 37.82,
-          accuracyMeters: 8,
-        ),
+        location: const MeasurementLocation(latitude: 55.76, longitude: 37.82, accuracyMeters: 8),
       );
       final original = (await repo.recent()).single;
       await repo.deleteById(id);

@@ -8,15 +8,10 @@ void main() {
     test('каждый профиль содержит все 7 параметров', () {
       for (final profile in NormsProfile.values) {
         final parameters = WaterParameterCatalog.forProfile(profile);
-        expect(parameters.map((p) => p.key), containsAll([
-          'ph',
-          'orp',
-          'ec',
-          'tds',
-          'salinity',
-          'temperature',
-          'sg',
-        ]));
+        expect(
+          parameters.map((p) => p.key),
+          containsAll(['ph', 'orp', 'ec', 'tds', 'salinity', 'temperature', 'sg']),
+        );
       }
     });
 

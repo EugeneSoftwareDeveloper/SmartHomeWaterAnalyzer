@@ -15,8 +15,7 @@ import 'reading.dart';
 /// и эта программа взаимоисключающи.
 class YinmikBleClient {
   static final Guid serviceUuid = Guid('0000ff01-0000-1000-8000-00805f9b34fb');
-  static final Guid measurementCharacteristicUuid =
-      Guid('0000ff02-0000-1000-8000-00805f9b34fb');
+  static final Guid measurementCharacteristicUuid = Guid('0000ff02-0000-1000-8000-00805f9b34fb');
 
   /// Подстроки, по которым прибор узнаётся в advertisement. Сравнение через `contains`
   /// (не `startsWith`!) — некоторые партии добавляют префикс производителя/SKU перед
@@ -24,8 +23,11 @@ class YinmikBleClient {
   /// к регистру и принимает оба разделителя `-` и `_` (часть прошивок использует
   /// подчеркивание).
   static const List<String> knownNameKeywords = <String>[
-    'BLE-C600', 'BLE_C600', 'BLE C600',
-    'BLE-YC', 'BLE_YC',
+    'BLE-C600',
+    'BLE_C600',
+    'BLE C600',
+    'BLE-YC',
+    'BLE_YC',
     'YINMIK',
     'YC01',
     'C600',
@@ -40,8 +42,8 @@ class YinmikBleClient {
     final scan = await Permission.bluetoothScan.request();
     final connect = await Permission.bluetoothConnect.request();
 
-    final isOldAndroid = scan == PermissionStatus.permanentlyDenied &&
-        connect == PermissionStatus.permanentlyDenied;
+    final isOldAndroid =
+        scan == PermissionStatus.permanentlyDenied && connect == PermissionStatus.permanentlyDenied;
 
     if (isOldAndroid) {
       final location = await Permission.locationWhenInUse.request();
@@ -55,8 +57,7 @@ class YinmikBleClient {
     return PermissionResult.granted;
   }
 
-  static bool _isGrantedOrLimited(PermissionStatus status) =>
-      status.isGranted || status.isLimited;
+  static bool _isGrantedOrLimited(PermissionStatus status) => status.isGranted || status.isLimited;
 
   /// Сканирование с фильтром **по имени на клиенте**.
   ///
@@ -131,7 +132,7 @@ class YinmikBleClient {
   }) async {
     final effectiveAttempts = maxAttempts < 1 ? 1 : maxAttempts;
 
-    for (var attempt = 1;; attempt++) {
+    for (var attempt = 1; ; attempt++) {
       try {
         return await _readOnceInternal(device, timeout);
       } on Object catch (error) {
@@ -274,12 +275,11 @@ enum PermissionResult {
   bool get isGranted => this == PermissionResult.granted;
 
   String get message => switch (this) {
-        PermissionResult.granted => 'Все разрешения получены',
-        PermissionResult.bluetoothScanDenied =>
-          'Не дано разрешение «Устройства поблизости» (Bluetooth-сканирование).',
-        PermissionResult.bluetoothConnectDenied =>
-          'Не дано разрешение на подключение по Bluetooth.',
-        PermissionResult.locationDenied =>
-          'На этой версии Android для BLE-сканирования нужна геолокация.',
-      };
+    PermissionResult.granted => 'Все разрешения получены',
+    PermissionResult.bluetoothScanDenied =>
+      'Не дано разрешение «Устройства поблизости» (Bluetooth-сканирование).',
+    PermissionResult.bluetoothConnectDenied => 'Не дано разрешение на подключение по Bluetooth.',
+    PermissionResult.locationDenied =>
+      'На этой версии Android для BLE-сканирования нужна геолокация.',
+  };
 }

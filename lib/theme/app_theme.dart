@@ -47,11 +47,7 @@ abstract final class AppTheme {
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
-      dividerTheme: DividerThemeData(
-        color: colorScheme.outlineVariant,
-        space: 1,
-        thickness: 1,
-      ),
+      dividerTheme: DividerThemeData(color: colorScheme.outlineVariant, space: 1, thickness: 1),
     );
   }
 }

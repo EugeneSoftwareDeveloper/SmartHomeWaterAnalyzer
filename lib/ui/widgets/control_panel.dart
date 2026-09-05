@@ -97,11 +97,7 @@ class _ControlPanelState extends State<ControlPanel> {
                   enabled: !_sending,
                   onChanged: _toggleBacklight,
                 ),
-                Divider(
-                  height: 1,
-                  color: theme.colorScheme.outlineVariant,
-                  indent: 56,
-                ),
+                Divider(height: 1, color: theme.colorScheme.outlineVariant, indent: 56),
                 _ControlTile(
                   icon: Icons.lock_open,
                   activeIcon: Icons.lock,
@@ -133,26 +129,26 @@ class _ControlPanelState extends State<ControlPanel> {
     );
   }
 
-  Future<void> _runCommand({
-    required String commandName,
-    required Uint8List command,
-  }) async {
+  Future<void> _runCommand({required String commandName, required Uint8List command}) async {
     if (_sending) return;
     setState(() => _sending = true);
     await HapticFeedback.selectionClick();
 
     try {
-      final reading = await widget.client
-          .sendCommandAndRead(widget.device, command, commandName: commandName);
+      final reading = await widget.client.sendCommandAndRead(
+        widget.device,
+        command,
+        commandName: commandName,
+      );
       if (mounted) widget.onReadingUpdated(reading);
     } on UnknownCommandException {
       if (mounted) await _showCommandsUnknownDialog(commandName);
     } on Object catch (error) {
       await HapticFeedback.mediumImpact();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Не удалось отправить команду: $error')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Не удалось отправить команду: $error')));
       }
     } finally {
       if (mounted) setState(() => _sending = false);
@@ -177,10 +173,7 @@ class _ControlPanelState extends State<ControlPanel> {
                 style: theme.textTheme.bodyMedium,
               ),
               const SizedBox(height: 12),
-              Text(
-                'Что делать:',
-                style: theme.textTheme.titleSmall,
-              ),
+              Text('Что делать:', style: theme.textTheme.titleSmall),
               const SizedBox(height: 6),
               Text(
                 '1. На Android: «Параметры разработчика» → включить «Bluetooth HCI snoop log».\n'
@@ -194,10 +187,7 @@ class _ControlPanelState extends State<ControlPanel> {
             ],
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Понятно'),
-            ),
+            TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Понятно')),
           ],
         );
       },
@@ -236,14 +226,9 @@ class _ControlTile extends StatelessWidget {
       title: Text(title),
       subtitle: Text(
         subtitle,
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: theme.colorScheme.onSurfaceVariant,
-        ),
+        style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
       ),
-      trailing: Switch(
-        value: value,
-        onChanged: enabled ? (on) => unawaited(onChanged(on)) : null,
-      ),
+      trailing: Switch(value: value, onChanged: enabled ? (on) => unawaited(onChanged(on)) : null),
       onTap: enabled ? () => unawaited(onChanged(!value)) : null,
     );
   }

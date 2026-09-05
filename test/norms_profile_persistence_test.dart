@@ -27,10 +27,7 @@ void main() {
 
   group('NormsProfile.resolve', () {
     test('известное имя разбирается', () {
-      expect(
-        NormsProfile.resolve('pool', fallback: NormsProfile.drinking),
-        NormsProfile.pool,
-      );
+      expect(NormsProfile.resolve('pool', fallback: NormsProfile.drinking), NormsProfile.pool);
     });
 
     test('null — замер до 1.2.0, берём текущий профиль', () {
@@ -41,10 +38,7 @@ void main() {
     });
 
     test('пустая строка ведёт себя как null', () {
-      expect(
-        NormsProfile.resolve('', fallback: NormsProfile.pool),
-        NormsProfile.pool,
-      );
+      expect(NormsProfile.resolve('', fallback: NormsProfile.pool), NormsProfile.pool);
     });
 
     test('неизвестное имя не роняет приложение', () {
@@ -81,12 +75,7 @@ void main() {
     });
 
     test('профиль пишется в запись', () async {
-      await repo.save(
-        'AA:BB',
-        _reading(),
-        DateTime(2026, 8, 31),
-        normsProfile: NormsProfile.pool,
-      );
+      await repo.save('AA:BB', _reading(), DateTime(2026, 8, 31), normsProfile: NormsProfile.pool);
 
       expect((await repo.recent()).single.normsProfile, 'pool');
     });
@@ -100,12 +89,7 @@ void main() {
     test('замер судится по своему профилю, а не по текущей настройке', () async {
       // Суть фичи: замер в бассейне, просмотренный после переключения профиля
       // на питьевую воду, не должен задним числом становиться «опасным».
-      await repo.save(
-        'AA:BB',
-        _reading(),
-        DateTime(2026, 8, 31),
-        normsProfile: NormsProfile.pool,
-      );
+      await repo.save('AA:BB', _reading(), DateTime(2026, 8, 31), normsProfile: NormsProfile.pool);
       final row = (await repo.recent()).single;
 
       final resolved = NormsProfile.resolve(
@@ -154,12 +138,7 @@ void main() {
     });
 
     test('пробелы по краям обрезаются', () async {
-      await repo.save(
-        'AA:BB',
-        _reading(),
-        DateTime(2026, 8, 31),
-        label: '  Кран на кухне  ',
-      );
+      await repo.save('AA:BB', _reading(), DateTime(2026, 8, 31), label: '  Кран на кухне  ');
 
       expect((await repo.recent()).single.label, 'Кран на кухне');
     });

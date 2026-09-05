@@ -73,7 +73,9 @@ class _HomePageState extends ConsumerState<HomePage> {
       return;
     }
 
-    _scanSubscription = client.scan(timeout: const Duration(seconds: 10)).listen(
+    _scanSubscription = client
+        .scan(timeout: const Duration(seconds: 10))
+        .listen(
           (state) {
             if (!mounted) return;
             setState(() {
@@ -147,9 +149,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                         return ListTile(
                           leading: const Icon(Icons.bluetooth),
                           title: Text(name),
-                          subtitle: Text(
-                            '${result.device.remoteId.str} • RSSI ${result.rssi}',
-                          ),
+                          subtitle: Text('${result.device.remoteId.str} • RSSI ${result.rssi}'),
                           trailing: const Icon(Icons.chevron_right),
                           onTap: () {
                             Navigator.of(sheetContext).pop();
@@ -268,8 +268,7 @@ class _HomePageState extends ConsumerState<HomePage> {
             deviceId: lastDeviceId,
             deviceName: settings.lastDeviceName,
             onConnect: () => _reconnectToLastDevice(lastDeviceId),
-            onForget: () =>
-                ref.read(appSettingsProvider.notifier).forgetDevice(),
+            onForget: () => ref.read(appSettingsProvider.notifier).forgetDevice(),
           ),
         Expanded(child: _buildScanContent(l10n)),
       ],
@@ -323,8 +322,8 @@ class _HomePageState extends ConsumerState<HomePage> {
               Text(
                 'BLE-устройств в эфире: $_totalScanned',
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
               if (_totalScanned > 0) ...[
                 const SizedBox(height: 8),
@@ -339,8 +338,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                     'Если прибор называется не «BLE-C600», выбери его вручную.',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ),
               ],
@@ -356,8 +355,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                   'Сканер нашёл $_totalScanned устройств(а), но среди них нет BLE-C600.',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 TextButton(
@@ -384,10 +383,8 @@ class _HomePageState extends ConsumerState<HomePage> {
           title: Text(name),
           subtitle: Text('${result.device.remoteId.str}  •  RSSI ${result.rssi}'),
           trailing: const Icon(Icons.chevron_right),
-          onTap: () => _openReading(
-            result.device,
-            advertisedName: result.advertisementData.advName,
-          ),
+          onTap: () =>
+              _openReading(result.device, advertisedName: result.advertisementData.advName),
         );
       },
     );
@@ -428,10 +425,7 @@ class _LastDeviceCard extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
             child: Row(
               children: [
-                Icon(
-                  Icons.bluetooth_connected,
-                  color: theme.colorScheme.onPrimaryContainer,
-                ),
+                Icon(Icons.bluetooth_connected, color: theme.colorScheme.onPrimaryContainer),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
@@ -452,8 +446,7 @@ class _LastDeviceCard extends StatelessWidget {
                             ? 'Последний прибор — без сканирования'
                             : '$deviceId • без сканирования',
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onPrimaryContainer
-                              .withValues(alpha: 0.75),
+                          color: theme.colorScheme.onPrimaryContainer.withValues(alpha: 0.75),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -521,9 +514,7 @@ class _BluetoothOffBody extends StatelessWidget {
           Text(
             l10n.bluetoothOffSubtitle,
             textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
           const SizedBox(height: 24),
           // Android: попытка программно включить Bluetooth (требует BLUETOOTH_CONNECT в манифесте).
