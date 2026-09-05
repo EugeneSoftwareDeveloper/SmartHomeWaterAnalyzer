@@ -68,6 +68,13 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
   /// место в списке, и тогда пришедший результат относится уже не к тому месту.
   String? _baselineRequestedFor;
 
+  /// Место, которому принадлежит показываемая сейчас [_baseline]. Отдельно от
+  /// [_baselineRequestedFor], потому что между запросом и ответом на экране всё
+  /// ещё висит прежняя база: без этой пары дельты доли секунды считались бы
+  /// против другого места, а подпись над карточками показывает только время
+  /// и подмену не выдаёт.
+  String? _baselineLoadedFor;
+
   @override
   void initState() {
     super.initState();
@@ -83,6 +90,18 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
     final place = normalizePlaceName(ref.read(appSettingsProvider).currentLabel);
     _baselineRequestedFor = place;
 
+    // Сменилось место — показанная база относится к другому месту, и держать её
+    // на экране нельзя даже те миллисекунды, пока идёт запрос: дельты считались
+    // бы против крана, когда пользователь уже выбрал бассейн. Лучше короткая
+    // пустота, чем короткая неправда. При обычном обновлении показаний место то
+    // же, база остаётся на месте, и мигания нет.
+    if (_baselineLoaded && _baselineLoadedFor != place) {
+      setState(() {
+        _baseline = null;
+        _baselineLoaded = false;
+      });
+    }
+
     try {
       final found = await ref
           .read(historyRepositoryProvider)
@@ -93,6 +112,7 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
       setState(() {
         _baseline = found;
         _baselineLoaded = true;
+        _baselineLoadedFor = place;
       });
     } on Object catch (_) {
       // Сравнение — украшение поверх показаний. Сбой чтения истории не должен
@@ -101,6 +121,7 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
       setState(() {
         _baseline = null;
         _baselineLoaded = true;
+        _baselineLoadedFor = place;
       });
     }
   }
