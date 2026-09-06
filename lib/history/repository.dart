@@ -1,9 +1,11 @@
 import 'package:drift/drift.dart';
 
 import '../location/measurement_location.dart';
+import '../location/site_anchor.dart';
 import '../quality/profile.dart';
 import '../yinmik/reading.dart';
 import 'database.dart';
+import 'measurement_place.dart';
 import 'place_name.dart';
 
 /// Уровень абстракции над `AppDatabase`: принимает доменные `YinmikReading`, скрывает
@@ -22,19 +24,25 @@ class HistoryRepository {
     String deviceId,
     YinmikReading reading,
     DateTime observedAt, {
-    String? label,
+    MeasurementPlace place = MeasurementPlace.none,
     MeasurementLocation? location,
     NormsProfile? normsProfile,
   }) {
-    // Пустое место сохраняем как отсутствие места, а не как пустую строку: иначе
-    // в истории появлялись бы записи с «пробельной» меткой, которые UI показывает
-    // как названные. Тем же правилом ищется база для тренда — см. place_name.dart.
-    final place = normalizePlaceName(label);
+    // Имена нормализуются тем же правилом, что и при поиске базы тренда, иначе
+    // сохранённое «`Кулер`» не нашлось бы по выбранному «` Кулер `».
+    // Источник по-прежнему живёт в колонке label — её смысл не изменился.
+    final normalized = MeasurementPlace.normalized(
+      siteName: place.siteName,
+      roomName: place.roomName,
+      sourceName: place.sourceName,
+    );
 
     return _database.insertMeasurement(
       MeasurementsCompanion.insert(
         deviceId: deviceId,
-        label: Value(place),
+        label: Value(normalized.sourceName),
+        siteName: Value(normalized.siteName),
+        roomName: Value(normalized.roomName),
         observedAt: observedAt,
         latitude: Value(location?.latitude),
         longitude: Value(location?.longitude),
@@ -55,10 +63,22 @@ class HistoryRepository {
     );
   }
 
-  /// Изменить только метку у существующей записи (например, исправить опечатку).
-  /// Возвращает количество затронутых строк (0 — запись не найдена).
-  Future<int> updateLabel(int id, String? label) =>
-      _database.updateMeasurementLabel(id, label?.trim().isEmpty == true ? null : label);
+  /// Изменить адрес у существующей записи. Возвращает количество затронутых
+  /// строк (0 — запись не найдена).
+  Future<int> updatePlace(int id, MeasurementPlace place) {
+    final normalized = MeasurementPlace.normalized(
+      siteName: place.siteName,
+      roomName: place.roomName,
+      sourceName: place.sourceName,
+    );
+
+    return _database.updateMeasurementPlace(
+      id,
+      siteName: normalized.siteName,
+      roomName: normalized.roomName,
+      sourceName: normalized.sourceName,
+    );
+  }
 
   /// Удалить одну запись по id. Возвращает количество затронутых строк (0 — запись
   /// не найдена, 1 — успех).
@@ -88,6 +108,8 @@ class HistoryRepository {
         longitude: Value(m.longitude),
         locationAccuracyMeters: Value(m.locationAccuracyMeters),
         normsProfile: Value(m.normsProfile),
+        siteName: Value(m.siteName),
+        roomName: Value(m.roomName),
       ),
     );
   }
@@ -96,12 +118,30 @@ class HistoryRepository {
       _database.getAllMeasurements(deviceId: deviceId, limit: limit);
 
   /// Предыдущий замер этого прибора в этом же месте — то, с чем экран показаний
-  /// сравнивает свежее чтение. `null`, если в этом месте ещё не сохраняли.
+  /// сравнивает свежее чтение. `null`, если здесь ещё не сохраняли.
   ///
-  /// Место нормализуется тем же правилом, что и при записи: иначе выбранное
-  /// «` Кулер `» не нашло бы сохранённое «`Кулер`», и тренд молча не появлялся бы.
-  Future<Measurement?> latestForPlace(String deviceId, String? place) =>
-      _database.latestMeasurement(deviceId: deviceId, label: normalizePlaceName(place));
+  /// [legacyLabel] — плоское имя источника из версий до 1.4.0. Передаётся только
+  /// для мигрировавших источников и склеивает историю через границу обновления:
+  /// у старых замеров место не заполнено, и по структуре они не нашлись бы.
+  Future<Measurement?> latestForPlace(
+    String deviceId,
+    MeasurementPlace place, {
+    String? legacyLabel,
+  }) {
+    final normalized = MeasurementPlace.normalized(
+      siteName: place.siteName,
+      roomName: place.roomName,
+      sourceName: place.sourceName,
+    );
+
+    return _database.latestMeasurement(
+      deviceId: deviceId,
+      siteName: normalized.siteName,
+      roomName: normalized.roomName,
+      sourceName: normalized.sourceName,
+      legacyLabel: normalizePlaceName(legacyLabel),
+    );
+  }
 
   Stream<List<Measurement>> watchRecent({String? deviceId, int limit = 200}) =>
       _database.watchAllMeasurements(deviceId: deviceId, limit: limit);
@@ -109,35 +149,90 @@ class HistoryRepository {
   Future<void> clear({String? deviceId}) => _database.deleteAll(deviceId: deviceId);
 }
 
-/// Каталог мест замера. Отделён от [HistoryRepository], потому что это независимая
-/// сущность: места живут своей жизнью и не привязаны к конкретным записям истории.
-class PlacesRepository {
-  PlacesRepository(this._database);
+/// Каталог мест, комнат и источников. Отделён от [HistoryRepository], потому что
+/// это независимая сущность: каталог живёт своей жизнью и не привязан к конкретным
+/// записям истории. Удаление места историю не переписывает — замер держит имена.
+class PlaceCatalogRepository {
+  PlaceCatalogRepository(this._database);
 
   final AppDatabase _database;
 
-  /// Список для выбора: недавно использованные сверху, остальные по алфавиту.
-  Stream<List<Place>> watchAll() => _database.watchPlaces();
+  // ─── Чтение ───────────────────────────────────────────────────────────────
 
-  Future<List<Place>> all() => _database.getPlaces();
+  Stream<List<Site>> watchSites() => _database.watchSites();
 
-  /// Добавляет место или возвращает уже существующее с таким именем.
-  /// Пустое имя отвергается — безымянных мест в каталоге быть не должно.
-  Future<Place> add(String name, {DateTime? createdAt}) {
-    final trimmed = name.trim();
-    if (trimmed.isEmpty) {
-      throw ArgumentError.value(name, 'name', 'Название места не может быть пустым');
-    }
-    return _database.insertOrGetPlace(trimmed, createdAt ?? DateTime.now());
+  Future<List<Site>> sites() => _database.getSites();
+
+  Stream<List<Room>> watchRooms() => _database.watchRooms();
+
+  Future<List<Room>> rooms() => _database.getRooms();
+
+  Stream<List<SamplingPoint>> watchSources() => _database.watchSources();
+
+  Future<List<SamplingPoint>> sources() => _database.getSources();
+
+  Future<SamplingPoint?> sourceById(int id) => _database.getSourceById(id);
+
+  /// Ищет источник по плоскому имени места из версий до 1.4.0. Нужен один раз,
+  /// чтобы выбранное до обновления место не потерялось.
+  Future<SamplingPoint?> sourceByLegacyLabel(String label) {
+    final normalized = normalizePlaceName(label);
+    if (normalized == null) return Future<SamplingPoint?>.value();
+    return _database.findSourceByLegacyLabel(normalized);
   }
 
-  /// Помечает место использованным, чтобы оно поднялось в начало списка.
-  /// Неизвестное имя просто игнорируется (0 затронутых строк) — например, если
-  /// место удалили из каталога, но замеры с ним ещё сохраняются.
-  Future<int> markUsed(String name, {DateTime? usedAt}) =>
-      _database.touchPlace(name, usedAt ?? DateTime.now());
+  // ─── Создание ─────────────────────────────────────────────────────────────
+  //
+  // Все три метода возвращают существующую запись, если такая уже есть, а не
+  // создают дубликат и не падают на уникальном индексе.
 
-  /// Удаляет место из каталога. История замеров не меняется — сохранённые записи
-  /// держат название места в своей колонке `label`.
-  Future<int> deleteById(int id) => _database.deletePlaceById(id);
+  Future<Site> addSite(String name, {String? city, DateTime? createdAt}) =>
+      _database.insertOrGetSite(name, createdAt ?? DateTime.now(), city: normalizePlaceName(city));
+
+  Future<Room> addRoom(int siteId, String name, {DateTime? createdAt}) =>
+      _database.insertOrGetRoom(siteId, name, createdAt ?? DateTime.now());
+
+  Future<SamplingPoint> addSource(
+    int siteId,
+    String name, {
+    int? roomId,
+    DateTime? createdAt,
+  }) => _database.insertOrGetSource(siteId, name, createdAt ?? DateTime.now(), roomId: roomId);
+
+  // ─── Изменение ────────────────────────────────────────────────────────────
+
+  Future<int> renameSite(int siteId, String name, {String? city}) =>
+      _database.renameSite(siteId, name, city: normalizePlaceName(city));
+
+  Future<int> renameRoom(int roomId, String name) => _database.renameRoom(roomId, name);
+
+  Future<int> renameSource(int sourceId, String name) => _database.renameSource(sourceId, name);
+
+  /// Отмечает источник использованным — вместе с его комнатой и местом, чтобы
+  /// свежесть поднимала всю цепочку в списке выбора.
+  Future<void> markSourceUsed(int sourceId, {DateTime? usedAt}) =>
+      _database.touchSource(sourceId, usedAt ?? DateTime.now());
+
+  /// Привязывает место к координатам вручную либо сбрасывает привязку, если
+  /// [anchor] равен `null`.
+  Future<int> setSiteAnchor(int siteId, SiteAnchor? anchor) {
+    return _database.updateSiteAnchor(
+      siteId,
+      latitude: anchor?.latitude,
+      longitude: anchor?.longitude,
+      accuracyMeters: anchor?.accuracyMeters,
+      samples: anchor?.samples ?? 0,
+    );
+  }
+
+  // ─── Удаление ─────────────────────────────────────────────────────────────
+  //
+  // История замеров не меняется: сохранённые записи держат имена в своих
+  // колонках, а не ссылки на каталог.
+
+  Future<void> deleteSite(int id) => _database.deleteSiteById(id);
+
+  Future<void> deleteRoom(int id) => _database.deleteRoomById(id);
+
+  Future<int> deleteSource(int id) => _database.deleteSourceById(id);
 }

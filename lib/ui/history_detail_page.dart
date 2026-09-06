@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../history/database.dart';
+import '../history/measurement_place.dart';
 import '../location/measurement_location.dart';
 import '../providers/app_settings.dart';
 import '../providers/history_provider.dart';
@@ -63,14 +64,18 @@ class _HistoryDetailPageState extends ConsumerState<HistoryDetailPage> {
     // _currentIndex мог выйти за границы после удаления.
     final clampedIndex = _currentIndex.clamp(0, _measurements.length - 1);
     final current = _measurements[clampedIndex];
-    final hasLabel = current.label?.isNotEmpty == true;
+    final place = MeasurementPlace.ofMeasurement(current);
 
     return Scaffold(
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(hasLabel ? current.label! : 'Замер', maxLines: 1, overflow: TextOverflow.ellipsis),
+            Text(
+              place.isEmpty ? 'Замер' : place.formatted,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
             Text(
               _timeFormat.format(current.observedAt),
               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
@@ -96,7 +101,7 @@ class _HistoryDetailPageState extends ConsumerState<HistoryDetailPage> {
                   children: [
                     Icon(Icons.place_outlined),
                     SizedBox(width: 12),
-                    Text('Изменить место'),
+                    Text('Изменить адрес'),
                   ],
                 ),
               ),
@@ -136,20 +141,20 @@ class _HistoryDetailPageState extends ConsumerState<HistoryDetailPage> {
   /// показаний. Раньше здесь было свободное текстовое поле: оно писало прямо в
   /// базу мимо каталога, и получалось «место», которого нет в списке выбора.
   Future<void> _editPlace(Measurement current) async {
-    final newPlace = await showPlacePicker(context, initialSelection: current.label);
+    final selection = await showPlacePicker(context);
     // null — пользователь закрыл лист, ничего не выбрав.
-    if (newPlace == null || !mounted) return;
+    if (selection == null || !mounted) return;
 
-    final newValue = newPlace.name;
-    if (newValue == current.label) return;
+    final newPlace = selection.place;
+    if (newPlace == MeasurementPlace.ofMeasurement(current)) return;
 
     final messenger = ScaffoldMessenger.of(context);
     final repo = ref.read(historyRepositoryProvider);
     try {
-      await repo.updateLabel(current.id, newValue);
+      await repo.updatePlace(current.id, newPlace);
     } on Object catch (error) {
       if (!mounted) return;
-      messenger.showSnackBar(SnackBar(content: Text('Не удалось сменить место: $error')));
+      messenger.showSnackBar(SnackBar(content: Text('Не удалось сменить адрес: $error')));
       return;
     }
 
@@ -157,11 +162,22 @@ class _HistoryDetailPageState extends ConsumerState<HistoryDetailPage> {
     setState(() {
       _measurements = [
         for (final m in _measurements)
-          if (m.id == current.id) current.copyWith(label: Value(newValue)) else m,
+          if (m.id == current.id)
+            current.copyWith(
+              label: Value(newPlace.sourceName),
+              siteName: Value(newPlace.siteName),
+              roomName: Value(newPlace.roomName),
+            )
+          else
+            m,
       ];
     });
     messenger.showSnackBar(
-      SnackBar(content: Text(newValue == null ? 'Место убрано' : 'Место изменено на «$newValue»')),
+      SnackBar(
+        content: Text(
+          newPlace.isEmpty ? 'Адрес убран' : 'Адрес изменён на «${newPlace.formatted}»',
+        ),
+      ),
     );
   }
 
@@ -265,7 +281,13 @@ class _MeasurementDetailView extends ConsumerWidget {
     return ListView(
       children: [
         SummaryHeader(overview: overview, reading: reading),
-        if (location != null) LocationCard(location: location, label: measurement.label),
+        if (location != null)
+          LocationCard(
+            location: location,
+            // На карте подписываем местом и источником: комната там не помогает,
+            // а строка на пине короткая.
+            label: MeasurementPlace.ofMeasurement(measurement).short,
+          ),
         for (final parameter in parameters)
           if (values[parameter.key] != null)
             ParameterCard(parameter: parameter, value: values[parameter.key]!),

@@ -8,7 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../history/database.dart';
-import '../history/place_name.dart';
+import '../history/measurement_place.dart';
 import '../providers/app_settings.dart';
 import '../providers/history_provider.dart';
 import '../providers/location_provider.dart';
@@ -66,14 +66,14 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
   /// Место, для которого запрошена [_baseline]. Нужно, чтобы ответ устаревшего
   /// запроса не перетёр базу: пока БД отвечает, пользователь успевает сменить
   /// место в списке, и тогда пришедший результат относится уже не к тому месту.
-  String? _baselineRequestedFor;
+  MeasurementPlace? _baselineRequestedFor;
 
   /// Место, которому принадлежит показываемая сейчас [_baseline]. Отдельно от
   /// [_baselineRequestedFor], потому что между запросом и ответом на экране всё
   /// ещё висит прежняя база: без этой пары дельты доли секунды считались бы
   /// против другого места, а подпись над карточками показывает только время
   /// и подмену не выдаёт.
-  String? _baselineLoadedFor;
+  MeasurementPlace? _baselineLoadedFor;
 
   @override
   void initState() {
@@ -87,7 +87,10 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
   /// иначе только что записанный замер сам стал бы базой, и дельта, которую
   /// пользователь секунду назад видел, схлопнулась бы в ноль.
   Future<void> _loadBaseline() async {
-    final place = normalizePlaceName(ref.read(appSettingsProvider).currentLabel);
+    final sourceId = ref.read(appSettingsProvider).currentSourceId;
+    final catalog = ref.read(placeCatalogViewProvider).valueOrNull;
+    final source = catalog?.sourceById(sourceId);
+    final place = source == null ? MeasurementPlace.none : catalog!.placeOf(source);
     _baselineRequestedFor = place;
 
     // Сменилось место — показанная база относится к другому месту, и держать её
@@ -105,7 +108,13 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
     try {
       final found = await ref
           .read(historyRepositoryProvider)
-          .latestForPlace(widget.device.remoteId.str, place);
+          .latestForPlace(
+            widget.device.remoteId.str,
+            place,
+            // Для мигрировавших источников подхватываем и замеры до 1.4.0:
+            // у них место не заполнено, и по структуре они не нашлись бы.
+            legacyLabel: source?.legacyLabel,
+          );
 
       // Пока ждали БД, место могли сменить — ответ уже не про то место.
       if (!mounted || _baselineRequestedFor != place) return;
@@ -200,12 +209,14 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
       // разрешений), и пользователь успел бы сменить место или профиль. Со старым
       // снапшотом замер ушёл бы с прежним местом.
       final current = ref.read(appSettingsProvider);
-      final place = current.currentLabel;
+      final catalog = ref.read(placeCatalogViewProvider).valueOrNull;
+      final source = catalog?.sourceById(current.currentSourceId);
+      final place = source == null ? MeasurementPlace.none : catalog!.placeOf(source);
       final id = await history.save(
         widget.device.remoteId.str,
         reading,
         DateTime.now(),
-        label: place,
+        place: place,
         location: locationResult?.location,
         normsProfile: current.normsProfile,
       );
@@ -214,9 +225,9 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
       // Свой try/catch: замер уже записан, и сбой этого косметического шага не
       // должен выдаваться за неудачное сохранение — иначе пользователь нажал бы
       // «Сохранить» повторно и получил дубликат в истории.
-      if (place != null && place.trim().isNotEmpty) {
+      if (source != null) {
         try {
-          await ref.read(placesRepositoryProvider).markUsed(place);
+          await ref.read(placeCatalogProvider).markSourceUsed(source.id);
         } on Object catch (_) {
           // Порядок списка мест — не то, ради чего стоит беспокоить пользователя.
         }
@@ -265,8 +276,8 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
     // Сменили место — сравнивать надо уже с историей нового места, иначе замер
     // на кухне сопоставлялся бы с прошлым замером в бассейне. Ровно та причина,
     // по которой у графика в 1.2.0 появился фильтр по месту.
-    ref.listen<String?>(
-      appSettingsProvider.select((settings) => settings.currentLabel),
+    ref.listen<int?>(
+      appSettingsProvider.select((settings) => settings.currentSourceId),
       (_, _) => unawaited(_loadBaseline()),
     );
 

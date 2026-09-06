@@ -18,7 +18,20 @@ class AppSettings {
   /// подключался без имени (тогда UI показывает MAC).
   final String? lastDeviceName;
   final bool notificationsEnabled;
-  final String? currentLabel;
+
+  /// Выбранный источник — ссылка на строку каталога, а не имя.
+  ///
+  /// Здесь ссылка уместна, в отличие от сохранённого замера: это «что выбрано
+  /// прямо сейчас», а не исторический факт. Если источник удалят, выбор должен
+  /// сброситься, а не остаться указывать на несуществующее имя.
+  final int? currentSourceId;
+
+  /// Плоское имя места, выбранное в версиях до 1.4.0.
+  ///
+  /// Настройки грузятся синхронно и без доступа к БД, поэтому превратить имя в
+  /// ссылку прямо при загрузке нельзя. Значение доживает до первого открытия
+  /// экрана показаний, там резолвится по `legacyLabel` источника и стирается.
+  final String? legacySelectedLabel;
 
   /// Прикреплять ли координаты к сохраняемым замерам. Включено по умолчанию:
   /// геометка — заявленная функция приложения, а разрешение всё равно
@@ -32,7 +45,8 @@ class AppSettings {
     required this.lastDeviceId,
     required this.lastDeviceName,
     required this.notificationsEnabled,
-    required this.currentLabel,
+    required this.currentSourceId,
+    required this.legacySelectedLabel,
     required this.saveLocationEnabled,
   });
 
@@ -42,14 +56,16 @@ class AppSettings {
     String? lastDeviceId,
     String? lastDeviceName,
     bool? notificationsEnabled,
-    String? currentLabel,
+    int? currentSourceId,
+    String? legacySelectedLabel,
     bool? saveLocationEnabled,
     bool clearLastDevice = false,
     // Отдельный флаг для имени: подключение к безымянному прибору должно стирать имя
     // предыдущего, а `lastDeviceName: null` из-за `??` ниже откатился бы к старому
     // значению — и кнопка показала бы чужое имя рядом с новым MAC.
     bool clearLastDeviceName = false,
-    bool clearLabel = false,
+    bool clearSource = false,
+    bool clearLegacySelection = false,
   }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
@@ -59,7 +75,10 @@ class AppSettings {
           ? null
           : (lastDeviceName ?? this.lastDeviceName),
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
-      currentLabel: clearLabel ? null : (currentLabel ?? this.currentLabel),
+      currentSourceId: clearSource ? null : (currentSourceId ?? this.currentSourceId),
+      legacySelectedLabel: clearLegacySelection
+          ? null
+          : (legacySelectedLabel ?? this.legacySelectedLabel),
       saveLocationEnabled: saveLocationEnabled ?? this.saveLocationEnabled,
     );
   }
@@ -75,7 +94,10 @@ class AppSettingsNotifier extends StateNotifier<AppSettings> {
   static const _kLastDevice = 'settings.lastDeviceId';
   static const _kLastDeviceName = 'settings.lastDeviceName';
   static const _kNotifications = 'settings.notificationsEnabled';
-  static const _kCurrentLabel = 'settings.currentLabel';
+  static const _kCurrentSource = 'settings.currentSourceId';
+
+  /// Ключ версий до 1.4.0. Читается один раз ради переноса выбора и удаляется.
+  static const _kLegacyCurrentLabel = 'settings.currentLabel';
   static const _kSaveLocation = 'settings.saveLocationEnabled';
 
   static AppSettings _load(SharedPreferences prefs) {
@@ -91,7 +113,8 @@ class AppSettingsNotifier extends StateNotifier<AppSettings> {
       lastDeviceId: prefs.getString(_kLastDevice),
       lastDeviceName: prefs.getString(_kLastDeviceName),
       notificationsEnabled: prefs.getBool(_kNotifications) ?? false,
-      currentLabel: prefs.getString(_kCurrentLabel),
+      currentSourceId: prefs.getInt(_kCurrentSource),
+      legacySelectedLabel: prefs.getString(_kLegacyCurrentLabel),
       saveLocationEnabled: prefs.getBool(_kSaveLocation) ?? true,
     );
   }
@@ -101,14 +124,22 @@ class AppSettingsNotifier extends StateNotifier<AppSettings> {
     await _prefs.setBool(_kSaveLocation, enabled);
   }
 
-  Future<void> setCurrentLabel(String? label) async {
-    if (label == null || label.isEmpty) {
-      state = state.copyWith(clearLabel: true);
-      await _prefs.remove(_kCurrentLabel);
+  Future<void> setCurrentSource(int? sourceId) async {
+    if (sourceId == null) {
+      state = state.copyWith(clearSource: true);
+      await _prefs.remove(_kCurrentSource);
     } else {
-      state = state.copyWith(currentLabel: label);
-      await _prefs.setString(_kCurrentLabel, label);
+      state = state.copyWith(currentSourceId: sourceId);
+      await _prefs.setInt(_kCurrentSource, sourceId);
     }
+  }
+
+  /// Забывает плоский выбор версий до 1.4.0 — после того, как он превращён в
+  /// ссылку на источник или оказался ссылкой в никуда.
+  Future<void> clearLegacySelection() async {
+    if (state.legacySelectedLabel == null) return;
+    state = state.copyWith(clearLegacySelection: true);
+    await _prefs.remove(_kLegacyCurrentLabel);
   }
 
   Future<void> setThemeMode(ThemeMode mode) async {

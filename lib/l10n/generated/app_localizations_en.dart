@@ -31,8 +31,7 @@ class AppL10nEn extends AppL10n {
   String get scanNoDeviceName => '(no name)';
 
   @override
-  String get permissionBluetoothDisabled =>
-      'Bluetooth is disabled. Enable it in phone settings.';
+  String get permissionBluetoothDisabled => 'Bluetooth is disabled. Enable it in phone settings.';
 
   @override
   String get permissionOpenSettings => 'Open app settings';
@@ -93,8 +92,7 @@ class AppL10nEn extends AppL10n {
   String get historyTitle => 'Measurement history';
 
   @override
-  String get historyEmpty =>
-      'No saved measurements yet. Make a few readings on the main screen.';
+  String get historyEmpty => 'No saved measurements yet. Make a few readings on the main screen.';
 
   @override
   String get historyExport => 'Export CSV';
@@ -103,8 +101,7 @@ class AppL10nEn extends AppL10n {
   String get historyDeleteAll => 'Clear history';
 
   @override
-  String get historyDeleteConfirm =>
-      'Delete all saved measurements? Cannot be undone.';
+  String get historyDeleteConfirm => 'Delete all saved measurements? Cannot be undone.';
 
   @override
   String get historyDeleted => 'History cleared';

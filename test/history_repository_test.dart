@@ -1,6 +1,7 @@
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:water_analyzer/history/database.dart';
+import 'package:water_analyzer/history/measurement_place.dart';
 import 'package:water_analyzer/history/repository.dart';
 import 'package:water_analyzer/location/measurement_location.dart';
 import 'package:water_analyzer/yinmik/reading.dart';
@@ -50,7 +51,7 @@ void main() {
     });
 
     test('save с label сохраняет метку, без label — null', () async {
-      await repo.save('AA:BB', _reading(), DateTime(2026, 5, 24, 10), label: 'Кухня');
+      await repo.save('AA:BB', _reading(), DateTime(2026, 5, 24, 10), place: const MeasurementPlace(sourceName: 'Кухня'));
       await repo.save('AA:BB', _reading(), DateTime(2026, 5, 24, 11));
 
       final rows = await repo.recent();
@@ -88,10 +89,10 @@ void main() {
         'AA:BB',
         _reading(ph: 6.9, orp: 350),
         DateTime(2026, 5, 24, 10),
-        label: 'Старая метка',
+        place: const MeasurementPlace(sourceName: 'Старая метка'),
       );
 
-      final affected = await repo.updateLabel(id, 'Новая метка');
+      final affected = await repo.updatePlace(id, const MeasurementPlace(sourceName: 'Новая метка'));
 
       expect(affected, 1);
       final rows = await repo.recent();
@@ -101,16 +102,16 @@ void main() {
     });
 
     test('updateLabel со строкой из одних пробелов делает label = null', () async {
-      final id = await repo.save('AA:BB', _reading(), DateTime(2026, 5, 24, 10), label: 'Кухня');
+      final id = await repo.save('AA:BB', _reading(), DateTime(2026, 5, 24, 10), place: const MeasurementPlace(sourceName: 'Кухня'));
 
-      await repo.updateLabel(id, '   ');
+      await repo.updatePlace(id, const MeasurementPlace(sourceName: '   '));
 
       final rows = await repo.recent();
       expect(rows.first.label, isNull);
     });
 
     test('updateLabel у несуществующего id возвращает 0', () async {
-      final affected = await repo.updateLabel(9999, 'что-то');
+      final affected = await repo.updatePlace(9999, const MeasurementPlace(sourceName: 'что-то'));
       expect(affected, 0);
     });
 
@@ -136,7 +137,7 @@ void main() {
         'AA:BB',
         _reading(ph: 7.5),
         DateTime(2026, 5, 24, 10),
-        label: 'Перед удалением',
+        place: const MeasurementPlace(sourceName: 'Перед удалением'),
       );
       final original = (await repo.recent()).first;
 
@@ -254,15 +255,15 @@ void main() {
     });
 
     test('в пустой истории базы нет', () async {
-      expect(await repo.latestForPlace('AA:BB', 'Кран на кухне'), isNull);
+      expect(await repo.latestForPlace('AA:BB', const MeasurementPlace(sourceName: 'Кран на кухне')), isNull);
     });
 
     test('возвращает самый свежий замер места, а не первый попавшийся', () async {
-      await repo.save('AA:BB', _reading(ph: 7.0), DateTime(2026, 9, 1, 10), label: 'Кран на кухне');
-      await repo.save('AA:BB', _reading(ph: 7.6), DateTime(2026, 9, 3, 10), label: 'Кран на кухне');
-      await repo.save('AA:BB', _reading(ph: 7.2), DateTime(2026, 9, 2, 10), label: 'Кран на кухне');
+      await repo.save('AA:BB', _reading(ph: 7.0), DateTime(2026, 9, 1, 10), place: const MeasurementPlace(sourceName: 'Кран на кухне'));
+      await repo.save('AA:BB', _reading(ph: 7.6), DateTime(2026, 9, 3, 10), place: const MeasurementPlace(sourceName: 'Кран на кухне'));
+      await repo.save('AA:BB', _reading(ph: 7.2), DateTime(2026, 9, 2, 10), place: const MeasurementPlace(sourceName: 'Кран на кухне'));
 
-      final latest = await repo.latestForPlace('AA:BB', 'Кран на кухне');
+      final latest = await repo.latestForPlace('AA:BB', const MeasurementPlace(sourceName: 'Кран на кухне'));
 
       expect(latest?.ph, 7.6);
       expect(latest?.observedAt, DateTime(2026, 9, 3, 10));
@@ -272,20 +273,20 @@ void main() {
       // Ровно та причина, по которой тренд считается по месту: pH крана и
       // бассейна отличаются на постоянку, и сравнение их между собой рисовало бы
       // скачок качества там, где просто сменили точку забора.
-      await repo.save('AA:BB', _reading(ph: 7.2), DateTime(2026, 9, 1), label: 'Кран');
-      await repo.save('AA:BB', _reading(ph: 7.8), DateTime(2026, 9, 2), label: 'Бассейн');
+      await repo.save('AA:BB', _reading(ph: 7.2), DateTime(2026, 9, 1), place: const MeasurementPlace(sourceName: 'Кран'));
+      await repo.save('AA:BB', _reading(ph: 7.8), DateTime(2026, 9, 2), place: const MeasurementPlace(sourceName: 'Бассейн'));
 
-      expect((await repo.latestForPlace('AA:BB', 'Кран'))?.ph, 7.2);
-      expect((await repo.latestForPlace('AA:BB', 'Бассейн'))?.ph, 7.8);
+      expect((await repo.latestForPlace('AA:BB', const MeasurementPlace(sourceName: 'Кран')))?.ph, 7.2);
+      expect((await repo.latestForPlace('AA:BB', const MeasurementPlace(sourceName: 'Бассейн')))?.ph, 7.8);
     });
 
     test('замеры без места находят свою базу через IS NULL', () async {
       // В SQL `label = NULL` не истинно никогда: без отдельной ветки такие
       // замеры вечно выглядели бы как первые.
       await repo.save('AA:BB', _reading(ph: 6.9), DateTime(2026, 9, 1));
-      await repo.save('AA:BB', _reading(ph: 7.1), DateTime(2026, 9, 2), label: 'Кран');
+      await repo.save('AA:BB', _reading(ph: 7.1), DateTime(2026, 9, 2), place: const MeasurementPlace(sourceName: 'Кран'));
 
-      final latest = await repo.latestForPlace('AA:BB', null);
+      final latest = await repo.latestForPlace('AA:BB', MeasurementPlace.none);
 
       expect(latest, isNotNull);
       expect(latest?.ph, 6.9);
@@ -297,33 +298,33 @@ void main() {
       // сохранённое `null`.
       await repo.save('AA:BB', _reading(ph: 6.9), DateTime(2026, 9, 1));
 
-      expect((await repo.latestForPlace('AA:BB', '   '))?.ph, 6.9);
-      expect((await repo.latestForPlace('AA:BB', ''))?.ph, 6.9);
+      expect((await repo.latestForPlace('AA:BB', const MeasurementPlace(sourceName: '   ')))?.ph, 6.9);
+      expect((await repo.latestForPlace('AA:BB', const MeasurementPlace(sourceName: '')))?.ph, 6.9);
     });
 
     test('место с пробелами по краям находит сохранённое без них', () async {
-      await repo.save('AA:BB', _reading(ph: 7.4), DateTime(2026, 9, 1), label: 'Кулер');
+      await repo.save('AA:BB', _reading(ph: 7.4), DateTime(2026, 9, 1), place: const MeasurementPlace(sourceName: 'Кулер'));
 
-      expect((await repo.latestForPlace('AA:BB', '  Кулер  '))?.ph, 7.4);
+      expect((await repo.latestForPlace('AA:BB', const MeasurementPlace(sourceName: '  Кулер  ')))?.ph, 7.4);
     });
 
     test('приборы не смешиваются: у каждого своя калибровка электрода', () async {
-      await repo.save('AA:BB', _reading(ph: 7.0), DateTime(2026, 9, 2), label: 'Кран');
-      await repo.save('CC:DD', _reading(ph: 8.0), DateTime(2026, 9, 3), label: 'Кран');
+      await repo.save('AA:BB', _reading(ph: 7.0), DateTime(2026, 9, 2), place: const MeasurementPlace(sourceName: 'Кран'));
+      await repo.save('CC:DD', _reading(ph: 8.0), DateTime(2026, 9, 3), place: const MeasurementPlace(sourceName: 'Кран'));
 
-      expect((await repo.latestForPlace('AA:BB', 'Кран'))?.ph, 7.0);
-      expect((await repo.latestForPlace('CC:DD', 'Кран'))?.ph, 8.0);
+      expect((await repo.latestForPlace('AA:BB', const MeasurementPlace(sourceName: 'Кран')))?.ph, 7.0);
+      expect((await repo.latestForPlace('CC:DD', const MeasurementPlace(sourceName: 'Кран')))?.ph, 8.0);
     });
 
     test('удаление последнего замера возвращает базу к предыдущему', () async {
-      await repo.save('AA:BB', _reading(ph: 7.0), DateTime(2026, 9, 1), label: 'Кран');
-      final id = await repo.save('AA:BB', _reading(ph: 7.5), DateTime(2026, 9, 2), label: 'Кран');
+      await repo.save('AA:BB', _reading(ph: 7.0), DateTime(2026, 9, 1), place: const MeasurementPlace(sourceName: 'Кран'));
+      final id = await repo.save('AA:BB', _reading(ph: 7.5), DateTime(2026, 9, 2), place: const MeasurementPlace(sourceName: 'Кран'));
 
-      expect((await repo.latestForPlace('AA:BB', 'Кран'))?.ph, 7.5);
+      expect((await repo.latestForPlace('AA:BB', const MeasurementPlace(sourceName: 'Кран')))?.ph, 7.5);
 
       await repo.deleteById(id);
 
-      expect((await repo.latestForPlace('AA:BB', 'Кран'))?.ph, 7.0);
+      expect((await repo.latestForPlace('AA:BB', const MeasurementPlace(sourceName: 'Кран')))?.ph, 7.0);
     });
   });
 }

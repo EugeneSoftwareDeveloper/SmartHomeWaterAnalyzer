@@ -2,206 +2,165 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../history/database.dart';
-import '../../history/place_name.dart';
+import '../../history/measurement_place.dart';
+import '../../history/place_catalog.dart';
 import '../../providers/app_settings.dart';
 import '../../providers/history_provider.dart';
 
-/// Результат выбора в листе мест.
+/// Результат выбора в листе адресов.
 ///
-/// Отдельный тип, а не голый `String?`, чтобы отличать «пользователь выбрал
-/// „Без места“» ([name] = null) от «пользователь закрыл лист, ничего не выбрав»
-/// (сам результат = null).
+/// Отдельный тип, а не голый `int?`, чтобы отличать «пользователь выбрал
+/// „Без адреса“» ([sourceId] = null) от «пользователь закрыл лист, ничего не
+/// выбрав» (сам результат = null). Вместе со ссылкой несёт готовый адрес:
+/// вызывающему почти всегда нужен именно он, а не повторный поход в каталог.
 class PlaceSelection {
-  final String? name;
+  final int? sourceId;
+  final MeasurementPlace place;
 
-  const PlaceSelection(this.name);
+  const PlaceSelection({required this.sourceId, required this.place});
+
+  /// Осознанный выбор «мерить без адреса».
+  static const PlaceSelection none = PlaceSelection(sourceId: null, place: MeasurementPlace.none);
 }
 
-/// Поле выбора места замера на экране показаний.
+/// Поле выбора адреса замера на экране показаний.
 ///
-/// Заменяет прежний свободный ввод: набирать «Кран на кухне» перед каждым замером
-/// утомительно и порождает разнобой («кухня», «Кухня », «кран кухня»), из-за
-/// которого история потом плохо фильтруется. Выбранное место хранится в
-/// `AppSettings.currentLabel` и подставляется во все последующие сохранения.
+/// Показывает весь путь — «Дача · Скважина», — потому что одного имени источника
+/// мало: «Кран на кухне» есть и дома, и на даче, и в истории они стали бы
+/// неотличимы.
 class PlacePickerField extends ConsumerWidget {
-  const PlacePickerField({super.key});
+  /// Подпись под полем, например «определено по координатам». Пусто, когда
+  /// адрес выбран руками.
+  final String? hint;
+
+  const PlacePickerField({super.key, this.hint});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final selected = normalizePlaceName(ref.watch(appSettingsProvider).currentLabel);
+    final selectedId = ref.watch(appSettingsProvider.select((s) => s.currentSourceId));
+    final catalog = ref.watch(placeCatalogViewProvider).valueOrNull;
+    final place = catalog?.placeOfSourceId(selectedId);
+    final note = hint;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () async {
-          // Notifier берём ДО открытия листа: это ConsumerWidget, у него нет
-          // `mounted`, и обращение к `ref` после await упало бы StateError'ом,
-          // если экран успели закрыть, пока лист был открыт.
-          final notifier = ref.read(appSettingsProvider.notifier);
-          final selection = await showPlacePicker(context, initialSelection: selected);
-          if (selection == null) return;
-          await notifier.setCurrentLabel(selection.name);
-        },
-        child: InputDecorator(
-          decoration: InputDecoration(
-            prefixIcon: const Icon(Icons.place_outlined, size: 20),
-            labelText: 'Место замера',
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-            isDense: true,
-            suffixIcon: const Icon(Icons.arrow_drop_down),
-          ),
-          child: Text(
-            selected ?? 'Не выбрано',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: selected != null
-                  ? theme.colorScheme.onSurface
-                  : theme.colorScheme.onSurfaceVariant,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () async {
+              // Notifier берём ДО открытия листа: это ConsumerWidget, у него нет
+              // `mounted`, и обращение к `ref` после await упало бы StateError'ом,
+              // если экран успели закрыть, пока лист был открыт.
+              final notifier = ref.read(appSettingsProvider.notifier);
+              final selection = await showPlacePicker(context, initialSourceId: selectedId);
+              if (selection == null) return;
+              await notifier.setCurrentSource(selection.sourceId);
+            },
+            child: InputDecorator(
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.place_outlined, size: 20),
+                labelText: 'Где мерим',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                isDense: true,
+                suffixIcon: const Icon(Icons.arrow_drop_down),
+              ),
+              child: Text(
+                place?.formatted ?? 'Не выбрано',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: place != null
+                      ? theme.colorScheme.onSurface
+                      : theme.colorScheme.onSurfaceVariant,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
           ),
-        ),
+          if (note != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 4, left: 12),
+              child: Row(
+                children: [
+                  Icon(Icons.my_location, size: 13, color: theme.colorScheme.primary),
+                  const SizedBox(width: 5),
+                  Flexible(
+                    child: Text(
+                      note,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
       ),
     );
   }
 }
 
-/// Открывает лист выбора места и возвращает выбор.
+/// Открывает лист выбора адреса и возвращает выбор.
 ///
 /// Сам ничего не сохраняет: экран показаний кладёт результат в настройки, а
 /// детальный просмотр истории — в конкретную запись. Так один и тот же каталог
-/// обслуживает оба сценария, и в истории не может появиться место, которого нет
-/// в списке выбора.
-Future<PlaceSelection?> showPlacePicker(BuildContext context, {String? initialSelection}) {
+/// обслуживает оба сценария, и в истории не может появиться адрес, которого нет
+/// в каталоге.
+Future<PlaceSelection?> showPlacePicker(BuildContext context, {int? initialSourceId}) {
   return showModalBottomSheet<PlaceSelection>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
-    builder: (_) => _PlacePickerSheet(initialSelection: normalizePlaceName(initialSelection)),
+    builder: (_) => _PlacePickerSheet(initialSourceId: initialSourceId),
   );
 }
 
 class _PlacePickerSheet extends ConsumerStatefulWidget {
-  final String? initialSelection;
+  final int? initialSourceId;
 
-  const _PlacePickerSheet({required this.initialSelection});
+  const _PlacePickerSheet({required this.initialSourceId});
 
   @override
   ConsumerState<_PlacePickerSheet> createState() => _PlacePickerSheetState();
 }
 
 class _PlacePickerSheetState extends ConsumerState<_PlacePickerSheet> {
-  final _controller = TextEditingController();
-  String? _error;
-
-  /// Защита от повторного запуска, пока предыдущая операция в полёте.
-  /// «Добавить» висит и на кнопке «+», и на submit с клавиатуры — они
-  /// срабатывают почти одновременно, и без этого флага два параллельных
-  /// добавления одного имени упирались бы в уникальный индекс.
+  /// Защита от повторного запуска, пока предыдущая операция в полёте: тап по
+  /// пункту и подтверждение успевают сработать почти одновременно.
   bool _busy = false;
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  Future<void> _select(String? name) async {
+  Future<void> _select(SamplingPoint? source, PlaceCatalog catalog) async {
     if (_busy) return;
     setState(() => _busy = true);
 
-    // Использованное место поднимается в начало списка — на практике человек
-    // меряет две-три точки, и они должны быть под рукой. Сбой этого шага не
-    // должен отменять сам выбор: порядок списка не стоит того, чтобы
-    // отказывать пользователю в выбранном месте.
-    if (name != null) {
+    if (source != null) {
+      // Использованный адрес поднимается в начало списка вместе со своим местом
+      // и комнатой. Сбой этого шага не должен отменять сам выбор: порядок списка
+      // не стоит того, чтобы отказывать пользователю в выбранном источнике.
       try {
-        await ref.read(placesRepositoryProvider).markUsed(name);
+        await ref.read(placeCatalogProvider).markSourceUsed(source.id);
       } on Object catch (_) {
         // Порядок списка — не повод беспокоить пользователя.
       }
     }
 
-    if (mounted) Navigator.of(context).pop(PlaceSelection(name));
-  }
-
-  Future<void> _addAndSelect() async {
-    if (_busy) return;
-
-    final name = _controller.text.trim();
-    if (name.isEmpty) {
-      setState(() => _error = 'Введите название места');
-      return;
-    }
-
-    setState(() => _busy = true);
-    try {
-      await ref.read(placesRepositoryProvider).add(name);
-    } on Object catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _busy = false;
-        _error = 'Не удалось добавить место: $error';
-      });
-      return;
-    }
-
     if (!mounted) return;
-    setState(() => _busy = false);
-    await _select(name);
-  }
-
-  /// Удаление места подтверждается диалогом, а не откатывается через SnackBar:
-  /// лист занимает бóльшую часть экрана, и SnackBar с кнопкой «Отменить»
-  /// оказывался бы **под** ним — нажать его было бы физически невозможно,
-  /// а удаление на деле необратимым. Диалог рисуется поверх листа.
-  Future<void> _confirmDelete(Place place) async {
-    if (_busy) return;
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text('Удалить «${place.name}»?'),
-        content: const Text(
-          'Место исчезнет из списка выбора. Замеры, сделанные в нём, '
-          'останутся в истории со своим названием.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Отмена'),
-          ),
-          FilledButton.tonal(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Удалить'),
-          ),
-        ],
-      ),
+    Navigator.of(context).pop(
+      source == null
+          ? PlaceSelection.none
+          : PlaceSelection(sourceId: source.id, place: catalog.placeOf(source)),
     );
-    if (confirmed != true || !mounted) return;
-
-    setState(() => _busy = true);
-    try {
-      await ref.read(placesRepositoryProvider).deleteById(place.id);
-    } on Object catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _busy = false;
-        _error = 'Не удалось удалить место: $error';
-      });
-      return;
-    }
-
-    if (mounted) setState(() => _busy = false);
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final places = ref.watch(placesProvider);
-    final selected = widget.initialSelection;
+    final catalogAsync = ref.watch(placeCatalogViewProvider);
 
     return DraggableScrollableSheet(
       expand: false,
@@ -212,104 +171,150 @@ class _PlacePickerSheetState extends ConsumerState<_PlacePickerSheet> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Text('Место замера', style: theme.textTheme.titleMedium),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _controller,
-                      textCapitalization: TextCapitalization.sentences,
-                      decoration: InputDecoration(
-                        hintText: 'Новое место',
-                        errorText: _error,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        isDense: true,
-                      ),
-                      onChanged: (_) {
-                        if (_error != null) setState(() => _error = null);
-                      },
-                      onSubmitted: (_) => _addAndSelect(),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton.filledTonal(
-                    icon: const Icon(Icons.add),
-                    tooltip: 'Добавить место',
-                    onPressed: _busy ? null : _addAndSelect,
-                  ),
-                ],
-              ),
+              child: Text('Где мерим', style: theme.textTheme.titleMedium),
             ),
             const Divider(height: 1),
             Expanded(
-              child: places.when(
+              child: catalogAsync.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (error, _) => Center(child: Text('$error')),
-                data: (items) {
-                  // Место замера может отсутствовать в каталоге: его удалили уже
-                  // после того, как замер был сохранён. Показываем его отдельной
-                  // строкой, иначе в списке не был бы отмечен ни один пункт и
-                  // текущее место выглядело бы потерянным.
-                  final missing = selected != null && !items.any((place) => place.name == selected)
-                      ? selected
-                      : null;
-
-                  return ListView(
-                    controller: controller,
-                    children: [
-                      if (missing != null)
-                        ListTile(
-                          leading: Icon(
-                            Icons.radio_button_checked,
-                            color: theme.colorScheme.primary,
-                          ),
-                          title: Text(missing),
-                          subtitle: const Text('Нет в списке мест'),
-                          onTap: _busy ? null : () => _select(missing),
-                        ),
-                      for (final place in items)
-                        ListTile(
-                          leading: Icon(
-                            place.name == selected
-                                ? Icons.radio_button_checked
-                                : Icons.radio_button_unchecked,
-                            color: place.name == selected
-                                ? theme.colorScheme.primary
-                                : theme.colorScheme.onSurfaceVariant,
-                          ),
-                          title: Text(place.name),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.delete_outline, size: 20),
-                            tooltip: 'Удалить место',
-                            onPressed: _busy ? null : () => _confirmDelete(place),
-                          ),
-                          onTap: _busy ? null : () => _select(place.name),
-                        ),
-                      const Divider(),
-                      ListTile(
-                        leading: Icon(
-                          selected == null
-                              ? Icons.radio_button_checked
-                              : Icons.radio_button_unchecked,
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                        title: const Text('Без места'),
-                        subtitle: const Text('Замер сохранится без названия'),
-                        onTap: _busy ? null : () => _select(null),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-                  );
-                },
+                data: (catalog) => _buildList(controller, catalog, theme),
               ),
             ),
           ],
         );
       },
+    );
+  }
+
+  Widget _buildList(ScrollController controller, PlaceCatalog catalog, ThemeData theme) {
+    final selectedId = widget.initialSourceId;
+
+    return ListView(
+      controller: controller,
+      children: [
+        for (final site in catalog.sites) ...[
+          _SiteHeader(site: site),
+          for (final source in catalog.sourcesDirectlyOnSite(site.id))
+            _SourceTile(
+              source: source,
+              selected: source.id == selectedId,
+              enabled: !_busy,
+              onTap: () => _select(source, catalog),
+            ),
+          for (final room in catalog.roomsOfSite(site.id)) ...[
+            _RoomHeader(name: room.name),
+            for (final source in catalog.sourcesOfRoom(room.id))
+              _SourceTile(
+                source: source,
+                selected: source.id == selectedId,
+                enabled: !_busy,
+                inRoom: true,
+                onTap: () => _select(source, catalog),
+              ),
+          ],
+        ],
+        const Divider(),
+        ListTile(
+          leading: Icon(
+            selectedId == null ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          title: const Text('Без адреса'),
+          subtitle: const Text('Замер сохранится без места и источника'),
+          onTap: _busy ? null : () => _select(null, catalog),
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+}
+
+class _SiteHeader extends StatelessWidget {
+  final Site site;
+
+  const _SiteHeader({required this.site});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    // Город показывается только когда задан: он нужен, чтобы различить два
+    // одинаково названных места, а в обычном случае это лишний шум.
+    final city = site.city;
+    final hasAnchor = site.latitude != null && site.longitude != null;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              city == null ? site.name : '${site.name} · $city',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: theme.colorScheme.primary,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          if (hasAnchor)
+            Tooltip(
+              message: 'Место привязано к координатам',
+              child: Icon(Icons.my_location, size: 14, color: theme.colorScheme.outline),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RoomHeader extends StatelessWidget {
+  final String name;
+
+  const _RoomHeader({required this.name});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(32, 8, 16, 2),
+      child: Text(
+        name,
+        style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+      ),
+    );
+  }
+}
+
+class _SourceTile extends StatelessWidget {
+  final SamplingPoint source;
+  final bool selected;
+  final bool enabled;
+  final bool inRoom;
+  final VoidCallback onTap;
+
+  const _SourceTile({
+    required this.source,
+    required this.selected,
+    required this.enabled,
+    required this.onTap,
+    this.inRoom = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return ListTile(
+      contentPadding: EdgeInsets.only(left: inRoom ? 40 : 16, right: 16),
+      leading: Icon(
+        selected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+        color: selected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+      ),
+      title: Text(source.name),
+      onTap: enabled ? onTap : null,
     );
   }
 }

@@ -5,6 +5,9 @@ import 'package:drift/native.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import '../location/measurement_location.dart';
+import '../location/site_anchor.dart';
+
 part 'database.g.dart';
 
 /// Таблица сохранённых измерений. Каждая запись = один кадр FF02 с привязкой к устройству и времени.
@@ -53,32 +56,127 @@ class Measurements extends Table {
   /// Nullable: у записей, сделанных до версии 1.2.0, профиль неизвестен — для
   /// них UI берёт текущий из настроек, то есть ведёт себя как раньше.
   TextColumn get normsProfile => text().nullable()();
+
+  /// Имя места (дом, дача, квартира), где сделан замер.
+  ///
+  /// Nullable по двум причинам сразу: у записей до версии 1.4.0 иерархии не было
+  /// вовсе, и `null` здесь — признак «доиерархической» записи, по которому
+  /// поиск базы тренда узнаёт старые замеры. Кроме того, замер можно сохранить
+  /// вообще без выбранного источника.
+  ///
+  /// Как и [label], хранит **имя**, а не ссылку: переименование места не должно
+  /// переписывать историю задним числом.
+  TextColumn get siteName => text().nullable()();
+
+  /// Имя комнаты внутри места. `null` — источник висит прямо на месте
+  /// («Дача · Скважина»), это штатная ситуация, а не отсутствие данных:
+  /// комната — необязательный уровень.
+  TextColumn get roomName => text().nullable()();
 }
 
-/// Каталог мест замера — «Кран на кухне», «Аквариум», «Скважина».
+/// Место замера — дом, дача, квартира. Верхний уровень иерархии и **единственный,
+/// который вообще можно определить по координатам**: GPS отличает дачу от квартиры,
+/// но не кухню от ванной, где разница в метры при точности в десятки.
 ///
-/// Хранится отдельно от [Measurements] сознательно: сам замер держит **имя** места
-/// в своей колонке `label`, а не ссылку на строку этой таблицы. Так переименование
-/// или удаление места не переписывает историю задним числом — записанное «Кран на
-/// кухне» останется тем, чем было в момент замера.
-class Places extends Table {
+/// Каталог хранится отдельно от [Measurements] сознательно: замер держит **имена**
+/// места, комнаты и источника, а не ссылки на строки каталога. Так переименование
+/// или удаление не переписывает историю задним числом.
+class Sites extends Table {
   IntColumn get id => integer().autoIncrement()();
 
-  /// Название места. Уникально — два одинаковых пункта в списке выбора бессмысленны.
+  /// Название места. Уникально — два «Дома» в списке выбора бессмысленны.
   TextColumn get name => text().unique()();
+
+  /// Город. Нужен, чтобы различать одинаково названные места («Дом» в двух
+  /// городах) в списке выбора; на логику не влияет.
+  TextColumn get city => text().nullable()();
+
+  /// Якорь привязки — точка, к которой место считается «рядом».
+  ///
+  /// Nullable: место без якоря просто не участвует в автовыборе. Якорь
+  /// появляется либо из первого сохранённого здесь замера, либо вручную.
+  RealColumn get latitude => real().nullable()();
+  RealColumn get longitude => real().nullable()();
+
+  /// Точность якоря в метрах — взвешенная по вкладам фиксов, из которых он
+  /// сложился. Хранится, чтобы новые фиксы уточняли якорь тем сильнее, чем они
+  /// точнее: фикс по сети с погрешностью 500 м не должен сдвигать якорь так же,
+  /// как фикс по спутникам с погрешностью 5 м.
+  RealColumn get anchorAccuracyMeters => real().nullable()();
+
+  /// Сколько фиксов уже вошло в якорь. Ноль означает «якоря нет».
+  IntColumn get anchorSamples => integer().withDefault(const Constant(0))();
+
+  /// Радиус, в пределах которого координаты считаются принадлежащими этому месту.
+  /// Дефолт покрывает участок с постройками и типичную городскую погрешность.
+  RealColumn get radiusMeters => real().withDefault(const Constant(150))();
 
   DateTimeColumn get createdAt => dateTime()();
 
-  /// Когда местом пользовались в последний раз. Недавние поднимаются в начало
-  /// списка выбора: на практике человек меряет 2-3 точки, остальные — редкий хвост.
+  /// Когда местом пользовались в последний раз — недавние поднимаются в начало.
   DateTimeColumn get lastUsedAt => dateTime().nullable()();
 }
 
-/// Места, которые предлагаются при первом запуске. Подобраны под реальные сценарии
-/// бытового тестера воды и профили норм: питьевая вода (кран / фильтр / кулер /
+/// Комната внутри места — необязательный средний уровень.
+///
+/// Существует отдельной таблицей, а не строковым полем источника, чтобы комнату
+/// можно было переименовать один раз, а не в каждом источнике по отдельности,
+/// и чтобы список выбора группировался по реальной сущности.
+class Rooms extends Table {
+  IntColumn get id => integer().autoIncrement()();
+
+  IntColumn get siteId => integer().references(Sites, #id)();
+
+  TextColumn get name => text()();
+
+  DateTimeColumn get createdAt => dateTime()();
+
+  DateTimeColumn get lastUsedAt => dateTime().nullable()();
+
+  /// Одинаковые имена комнат в разных местах допустимы — «Кухня» есть и дома,
+  /// и на даче. Уникальность только внутри одного места.
+  @override
+  List<Set<Column>> get uniqueKeys => [
+    {siteId, name},
+  ];
+}
+
+/// Источник воды — то, что реально измеряют: кран, фильтр, скважина, аквариум.
+///
+/// [roomId] необязателен: источник может висеть прямо на месте («Дача · Скважина»).
+/// [siteId] дублируется сюда из комнаты намеренно — иначе источник без комнаты
+/// не имел бы связи с местом, и каждый запрос уходил бы в join через `rooms`.
+class SamplingPoints extends Table {
+  IntColumn get id => integer().autoIncrement()();
+
+  IntColumn get siteId => integer().references(Sites, #id)();
+
+  IntColumn get roomId => integer().nullable().references(Rooms, #id)();
+
+  TextColumn get name => text()();
+
+  /// Плоское имя места из версий до 1.4.0, из которого этот источник мигрировал.
+  ///
+  /// Нужно ровно для одного: у замеров до обновления `siteName` пустой, и поиск
+  /// базы тренда должен узнавать их по старому имени. Только для мигрировавших
+  /// источников — иначе созданный вручную «Дача · Фильтр» унаследовал бы историю
+  /// доиерархического «Фильтра», сделанного на самом деле дома.
+  TextColumn get legacyLabel => text().nullable()();
+
+  DateTimeColumn get createdAt => dateTime()();
+
+  DateTimeColumn get lastUsedAt => dateTime().nullable()();
+
+  // Уникальность имени внутри места задаётся ЧАСТИЧНЫМИ индексами в миграции,
+  // а не здесь: в SQLite NULL'ы в составном UNIQUE считаются различными, поэтому
+  // `{siteId, roomId, name}` пропустил бы два одинаковых источника без комнаты.
+}
+
+/// Источники, которые предлагаются при первом запуске. Подобраны под реальные
+/// сценарии бытового тестера и профили норм: питьевая вода (кран / фильтр / кулер /
 /// бутилированная), автономные источники (скважина, колодец, родник), аквариум и
 /// бассейн. Пользователь может удалить лишние и добавить свои.
-const List<String> defaultPlaceNames = <String>[
+const List<String> defaultSourceNames = <String>[
   'Кран на кухне',
   'После фильтра',
   'Кулер',
@@ -90,7 +188,12 @@ const List<String> defaultPlaceNames = <String>[
   'Бассейн',
 ];
 
-@DriftDatabase(tables: [Measurements, Places])
+/// Имя места, которое создаётся при первом запуске и в которое переезжают плоские
+/// места при обновлении. «Дом» — самый вероятный вариант для первого объекта;
+/// переименовать его можно в один тап.
+const String defaultSiteName = 'Дом';
+
+@DriftDatabase(tables: [Measurements, Sites, Rooms, SamplingPoints])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
@@ -100,15 +203,16 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) async {
       await m.createAll();
-      // Свежая установка: предлагаем готовый набор мест, чтобы первый замер
-      // можно было подписать сразу, не придумывая названия.
-      await _seedDefaultPlaces();
+      await _createSamplingPointIndexes();
+      // Свежая установка: сразу даём место «Дом» с готовым набором источников,
+      // чтобы первый замер можно было подписать, ничего не придумывая.
+      await _seedDefaultCatalog();
     },
     onUpgrade: (m, from, to) async {
       if (from < 2) {
@@ -123,17 +227,19 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(measurements, measurements.locationAccuracyMeters);
       }
       if (from < 4) {
-        // v4: каталог мест замера.
-        await m.createTable(places);
-        // Импорт идёт ПЕРЕД сидированием, и это важно. Обе вставки используют
-        // insertOrIgnore, поэтому выигрывает та, что пришла первой. Метка
-        // пользователя несёт lastUsedAt (время его последнего замера), а
-        // дефолт — нет; при обратном порядке метка «Аквариум» была бы
-        // проигнорирована как дубликат уже вставленного дефолта, потеряла бы
-        // lastUsedAt и уехала в конец списка ниже мест, которыми никогда не
-        // пользовались.
-        await _importPlacesFromExistingLabels();
-        await _seedDefaultPlaces();
+        // v4: плоский каталог мест. Выражен сырым SQL, а не drift-таблицей,
+        // потому что в версии 6 эта таблица удаляется и из схемы приложения
+        // ушла. Миграция обязана уметь пройти путь пользователя целиком, даже
+        // если структуры, которую она создаёт, в текущем коде уже нет.
+        await _createLegacyPlacesTable();
+        // Импорт идёт ПЕРЕД сидированием, и это важно. Обе вставки —
+        // INSERT OR IGNORE, поэтому выигрывает пришедшая первой. Метка
+        // пользователя несёт last_used_at (время его последнего замера), а
+        // дефолт — нет; при обратном порядке «Аквариум» был бы отброшен как
+        // дубликат уже вставленного дефолта, потерял бы время использования
+        // и уехал в конец списка ниже мест, которыми никогда не пользовались.
+        await _importLegacyPlacesFromLabels();
+        await _seedLegacyPlaces();
       }
       if (from < 5) {
         // v5: профиль норм, по которому оценивался замер. Старые записи
@@ -141,115 +247,354 @@ class AppDatabase extends _$AppDatabase {
         // то есть ведёт себя ровно как до обновления.
         await m.addColumn(measurements, measurements.normsProfile);
       }
+      if (from < 6) {
+        // v6: иерархия «место → комната → источник» вместо плоского списка.
+        await m.createTable(sites);
+        await m.createTable(rooms);
+        await m.createTable(samplingPoints);
+        await _createSamplingPointIndexes();
+
+        // Колонки замера хранят ИМЕНА, а не ссылки, — тот же инвариант, что и
+        // у label. Старые записи остаются с null в обеих, и это их признак:
+        // по нему поиск базы тренда узнаёт доиерархические замеры.
+        await m.addColumn(measurements, measurements.siteName);
+        await m.addColumn(measurements, measurements.roomName);
+
+        await _migrateLegacyPlacesIntoHierarchy();
+      }
     },
   );
 
-  /// Вставляет дефолтные места. `insertOrIgnore` — потому что имя уникально:
-  /// повторный вызов или совпадение с уже импортированной меткой не должны падать.
-  Future<void> _seedDefaultPlaces() async {
+  /// Частичные индексы уникальности источника внутри места.
+  ///
+  /// Два отдельных индекса, а не один составной `UNIQUE(site_id, room_id, name)`:
+  /// в SQLite NULL'ы в уникальном ключе считаются различными, поэтому составной
+  /// индекс пропустил бы две «Скважины» без комнаты под одним местом.
+  Future<void> _createSamplingPointIndexes() async {
+    await customStatement(
+      'CREATE UNIQUE INDEX IF NOT EXISTS ux_sampling_points_room '
+      'ON sampling_points (site_id, room_id, name) WHERE room_id IS NOT NULL',
+    );
+    await customStatement(
+      'CREATE UNIQUE INDEX IF NOT EXISTS ux_sampling_points_site '
+      'ON sampling_points (site_id, name) WHERE room_id IS NULL',
+    );
+  }
+
+  /// Свежая установка: место «Дом» и готовый набор источников в нём.
+  Future<void> _seedDefaultCatalog() async {
     final now = DateTime.now();
+    final siteId = await into(sites).insert(
+      SitesCompanion.insert(name: defaultSiteName, createdAt: now),
+      mode: InsertMode.insertOrIgnore,
+    );
+
     await batch((batch) {
-      batch.insertAll(places, [
-        for (final name in defaultPlaceNames) PlacesCompanion.insert(name: name, createdAt: now),
+      batch.insertAll(samplingPoints, [
+        for (final name in defaultSourceNames)
+          SamplingPointsCompanion.insert(siteId: siteId, name: name, createdAt: now),
       ], mode: InsertMode.insertOrIgnore);
     });
   }
 
-  /// Переносит уже использованные метки замеров в каталог мест.
+  // ─── Наследие версий 4–5: плоская таблица `places` ────────────────────────
+  // Всё ниже существует только ради прохождения миграции со старых версий.
+  // В работающем приложении этой таблицы нет.
+
+  Future<void> _createLegacyPlacesTable() async {
+    await customStatement(
+      'CREATE TABLE IF NOT EXISTS places ('
+      'id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, '
+      'name TEXT NOT NULL UNIQUE, '
+      'created_at INTEGER NOT NULL, '
+      'last_used_at INTEGER NULL)',
+    );
+  }
+
+  /// Переносит уже использованные метки замеров в плоский каталог.
   ///
-  /// `lastUsedAt` берётся из времени последнего замера с этой меткой — так место,
-  /// которым пользовались недавно, окажется в начале списка выбора сразу после
-  /// обновления, а не только после первого повторного использования.
-  Future<void> _importPlacesFromExistingLabels() async {
-    final labelColumn = measurements.label;
-    final lastUsed = measurements.observedAt.max();
+  /// `GROUP BY TRIM(label)` схлопывает «Дача» и «Дача » в одно место, а
+  /// `MAX(observed_at)` отдаёт схлопнутому месту самое свежее время
+  /// использования — иначе оно унаследовало бы время случайно первой метки.
+  Future<void> _importLegacyPlacesFromLabels() async {
+    await customStatement(
+      'INSERT OR IGNORE INTO places (name, created_at, last_used_at) '
+      'SELECT TRIM(label), ?, MAX(observed_at) FROM measurements '
+      "WHERE label IS NOT NULL AND TRIM(label) <> '' "
+      'GROUP BY TRIM(label)',
+      [DateTime.now().millisecondsSinceEpoch ~/ 1000],
+    );
+  }
 
-    final rows =
-        await (selectOnly(measurements)
-              ..addColumns([labelColumn, lastUsed])
-              ..where(labelColumn.isNotNull())
-              ..groupBy([labelColumn]))
-            .get();
-
-    // Группировка в SQL идёт по сырому значению, поэтому «Дача» и «Дача »
-    // приходят разными строками, а после trim() схлопываются в одно место.
-    // Сводим их здесь сами и берём НАИБОЛЕЕ СВЕЖЕЕ время использования, иначе
-    // место унаследовало бы время той метки, которая случайно оказалась первой.
-    final lastUsedByName = <String, DateTime?>{};
-    for (final row in rows) {
-      final name = row.read(labelColumn)?.trim();
-      if (name == null || name.isEmpty) continue;
-
-      final rowLastUsed = row.read(lastUsed);
-      final known = lastUsedByName[name];
-      if (!lastUsedByName.containsKey(name) ||
-          (rowLastUsed != null && (known == null || rowLastUsed.isAfter(known)))) {
-        lastUsedByName[name] = rowLastUsed;
-      }
-    }
-
-    final entries = <PlacesCompanion>[];
-    final now = DateTime.now();
-    for (final entry in lastUsedByName.entries) {
-      entries.add(
-        PlacesCompanion.insert(name: entry.key, createdAt: now, lastUsedAt: Value(entry.value)),
+  Future<void> _seedLegacyPlaces() async {
+    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    for (final name in defaultSourceNames) {
+      await customStatement(
+        'INSERT OR IGNORE INTO places (name, created_at) VALUES (?, ?)',
+        [name, now],
       );
     }
-    if (entries.isEmpty) return;
-
-    await batch((batch) {
-      batch.insertAll(places, entries, mode: InsertMode.insertOrIgnore);
-    });
   }
 
-  /// Места для списка выбора: сначала недавно использованные, затем остальные
-  /// по алфавиту. В SQLite NULL меньше любого значения, поэтому при `DESC`
-  /// неиспользованные места естественным образом уходят в хвост.
-  Stream<List<Place>> watchPlaces() {
-    return (select(
-      places,
-    )..orderBy([(t) => OrderingTerm.desc(t.lastUsedAt), (t) => OrderingTerm.asc(t.name)])).watch();
-  }
-
-  Future<List<Place>> getPlaces() {
-    return (select(
-      places,
-    )..orderBy([(t) => OrderingTerm.desc(t.lastUsedAt), (t) => OrderingTerm.asc(t.name)])).get();
-  }
-
-  /// Добавляет место. Если такое имя уже есть — возвращает существующее,
-  /// а не создаёт дубликат и не падает на нарушении уникальности.
+  /// Переносит плоские места в иерархию и удаляет старую таблицу.
   ///
-  /// Вставка идёт через `insertOrIgnore`, а не «сначала проверить, потом
-  /// вставить»: между проверкой и вставкой есть окно, в которое успевает
-  /// пролезть второй вызов (кнопка «+» и submit с клавиатуры срабатывают
-  /// почти одновременно), и БД отвечает `UNIQUE constraint failed`.
-  Future<Place> insertOrGetPlace(String name, DateTime createdAt) async {
-    final trimmed = name.trim();
-    if (trimmed.isEmpty) {
-      // Без этой проверки пустое имя молча создавало бы безымянное место:
-      // пустая строка проходит в TEXT NOT NULL и занимает уникальный индекс.
-      throw ArgumentError.value(name, 'name', 'Название места не может быть пустым');
-    }
-
-    await into(places).insert(
-      PlacesCompanion.insert(name: trimmed, createdAt: createdAt),
+  /// Все места становятся источниками без комнаты под местом «Дом»: разложить их
+  /// по комнатам автоматически нельзя — «Кран на кухне» выглядит как комната плюс
+  /// источник, а «Скважина» и «Бутилированная» не про комнаты вовсе, и угадывание
+  /// дало бы мусор, который пользователю пришлось бы разбирать руками.
+  ///
+  /// `legacy_label` сохраняет исходное плоское имя: по нему замеры до обновления
+  /// продолжают находиться как база тренда.
+  Future<void> _migrateLegacyPlacesIntoHierarchy() async {
+    final now = DateTime.now();
+    final siteId = await into(sites).insert(
+      SitesCompanion.insert(name: defaultSiteName, createdAt: now),
       mode: InsertMode.insertOrIgnore,
     );
 
-    return (select(places)..where((t) => t.name.equals(trimmed))).getSingle();
+    await customStatement(
+      'INSERT OR IGNORE INTO sampling_points '
+      '(site_id, room_id, name, legacy_label, created_at, last_used_at) '
+      'SELECT ?, NULL, name, name, created_at, last_used_at FROM places',
+      [siteId],
+    );
+
+    // Два каталога одновременно — ровно та путаница, которую убираем.
+    await customStatement('DROP TABLE IF EXISTS places');
+
+    await _seedAnchorFromHistory(siteId);
   }
 
-  /// Отмечает место как только что использованное — оно поднимется в начало списка.
-  Future<int> touchPlace(String name, DateTime usedAt) {
-    return (update(
-      places,
-    )..where((t) => t.name.equals(name.trim()))).write(PlacesCompanion(lastUsedAt: Value(usedAt)));
+  /// Пробует привязать «Дом» к координатам уже накопленных замеров.
+  ///
+  /// Это подарок пользователю с историей: автовыбор начинает работать сразу
+  /// после обновления, а не после первого нового замера. Но только если фиксы
+  /// плотно кучкуются — решение принимает [anchorFromFixes]. Если человек мерил
+  /// и дома, и на даче, якорь останется пустым: неверная привязка хуже, чем её
+  /// отсутствие, потому что молча подставляет не то место.
+  Future<void> _seedAnchorFromHistory(int siteId) async {
+    final rows =
+        await (select(measurements)
+              ..where((t) => t.latitude.isNotNull() & t.longitude.isNotNull()))
+            .get();
+
+    final fixes = <MeasurementLocation>[
+      for (final row in rows)
+        ?MeasurementLocation.fromNullable(
+          row.latitude,
+          row.longitude,
+          accuracyMeters: row.locationAccuracyMeters,
+        ),
+    ];
+
+    final anchor = anchorFromFixes(fixes);
+    if (anchor == null) return;
+
+    await updateSiteAnchor(
+      siteId,
+      latitude: anchor.latitude,
+      longitude: anchor.longitude,
+      accuracyMeters: anchor.accuracyMeters,
+      samples: anchor.samples,
+    );
   }
 
-  /// Удаляет место из каталога. Замеры, сделанные в нём, сохраняют своё название
-  /// в `label` — история не переписывается.
-  Future<int> deletePlaceById(int id) => (delete(places)..where((t) => t.id.equals(id))).go();
+  // ─── Каталог: места, комнаты, источники ───────────────────────────────────
+  //
+  // Везде один порядок сортировки: сначала недавно использованные, затем
+  // остальные по алфавиту. В SQLite NULL меньше любого значения, поэтому при
+  // DESC никогда не использованные записи естественным образом уходят в хвост.
+
+  Stream<List<Site>> watchSites() => _sitesQuery().watch();
+
+  Future<List<Site>> getSites() => _sitesQuery().get();
+
+  SimpleSelectStatement<$SitesTable, Site> _sitesQuery() {
+    return select(sites)
+      ..orderBy([(t) => OrderingTerm.desc(t.lastUsedAt), (t) => OrderingTerm.asc(t.name)]);
+  }
+
+  Stream<List<Room>> watchRooms() => _roomsQuery().watch();
+
+  Future<List<Room>> getRooms() => _roomsQuery().get();
+
+  SimpleSelectStatement<$RoomsTable, Room> _roomsQuery() {
+    return select(rooms)
+      ..orderBy([(t) => OrderingTerm.desc(t.lastUsedAt), (t) => OrderingTerm.asc(t.name)]);
+  }
+
+  Stream<List<SamplingPoint>> watchSources() => _sourcesQuery().watch();
+
+  Future<List<SamplingPoint>> getSources() => _sourcesQuery().get();
+
+  SimpleSelectStatement<$SamplingPointsTable, SamplingPoint> _sourcesQuery() {
+    return select(samplingPoints)
+      ..orderBy([(t) => OrderingTerm.desc(t.lastUsedAt), (t) => OrderingTerm.asc(t.name)]);
+  }
+
+  Future<SamplingPoint?> getSourceById(int id) =>
+      (select(samplingPoints)..where((t) => t.id.equals(id))).getSingleOrNull();
+
+  /// Ищет источник по плоскому имени из версий до 1.4.0. Нужен один раз при
+  /// первом запуске после обновления, чтобы выбранное ранее место не потерялось.
+  Future<SamplingPoint?> findSourceByLegacyLabel(String label) {
+    return (select(samplingPoints)..where((t) => t.legacyLabel.equals(label.trim())))
+        .getSingleOrNull();
+  }
+
+  /// Добавляет место или возвращает существующее с тем же именем.
+  ///
+  /// Везде в каталоге вставка идёт через `insertOrIgnore` с последующим
+  /// чтением, а не «сначала проверить, потом вставить»: между проверкой и
+  /// вставкой есть окно, в которое успевает пролезть второй вызов (кнопка «+»
+  /// и submit с клавиатуры срабатывают почти одновременно), и БД отвечает
+  /// `UNIQUE constraint failed`.
+  Future<Site> insertOrGetSite(String name, DateTime createdAt, {String? city}) async {
+    final trimmed = _requireName(name, 'места');
+
+    await into(sites).insert(
+      SitesCompanion.insert(name: trimmed, createdAt: createdAt, city: Value(city)),
+      mode: InsertMode.insertOrIgnore,
+    );
+
+    return (select(sites)..where((t) => t.name.equals(trimmed))).getSingle();
+  }
+
+  Future<Room> insertOrGetRoom(int siteId, String name, DateTime createdAt) async {
+    final trimmed = _requireName(name, 'комнаты');
+
+    await into(rooms).insert(
+      RoomsCompanion.insert(siteId: siteId, name: trimmed, createdAt: createdAt),
+      mode: InsertMode.insertOrIgnore,
+    );
+
+    return (select(rooms)..where((t) => t.siteId.equals(siteId) & t.name.equals(trimmed)))
+        .getSingle();
+  }
+
+  /// Добавляет источник или возвращает существующий с тем же именем в том же
+  /// месте и той же комнате. [roomId] = null означает источник прямо на месте.
+  Future<SamplingPoint> insertOrGetSource(
+    int siteId,
+    String name,
+    DateTime createdAt, {
+    int? roomId,
+  }) async {
+    final trimmed = _requireName(name, 'источника');
+
+    await into(samplingPoints).insert(
+      SamplingPointsCompanion.insert(
+        siteId: siteId,
+        name: trimmed,
+        createdAt: createdAt,
+        roomId: Value(roomId),
+      ),
+      mode: InsertMode.insertOrIgnore,
+    );
+
+    // `roomId IS NULL` отдельной веткой: в SQL сравнение с NULL не истинно
+    // никогда, и источник без комнаты иначе не нашёлся бы после вставки.
+    final query = select(samplingPoints)
+      ..where((t) => t.siteId.equals(siteId) & t.name.equals(trimmed));
+    if (roomId == null) {
+      query.where((t) => t.roomId.isNull());
+    } else {
+      query.where((t) => t.roomId.equals(roomId));
+    }
+
+    return query.getSingle();
+  }
+
+  static String _requireName(String name, String what) {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) {
+      // Без этой проверки пустое имя молча создавало бы безымянную запись:
+      // пустая строка проходит в TEXT NOT NULL и занимает уникальный индекс.
+      throw ArgumentError.value(name, 'name', 'Название $what не может быть пустым');
+    }
+    return trimmed;
+  }
+
+  /// Отмечает источник использованным — вместе с его комнатой и местом.
+  ///
+  /// Поднимается вся цепочка, а не только источник: список выбора сортирует по
+  /// свежести на каждом уровне, и место, где только что мерили, должно быть
+  /// сверху так же, как источник внутри него.
+  Future<void> touchSource(int sourceId, DateTime usedAt) async {
+    final source = await getSourceById(sourceId);
+    if (source == null) return;
+
+    await transaction(() async {
+      await (update(samplingPoints)..where((t) => t.id.equals(sourceId)))
+          .write(SamplingPointsCompanion(lastUsedAt: Value(usedAt)));
+      await (update(sites)..where((t) => t.id.equals(source.siteId)))
+          .write(SitesCompanion(lastUsedAt: Value(usedAt)));
+
+      final roomId = source.roomId;
+      if (roomId != null) {
+        await (update(rooms)..where((t) => t.id.equals(roomId)))
+            .write(RoomsCompanion(lastUsedAt: Value(usedAt)));
+      }
+    });
+  }
+
+  /// Обновляет якорь привязки места.
+  Future<int> updateSiteAnchor(
+    int siteId, {
+    required double? latitude,
+    required double? longitude,
+    required double? accuracyMeters,
+    required int samples,
+  }) {
+    return (update(sites)..where((t) => t.id.equals(siteId))).write(
+      SitesCompanion(
+        latitude: Value(latitude),
+        longitude: Value(longitude),
+        anchorAccuracyMeters: Value(accuracyMeters),
+        anchorSamples: Value(samples),
+      ),
+    );
+  }
+
+  Future<int> renameSite(int siteId, String name, {String? city}) {
+    return (update(sites)..where((t) => t.id.equals(siteId)))
+        .write(SitesCompanion(name: Value(_requireName(name, 'места')), city: Value(city)));
+  }
+
+  Future<int> renameRoom(int roomId, String name) {
+    return (update(rooms)..where((t) => t.id.equals(roomId)))
+        .write(RoomsCompanion(name: Value(_requireName(name, 'комнаты'))));
+  }
+
+  Future<int> renameSource(int sourceId, String name) {
+    return (update(samplingPoints)..where((t) => t.id.equals(sourceId)))
+        .write(SamplingPointsCompanion(name: Value(_requireName(name, 'источника'))));
+  }
+
+  /// Удаляет место со всеми комнатами и источниками.
+  ///
+  /// Чистка идёт явной транзакцией, а не `ON DELETE CASCADE`: каскад в SQLite
+  /// работает только при `PRAGMA foreign_keys = ON`, а включать его для всей
+  /// базы ради одной операции значит заодно поменять поведение всех остальных
+  /// таблиц. История замеров не трогается — она хранит имена, а не ссылки.
+  Future<void> deleteSiteById(int id) async {
+    await transaction(() async {
+      await (delete(samplingPoints)..where((t) => t.siteId.equals(id))).go();
+      await (delete(rooms)..where((t) => t.siteId.equals(id))).go();
+      await (delete(sites)..where((t) => t.id.equals(id))).go();
+    });
+  }
+
+  /// Удаляет комнату вместе с её источниками.
+  Future<void> deleteRoomById(int id) async {
+    await transaction(() async {
+      await (delete(samplingPoints)..where((t) => t.roomId.equals(id))).go();
+      await (delete(rooms)..where((t) => t.id.equals(id))).go();
+    });
+  }
+
+  Future<int> deleteSourceById(int id) =>
+      (delete(samplingPoints)..where((t) => t.id.equals(id))).go();
 
   /// Все записи отсортированы по времени, новые сверху.
   Future<List<Measurement>> getAllMeasurements({String? deviceId, int? limit}) {
@@ -270,13 +615,35 @@ class AppDatabase extends _$AppDatabase {
   /// Прибор входит в условие, потому что у разных экземпляров своя калибровка
   /// электрода: сравнивать замер нового тестера со старым — сравнивать приборы,
   /// а не воду.
-  Future<Measurement?> latestMeasurement({required String deviceId, String? label}) {
+  /// [legacyLabel] — плоское имя, из которого источник мигрировал. Задан только у
+  /// мигрировавших источников и нужен, чтобы замеры, сделанные до появления
+  /// иерархии, продолжали служить базой: у них `siteName` пустой, и по структуре
+  /// они не нашлись бы. У созданных вручную источников он пуст, иначе новый
+  /// «Дача · Фильтр» присвоил бы себе историю старого «Фильтра», сделанного дома.
+  Future<Measurement?> latestMeasurement({
+    required String deviceId,
+    String? siteName,
+    String? roomName,
+    String? sourceName,
+    String? legacyLabel,
+  }) {
     final query = select(measurements)..where((tbl) => tbl.deviceId.equals(deviceId));
 
-    if (label == null) {
+    if (sourceName == null) {
+      // Замеры без источника сравниваются только между собой. Сравнение с NULL
+      // в SQL не истинно никогда, поэтому нужна отдельная ветка.
       query.where((tbl) => tbl.label.isNull());
     } else {
-      query.where((tbl) => tbl.label.equals(label));
+      query.where((tbl) {
+        final structured =
+            tbl.label.equals(sourceName) &
+            (siteName == null ? tbl.siteName.isNull() : tbl.siteName.equals(siteName)) &
+            (roomName == null ? tbl.roomName.isNull() : tbl.roomName.equals(roomName));
+
+        if (legacyLabel == null) return structured;
+
+        return structured | (tbl.siteName.isNull() & tbl.label.equals(legacyLabel));
+      });
     }
 
     query.orderBy([(t) => OrderingTerm.desc(t.observedAt)]);
@@ -295,12 +662,25 @@ class AppDatabase extends _$AppDatabase {
 
   Future<int> insertMeasurement(MeasurementsCompanion entry) => into(measurements).insert(entry);
 
-  /// Меняет только колонку `label` у одной строки. Возвращает количество затронутых записей
-  /// (0 если запись с таким id не найдена, 1 при успехе).
-  Future<int> updateMeasurementLabel(int id, String? label) {
-    return (update(
-      measurements,
-    )..where((tbl) => tbl.id.equals(id))).write(MeasurementsCompanion(label: Value(label)));
+  /// Меняет адрес замера — место, комнату и источник — у одной строки.
+  /// Возвращает количество затронутых записей (0 если запись не найдена).
+  ///
+  /// Все три колонки пишутся вместе: смена источника почти всегда означает и
+  /// смену места, а частичное обновление оставило бы запись вроде «Дача · Кухня ·
+  /// Кран», где кухня осталась от прежнего адреса.
+  Future<int> updateMeasurementPlace(
+    int id, {
+    required String? siteName,
+    required String? roomName,
+    required String? sourceName,
+  }) {
+    return (update(measurements)..where((tbl) => tbl.id.equals(id))).write(
+      MeasurementsCompanion(
+        label: Value(sourceName),
+        siteName: Value(siteName),
+        roomName: Value(roomName),
+      ),
+    );
   }
 
   /// Удаляет одну запись по id. Возвращает количество затронутых записей.

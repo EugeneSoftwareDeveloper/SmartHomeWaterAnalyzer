@@ -31,8 +31,7 @@ class AppL10nRu extends AppL10n {
   String get scanNoDeviceName => '(без имени)';
 
   @override
-  String get permissionBluetoothDisabled =>
-      'Bluetooth выключен. Включи его в настройках телефона.';
+  String get permissionBluetoothDisabled => 'Bluetooth выключен. Включи его в настройках телефона.';
 
   @override
   String get permissionOpenSettings => 'Открыть настройки приложения';
@@ -103,8 +102,7 @@ class AppL10nRu extends AppL10n {
   String get historyDeleteAll => 'Очистить историю';
 
   @override
-  String get historyDeleteConfirm =>
-      'Удалить все сохранённые измерения? Действие необратимо.';
+  String get historyDeleteConfirm => 'Удалить все сохранённые измерения? Действие необратимо.';
 
   @override
   String get historyDeleted => 'История очищена';
@@ -166,6 +164,5 @@ class AppL10nRu extends AppL10n {
   String get bluetoothOffTitle => 'Bluetooth выключен';
 
   @override
-  String get bluetoothOffSubtitle =>
-      'Включи Bluetooth, чтобы начать сканирование';
+  String get bluetoothOffSubtitle => 'Включи Bluetooth, чтобы начать сканирование';
 }
