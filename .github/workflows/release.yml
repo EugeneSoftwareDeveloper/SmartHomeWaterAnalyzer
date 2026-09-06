@@ -75,7 +75,7 @@ jobs:
           # («Missing implementation of visitDotShorthandPropertyAccess»).
           # Поднимать версию — осознанно, вместе с `flutter pub upgrade`,
           # и держать её одинаковой с ci.yml.
-          flutter-version: 3.41.9
+          flutter-version: 3.47.2
           channel: stable
           cache: true
 

@@ -49,7 +49,7 @@ jobs:
           # («Missing implementation of visitDotShorthandPropertyAccess»).
           # Держим ту же версию, на которой ведётся разработка; поднимать —
           # осознанно, вместе с `flutter pub upgrade`.
-          flutter-version: 3.41.9
+          flutter-version: 3.47.2
           channel: stable
           cache: true
 
@@ -118,7 +118,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           # Та же версия, что в job'е analyze-and-test — см. комментарий выше.
-          flutter-version: 3.41.9
+          flutter-version: 3.47.2
           channel: stable
           cache: true
 
