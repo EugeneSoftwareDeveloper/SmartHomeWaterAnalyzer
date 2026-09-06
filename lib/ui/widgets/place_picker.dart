@@ -91,9 +91,7 @@ class PlacePickerField extends ConsumerWidget {
                       note,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.primary,
-                      ),
+                      style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary),
                     ),
                   ),
                 ],

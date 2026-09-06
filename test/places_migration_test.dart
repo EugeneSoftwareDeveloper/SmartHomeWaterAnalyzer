@@ -186,9 +186,9 @@ void main() {
       final db = await openMigrated();
       addTearDown(db.close);
 
-      final source = (await PlaceCatalogRepository(db).sources()).firstWhere(
-        (s) => s.name == 'Скважина',
-      );
+      final source = (await PlaceCatalogRepository(
+        db,
+      ).sources()).firstWhere((s) => s.name == 'Скважина');
 
       expect(source.lastUsedAt, isNotNull);
     });
@@ -393,10 +393,9 @@ void main() {
       final db = await openMigrated();
       addTearDown(db.close);
 
-      final baseline = await HistoryRepository(db).latestForPlace(
-        'AA:BB',
-        const MeasurementPlace(siteName: 'Дача', sourceName: 'Кулер'),
-      );
+      final baseline = await HistoryRepository(
+        db,
+      ).latestForPlace('AA:BB', const MeasurementPlace(siteName: 'Дача', sourceName: 'Кулер'));
 
       expect(baseline, isNull);
     });

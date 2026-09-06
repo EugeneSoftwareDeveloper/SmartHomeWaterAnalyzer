@@ -41,6 +41,43 @@ class LocationService {
     );
   }
 
+  /// Координаты для автоопределения места — **без запроса разрешения**.
+  ///
+  /// Возвращает `null`, если разрешения ещё нет, служба выключена или фикс не
+  /// пришёл. Отдельный метод нужен именно ради отсутствия системного диалога:
+  /// автовыбор срабатывает при каждом чтении показаний, и просить разрешение
+  /// там значило бы перенести диалог с осознанного «Сохранить» на открытие
+  /// экрана — приложение стало бы навязчивее ровно там, где обещало не мешать.
+  ///
+  /// Ждёт меньше обычного: подстановка места — удобство, и задерживать ради неё
+  /// показания незачем.
+  Future<MeasurementLocation?> currentLocationIfGranted({
+    Duration timeout = const Duration(seconds: 3),
+  }) async {
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) return null;
+
+      final permission = await Geolocator.checkPermission();
+      final granted =
+          permission == LocationPermission.always || permission == LocationPermission.whileInUse;
+      if (!granted) return null;
+
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: LocationSettings(accuracy: defaultAccuracy, timeLimit: timeout),
+      );
+
+      return MeasurementLocation(
+        latitude: position.latitude,
+        longitude: position.longitude,
+        accuracyMeters: position.accuracy,
+      );
+    } on Object catch (_) {
+      // Автовыбор — украшение поверх показаний: любая проблема означает просто
+      // «место не определилось», а не ошибку, о которой стоит сообщать.
+      return null;
+    }
+  }
+
   Future<LocationResult> _currentLocation({
     required Duration timeout,
     required LocationAccuracy accuracy,

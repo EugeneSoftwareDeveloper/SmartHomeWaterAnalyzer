@@ -329,10 +329,10 @@ class AppDatabase extends _$AppDatabase {
   Future<void> _seedLegacyPlaces() async {
     final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     for (final name in defaultSourceNames) {
-      await customStatement(
-        'INSERT OR IGNORE INTO places (name, created_at) VALUES (?, ?)',
-        [name, now],
-      );
+      await customStatement('INSERT OR IGNORE INTO places (name, created_at) VALUES (?, ?)', [
+        name,
+        now,
+      ]);
     }
   }
 
@@ -373,10 +373,9 @@ class AppDatabase extends _$AppDatabase {
   /// и дома, и на даче, якорь останется пустым: неверная привязка хуже, чем её
   /// отсутствие, потому что молча подставляет не то место.
   Future<void> _seedAnchorFromHistory(int siteId) async {
-    final rows =
-        await (select(measurements)
-              ..where((t) => t.latitude.isNotNull() & t.longitude.isNotNull()))
-            .get();
+    final rows = await (select(
+      measurements,
+    )..where((t) => t.latitude.isNotNull() & t.longitude.isNotNull())).get();
 
     final fixes = <MeasurementLocation>[
       for (final row in rows)
@@ -438,8 +437,9 @@ class AppDatabase extends _$AppDatabase {
   /// Ищет источник по плоскому имени из версий до 1.4.0. Нужен один раз при
   /// первом запуске после обновления, чтобы выбранное ранее место не потерялось.
   Future<SamplingPoint?> findSourceByLegacyLabel(String label) {
-    return (select(samplingPoints)..where((t) => t.legacyLabel.equals(label.trim())))
-        .getSingleOrNull();
+    return (select(
+      samplingPoints,
+    )..where((t) => t.legacyLabel.equals(label.trim()))).getSingleOrNull();
   }
 
   /// Добавляет место или возвращает существующее с тем же именем.
@@ -468,8 +468,9 @@ class AppDatabase extends _$AppDatabase {
       mode: InsertMode.insertOrIgnore,
     );
 
-    return (select(rooms)..where((t) => t.siteId.equals(siteId) & t.name.equals(trimmed)))
-        .getSingle();
+    return (select(
+      rooms,
+    )..where((t) => t.siteId.equals(siteId) & t.name.equals(trimmed))).getSingle();
   }
 
   /// Добавляет источник или возвращает существующий с тем же именем в том же
@@ -525,15 +526,18 @@ class AppDatabase extends _$AppDatabase {
     if (source == null) return;
 
     await transaction(() async {
-      await (update(samplingPoints)..where((t) => t.id.equals(sourceId)))
-          .write(SamplingPointsCompanion(lastUsedAt: Value(usedAt)));
-      await (update(sites)..where((t) => t.id.equals(source.siteId)))
-          .write(SitesCompanion(lastUsedAt: Value(usedAt)));
+      await (update(samplingPoints)..where((t) => t.id.equals(sourceId))).write(
+        SamplingPointsCompanion(lastUsedAt: Value(usedAt)),
+      );
+      await (update(
+        sites,
+      )..where((t) => t.id.equals(source.siteId))).write(SitesCompanion(lastUsedAt: Value(usedAt)));
 
       final roomId = source.roomId;
       if (roomId != null) {
-        await (update(rooms)..where((t) => t.id.equals(roomId)))
-            .write(RoomsCompanion(lastUsedAt: Value(usedAt)));
+        await (update(
+          rooms,
+        )..where((t) => t.id.equals(roomId))).write(RoomsCompanion(lastUsedAt: Value(usedAt)));
       }
     });
   }
@@ -557,18 +561,21 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<int> renameSite(int siteId, String name, {String? city}) {
-    return (update(sites)..where((t) => t.id.equals(siteId)))
-        .write(SitesCompanion(name: Value(_requireName(name, 'места')), city: Value(city)));
+    return (update(sites)..where((t) => t.id.equals(siteId))).write(
+      SitesCompanion(name: Value(_requireName(name, 'места')), city: Value(city)),
+    );
   }
 
   Future<int> renameRoom(int roomId, String name) {
-    return (update(rooms)..where((t) => t.id.equals(roomId)))
-        .write(RoomsCompanion(name: Value(_requireName(name, 'комнаты'))));
+    return (update(rooms)..where((t) => t.id.equals(roomId))).write(
+      RoomsCompanion(name: Value(_requireName(name, 'комнаты'))),
+    );
   }
 
   Future<int> renameSource(int sourceId, String name) {
-    return (update(samplingPoints)..where((t) => t.id.equals(sourceId)))
-        .write(SamplingPointsCompanion(name: Value(_requireName(name, 'источника'))));
+    return (update(samplingPoints)..where((t) => t.id.equals(sourceId))).write(
+      SamplingPointsCompanion(name: Value(_requireName(name, 'источника'))),
+    );
   }
 
   /// Удаляет место со всеми комнатами и источниками.

@@ -43,11 +43,7 @@ class SiteAnchor {
 /// Возвращает [current] без изменений, если фикс — выброс: пользователь мог
 /// выбрать место руками, находясь в другом городе, и такой замер не должен
 /// утаскивать якорь за собой.
-SiteAnchor updateAnchor(
-  SiteAnchor? current,
-  MeasurementLocation fix, {
-  double radiusMeters = 150,
-}) {
+SiteAnchor updateAnchor(SiteAnchor? current, MeasurementLocation fix, {double radiusMeters = 150}) {
   final fixAccuracy = fix.accuracyMeters ?? SiteAnchor.accuracyFloorMeters;
 
   if (current == null) {
@@ -59,12 +55,7 @@ SiteAnchor updateAnchor(
     );
   }
 
-  final distance = distanceMeters(
-    current.latitude,
-    current.longitude,
-    fix.latitude,
-    fix.longitude,
-  );
+  final distance = distanceMeters(current.latitude, current.longitude, fix.latitude, fix.longitude);
   if (distance > SiteAnchor.outlierGateMeters(radiusMeters)) return current;
 
   // Среднее, взвешенное по 1/точность²: фикс по спутникам с погрешностью 5 м
@@ -111,8 +102,7 @@ SiteAnchor? anchorFromFixes(
   // выбросы и надо здесь распознать.
   final clustered = fixes
       .where(
-        (f) =>
-            distanceMeters(medianLat, medianLon, f.latitude, f.longitude) <= clusterRadiusMeters,
+        (f) => distanceMeters(medianLat, medianLon, f.latitude, f.longitude) <= clusterRadiusMeters,
       )
       .toList();
 

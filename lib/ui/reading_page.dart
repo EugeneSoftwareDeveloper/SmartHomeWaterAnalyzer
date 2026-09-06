@@ -9,6 +9,9 @@ import 'package:intl/intl.dart';
 
 import '../history/database.dart';
 import '../history/measurement_place.dart';
+import '../location/measurement_location.dart';
+import '../location/site_anchor.dart';
+import '../location/site_match.dart';
 import '../providers/app_settings.dart';
 import '../providers/history_provider.dart';
 import '../providers/location_provider.dart';
@@ -75,6 +78,21 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
   /// и подмену не выдаёт.
   MeasurementPlace? _baselineLoadedFor;
 
+  /// Подпись под полем адреса, когда место определилось по координатам.
+  String? _autoSelectionHint;
+
+  /// Пользователь выбрал адрес руками в этой сессии.
+  ///
+  /// После этого автоопределение молчит до конца сессии: подменять осознанный
+  /// выбор поздним GPS-фиксом — худшее, что может сделать подстановка, потому
+  /// что замер уйдёт в историю не туда, а человек этого не заметит.
+  bool _selectionIsManual = false;
+
+  /// Взведён на время, пока адрес меняет само приложение. Без него подстановка
+  /// не отличалась бы от ручного выбора: обе идут через одни и те же настройки,
+  /// и слушатель принял бы автовыбор за действие пользователя.
+  bool _applyingAutoSelection = false;
+
   @override
   void initState() {
     super.initState();
@@ -135,11 +153,80 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
     }
   }
 
+  /// Переносит выбор, сделанный до версии 1.4.0, на мигрировавший источник.
+  ///
+  /// Настройки грузятся синхронно и без доступа к БД, поэтому превратить плоское
+  /// имя в ссылку при загрузке нельзя — делаем это один раз здесь.
+  Future<void> _resolveLegacySelection() async {
+    final settings = ref.read(appSettingsProvider);
+    final legacy = settings.legacySelectedLabel;
+    if (legacy == null) return;
+
+    final notifier = ref.read(appSettingsProvider.notifier);
+    if (settings.currentSourceId == null) {
+      final source = await ref.read(placeCatalogProvider).sourceByLegacyLabel(legacy);
+      if (source != null) {
+        _applyingAutoSelection = true;
+        await notifier.setCurrentSource(source.id);
+        _applyingAutoSelection = false;
+      }
+    }
+
+    await notifier.clearLegacySelection();
+  }
+
+  /// Пробует определить место по координатам и подставить его источник.
+  ///
+  /// Молчит, если пользователь уже выбрал адрес сам, если геометка выключена,
+  /// если разрешения ещё нет (диалог здесь не показываем принципиально) или
+  /// если координаты не совпали ни с одним местом однозначно.
+  Future<void> _autoSelectPlace() async {
+    if (_selectionIsManual) return;
+    if (!ref.read(appSettingsProvider).saveLocationEnabled) return;
+
+    final position = await ref.read(locationServiceProvider).currentLocationIfGranted();
+    if (position == null || !mounted) return;
+
+    final catalog = ref.read(placeCatalogViewProvider).valueOrNull;
+    if (catalog == null) return;
+
+    final anchors = <SiteAnchorPoint>[
+      for (final site in catalog.sites)
+        if (site.latitude != null && site.longitude != null)
+          SiteAnchorPoint(
+            siteId: site.id,
+            latitude: site.latitude!,
+            longitude: site.longitude!,
+            radiusMeters: site.radiusMeters,
+          ),
+    ];
+
+    final match = matchSite(anchors, position);
+    if (match == null || !mounted) return;
+
+    final source = catalog.mostRecentSourceOfSite(match.siteId);
+    if (source == null) return;
+
+    // Ещё одна проверка: пока ждали фикс, пользователь мог выбрать адрес сам.
+    if (_selectionIsManual || !mounted) return;
+
+    _applyingAutoSelection = true;
+    await ref.read(appSettingsProvider.notifier).setCurrentSource(source.id);
+    _applyingAutoSelection = false;
+
+    if (!mounted) return;
+    setState(() {
+      _autoSelectionHint = 'определено по координатам, ${match.distanceMeters.round()} м';
+    });
+  }
+
   Future<void> _refresh() async {
     setState(() {
       _loading = true;
       _error = null;
     });
+
+    unawaited(_resolveLegacySelection().then((_) => _autoSelectPlace()));
 
     // База сравнения читается параллельно с прибором: она не нужна для показа
     // самих значений, и ждать SQLite перед BLE-чтением незачем.
@@ -228,6 +315,7 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
       if (source != null) {
         try {
           await ref.read(placeCatalogProvider).markSourceUsed(source.id);
+          await _learnAnchor(source.siteId, locationResult?.location);
         } on Object catch (_) {
           // Порядок списка мест — не то, ради чего стоит беспокоить пользователя.
         }
@@ -266,6 +354,32 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
     }
   }
 
+  /// Уточняет координаты места по только что сохранённому замеру.
+  ///
+  /// Так место узнаёт, где оно находится, само — пользователю не нужно ничего
+  /// привязывать руками. Выбросы отсекает [updateAnchor]: замер можно сохранить,
+  /// выбрав место вручную из другого города, и такой фикс не должен утащить
+  /// якорь за собой.
+  Future<void> _learnAnchor(int siteId, MeasurementLocation? location) async {
+    if (location == null) return;
+
+    final catalog = ref.read(placeCatalogViewProvider).valueOrNull;
+    final site = catalog?.siteById(siteId);
+    if (site == null) return;
+
+    final current = (site.latitude != null && site.longitude != null)
+        ? SiteAnchor(
+            latitude: site.latitude!,
+            longitude: site.longitude!,
+            accuracyMeters: site.anchorAccuracyMeters ?? SiteAnchor.accuracyFloorMeters,
+            samples: site.anchorSamples,
+          )
+        : null;
+
+    final updated = updateAnchor(current, location, radiusMeters: site.radiusMeters);
+    await ref.read(placeCatalogProvider).setSiteAnchor(siteId, updated);
+  }
+
   void _showSnackBar(String message, {SnackBarAction? action}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), action: action));
@@ -276,10 +390,17 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
     // Сменили место — сравнивать надо уже с историей нового места, иначе замер
     // на кухне сопоставлялся бы с прошлым замером в бассейне. Ровно та причина,
     // по которой у графика в 1.2.0 появился фильтр по месту.
-    ref.listen<int?>(
-      appSettingsProvider.select((settings) => settings.currentSourceId),
-      (_, _) => unawaited(_loadBaseline()),
-    );
+    ref.listen<int?>(appSettingsProvider.select((settings) => settings.currentSourceId), (_, _) {
+      if (!_applyingAutoSelection) {
+        // Выбор пришёл от пользователя — с этого момента автоопределение молчит,
+        // а подпись «определено по координатам» перестаёт быть правдой.
+        _selectionIsManual = true;
+        if (_autoSelectionHint != null) {
+          setState(() => _autoSelectionHint = null);
+        }
+      }
+      unawaited(_loadBaseline());
+    });
 
     final deviceName = widget.device.platformName.isEmpty
         ? widget.device.remoteId.str
@@ -393,7 +514,7 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.only(bottom: 96), // место под FAB
         children: [
-          const PlacePickerField(),
+          PlacePickerField(hint: _autoSelectionHint),
           SummaryHeader(overview: overview, reading: reading),
           if (_baselineLoaded) _TrendBaselineNote(baseline: baseline),
           for (final parameter in parameters)

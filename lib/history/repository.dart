@@ -192,12 +192,8 @@ class PlaceCatalogRepository {
   Future<Room> addRoom(int siteId, String name, {DateTime? createdAt}) =>
       _database.insertOrGetRoom(siteId, name, createdAt ?? DateTime.now());
 
-  Future<SamplingPoint> addSource(
-    int siteId,
-    String name, {
-    int? roomId,
-    DateTime? createdAt,
-  }) => _database.insertOrGetSource(siteId, name, createdAt ?? DateTime.now(), roomId: roomId);
+  Future<SamplingPoint> addSource(int siteId, String name, {int? roomId, DateTime? createdAt}) =>
+      _database.insertOrGetSource(siteId, name, createdAt ?? DateTime.now(), roomId: roomId);
 
   // ─── Изменение ────────────────────────────────────────────────────────────
 

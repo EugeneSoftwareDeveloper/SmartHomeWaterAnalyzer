@@ -133,13 +133,23 @@ void main() {
     test('пробельное место сохраняется как отсутствие места', () async {
       // До 1.2.0 место было свободным вводом, и в настройках могла остаться
       // строка из пробелов. Без нормализации запись выглядела бы «названной».
-      await repo.save('AA:BB', _reading(), DateTime(2026, 8, 31), place: const MeasurementPlace(sourceName: '   '));
+      await repo.save(
+        'AA:BB',
+        _reading(),
+        DateTime(2026, 8, 31),
+        place: const MeasurementPlace(sourceName: '   '),
+      );
 
       expect((await repo.recent()).single.label, isNull);
     });
 
     test('пробелы по краям обрезаются', () async {
-      await repo.save('AA:BB', _reading(), DateTime(2026, 8, 31), place: const MeasurementPlace(sourceName: '  Кран на кухне  '));
+      await repo.save(
+        'AA:BB',
+        _reading(),
+        DateTime(2026, 8, 31),
+        place: const MeasurementPlace(sourceName: '  Кран на кухне  '),
+      );
 
       expect((await repo.recent()).single.label, 'Кран на кухне');
     });

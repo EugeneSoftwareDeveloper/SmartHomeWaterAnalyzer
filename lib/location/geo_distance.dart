@@ -22,8 +22,7 @@ double distanceMeters(double lat1, double lon1, double lat2, double lon2) {
   final sinHalfLambda = math.sin(deltaLambda / 2);
 
   final a =
-      sinHalfPhi * sinHalfPhi +
-      math.cos(phi1) * math.cos(phi2) * sinHalfLambda * sinHalfLambda;
+      sinHalfPhi * sinHalfPhi + math.cos(phi1) * math.cos(phi2) * sinHalfLambda * sinHalfLambda;
 
   // atan2, а не asin(sqrt(a)): у asin катастрофическая потеря точности при a → 1,
   // то есть для почти противоположных точек.
