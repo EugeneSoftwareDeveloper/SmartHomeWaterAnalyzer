@@ -6,6 +6,7 @@ import 'ui/debug_commands_page.dart';
 import 'ui/help_page.dart';
 import 'ui/history_detail_page.dart';
 import 'ui/history_page.dart';
+import 'ui/places_page.dart';
 import 'ui/home_page.dart';
 import 'ui/shell_page.dart';
 
@@ -27,6 +28,7 @@ final appRouter = GoRouter(
       },
     ),
     GoRoute(path: '/history', builder: (context, state) => const HistoryPage(standalone: true)),
+    GoRoute(path: '/places', builder: (context, state) => const PlacesPage()),
     GoRoute(
       path: '/history/detail',
       builder: (context, state) {

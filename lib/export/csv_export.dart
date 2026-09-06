@@ -11,7 +11,12 @@ import '../history/database.dart';
 /// полей в строках нельзя было расстроить независимо друг от друга.
 const List<String> csvColumns = <String>[
   'timestamp',
-  'place',
+  // Три уровня адреса отдельными колонками, а не одной склеенной строкой:
+  // в таблице по ним можно фильтровать и сводить, а склейку пришлось бы
+  // разбирать обратно. `site` и `room` пусты у записей до версии 1.4.0.
+  'site',
+  'room',
+  'source',
   'device_id',
   'ph',
   'ec_us_cm',
@@ -44,6 +49,8 @@ String buildMeasurementsCsv(List<Measurement> rows) {
     buffer.writeln(
       <String>[
         isoFormat.format(row.observedAt),
+        _csvField(row.siteName ?? ''),
+        _csvField(row.roomName ?? ''),
         _csvField(row.label ?? ''),
         _csvField(row.deviceId),
         row.ph.toStringAsFixed(2),

@@ -23,6 +23,14 @@ class SettingsPage extends ConsumerWidget {
       body: ListView(
         children: [
           ListTile(
+            leading: const Icon(Icons.home_work_outlined),
+            title: const Text('Места замеров'),
+            subtitle: const Text('Дома, комнаты и источники воды'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/places'),
+          ),
+          const Divider(),
+          ListTile(
             leading: const Icon(Icons.water_drop),
             title: Text(l10n.settingsProfile),
             subtitle: Text(_profileLabel(l10n, settings.normsProfile)),

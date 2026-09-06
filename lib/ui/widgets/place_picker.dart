@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../history/database.dart';
 import '../../history/measurement_place.dart';
@@ -169,7 +170,19 @@ class _PlacePickerSheetState extends ConsumerState<_PlacePickerSheet> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Text('Где мерим', style: theme.textTheme.titleMedium),
+              child: Row(
+                children: [
+                  Expanded(child: Text('Где мерим', style: theme.textTheme.titleMedium)),
+                  TextButton.icon(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      GoRouter.of(context).push('/places');
+                    },
+                    icon: const Icon(Icons.tune, size: 18),
+                    label: const Text('Настроить'),
+                  ),
+                ],
+              ),
             ),
             const Divider(height: 1),
             Expanded(

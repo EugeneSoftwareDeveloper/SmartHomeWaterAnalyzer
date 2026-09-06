@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import '../export/csv_export.dart';
 import '../history/database.dart';
 import '../history/grouping.dart';
+import '../history/measurement_place.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../providers/app_settings.dart';
 import '../providers/history_provider.dart';
@@ -270,7 +271,7 @@ class _MeasurementChartState extends ConsumerState<_MeasurementChart> {
   String _selectedKey = 'ph';
 
   /// Выбранное место. `null` — показывать все замеры подряд.
-  String? _placeFilter;
+  MeasurementPlace? _placeFilter;
 
   @override
   Widget build(BuildContext context) {
@@ -291,7 +292,7 @@ class _MeasurementChartState extends ConsumerState<_MeasurementChart> {
 
     final filtered = activeFilter == null
         ? widget.rows
-        : widget.rows.where((m) => m.label == activeFilter).toList();
+        : widget.rows.where((m) => measurementIsAt(m, activeFilter)).toList();
 
     // rows отсортированы desc (новые сверху): сначала берём 50 ПОСЛЕДНИХ, потом
     // разворачиваем в хронологический порядок для оси X. Обратный порядок операций
@@ -354,7 +355,9 @@ class _MeasurementChartState extends ConsumerState<_MeasurementChart> {
                     Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: ChoiceChip(
-                        label: Text(place),
+                        // Короткий вид: комната внутри места редко нужна для
+                        // узнавания, а лента чипов узкая.
+                        label: Text(place.short),
                         selected: activeFilter == place,
                         onSelected: (_) => setState(() => _placeFilter = place),
                       ),

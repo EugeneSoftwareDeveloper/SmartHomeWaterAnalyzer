@@ -1,6 +1,7 @@
 import 'package:intl/intl.dart';
 
 import 'database.dart';
+import 'measurement_place.dart';
 
 /// Группа замеров, относящихся к одному календарному дню.
 ///
@@ -15,18 +16,45 @@ class MeasurementDayGroup {
   const MeasurementDayGroup({required this.label, required this.measurements});
 }
 
-/// Места, встречающиеся в переданных замерах, в порядке первого появления.
+/// Адреса, встречающиеся в переданных замерах, в порядке первого появления.
 ///
-/// Нужен для фильтра графика: показывать в нём весь каталог мест бессмысленно —
-/// выбор места без замеров дал бы пустой график. Порядок «как в истории» ставит
-/// недавно использованные места первыми, потому что список отсортирован desc.
-List<String> placesInHistory(List<Measurement> rows) {
-  final places = <String>{};
+/// Нужен для фильтра графика: показывать в нём весь каталог бессмысленно —
+/// выбор источника без замеров дал бы пустой график. Порядок «как в истории»
+/// ставит недавно использованные первыми, потому что список отсортирован desc.
+///
+/// Различает адреса целиком, а не по имени источника: «Кран на кухне» дома и на
+/// даче — разная вода, и сливать их в одну линию значило бы рисовать скачок
+/// качества там, где просто сменили место. Ровно ради этого и заводилась
+/// иерархия.
+///
+/// Записи до версии 1.4.0 остаются отдельными адресами из одного уровня — у них
+/// известен только источник, и придумывать им место задним числом нельзя.
+List<MeasurementPlace> placesInHistory(List<Measurement> rows) {
+  final places = <MeasurementPlace>{};
   for (final row in rows) {
-    final label = row.label?.trim();
-    if (label != null && label.isNotEmpty) places.add(label);
+    final place = MeasurementPlace.normalized(
+      siteName: row.siteName,
+      roomName: row.roomName,
+      sourceName: row.label,
+    );
+    if (place.isNotEmpty) places.add(place);
   }
   return places.toList(growable: false);
+}
+
+/// Относится ли замер к выбранному адресу.
+///
+/// Сравнение идёт по нормализованным именам, а не по сырым колонкам: раньше
+/// фильтр сличал `label` точной строкой, тогда как список чипов строился с
+/// `trim()`. Метка с крайними пробелами давала чип, который не совпадал ни с
+/// одной точкой, и график молча оказывался пустым.
+bool measurementIsAt(Measurement row, MeasurementPlace place) {
+  return MeasurementPlace.normalized(
+        siteName: row.siteName,
+        roomName: row.roomName,
+        sourceName: row.label,
+      ) ==
+      place;
 }
 
 /// Группирует список измерений по календарной дате наблюдения.

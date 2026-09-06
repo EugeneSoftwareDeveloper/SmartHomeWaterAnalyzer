@@ -293,6 +293,49 @@ void main() {
       expect(catalog.placeOf(source).formatted, 'Дача · Скважина');
     });
 
+    test('самый свежий источник места — то, что подставит автовыбор', () async {
+      // Определив место по координатам, приложение берёт именно этот источник.
+      final site = await repo.addSite('Дача');
+      final well = await repo.addSource(site.id, 'Скважина');
+      final tap = await repo.addSource(site.id, 'Кран');
+
+      await repo.markSourceUsed(well.id, usedAt: DateTime(2026, 9, 1));
+      await repo.markSourceUsed(tap.id, usedAt: DateTime(2026, 9, 6));
+
+      final catalog = PlaceCatalog(
+        sites: await repo.sites(),
+        rooms: await repo.rooms(),
+        sources: await repo.sources(),
+      );
+
+      expect(catalog.mostRecentSourceOfSite(site.id)!.name, 'Кран');
+    });
+
+    test('у места без источников подставлять нечего', () async {
+      final site = await repo.addSite('Пустое');
+
+      final catalog = PlaceCatalog(
+        sites: await repo.sites(),
+        rooms: await repo.rooms(),
+        sources: await repo.sources(),
+      );
+
+      expect(catalog.mostRecentSourceOfSite(site.id), isNull);
+    });
+
+    test('источники одного места не путаются с чужими', () async {
+      final dacha = await repo.addSite('Дача');
+      await repo.addSource(dacha.id, 'Скважина');
+
+      final catalog = PlaceCatalog(
+        sites: await repo.sites(),
+        rooms: await repo.rooms(),
+        sources: await repo.sources(),
+      );
+
+      expect(catalog.sourcesOfSite(dacha.id).map((s) => s.name), ['Скважина']);
+    });
+
     test('адрес удалённого источника не находится', () async {
       final catalog = PlaceCatalog(
         sites: await repo.sites(),

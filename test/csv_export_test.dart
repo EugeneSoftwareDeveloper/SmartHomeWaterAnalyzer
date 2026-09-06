@@ -5,6 +5,8 @@ import 'package:water_analyzer/history/database.dart';
 
 Measurement _measurement({
   String? label,
+  String? siteName,
+  String? roomName,
   double? latitude,
   double? longitude,
   double? accuracy,
@@ -14,6 +16,8 @@ Measurement _measurement({
     id: 1,
     deviceId: 'AA:BB:CC:DD:EE:FF',
     label: label,
+    siteName: siteName,
+    roomName: roomName,
     observedAt: observedAt ?? DateTime(2026, 8, 31, 14, 30, 15),
     ph: 7.24,
     electricalConductivityUsCm: 250,
@@ -37,6 +41,41 @@ List<String> _rowsOf(String csv) => csv.trim().split('\n').map((line) => line.tr
 
 void main() {
   group('buildMeasurementsCsv', () {
+    test('адрес выгружается тремя отдельными колонками', () {
+      // Не одной склеенной строкой: по отдельным колонкам в таблице можно
+      // фильтровать и сводить, а склейку пришлось бы разбирать обратно.
+      final csv = buildMeasurementsCsv([
+        _measurement(siteName: 'Дача', roomName: 'Баня', label: 'Кран'),
+      ]);
+      final cells = _rowsOf(csv)[1].split(',');
+
+      expect(cells[csvColumns.indexOf('site')], 'Дача');
+      expect(cells[csvColumns.indexOf('room')], 'Баня');
+      expect(cells[csvColumns.indexOf('source')], 'Кран');
+    });
+
+    test('источник без комнаты оставляет её колонку пустой', () {
+      final csv = buildMeasurementsCsv([_measurement(siteName: 'Дача', label: 'Скважина')]);
+      final cells = _rowsOf(csv)[1].split(',');
+
+      expect(cells[csvColumns.indexOf('room')], isEmpty);
+      expect(cells[csvColumns.indexOf('site')], 'Дача');
+    });
+
+    test('запись до иерархии выгружается только источником', () {
+      final csv = buildMeasurementsCsv([_measurement(label: 'Кран на кухне')]);
+      final cells = _rowsOf(csv)[1].split(',');
+
+      expect(cells[csvColumns.indexOf('site')], isEmpty);
+      expect(cells[csvColumns.indexOf('source')], 'Кран на кухне');
+    });
+
+    test('запятая в названии места экранируется, как и в источнике', () {
+      final csv = buildMeasurementsCsv([_measurement(siteName: 'Дача, дальняя', label: 'Колодец')]);
+
+      expect(csv, contains('"Дача, дальняя"'));
+    });
+
     test('заголовок совпадает со списком колонок', () {
       final csv = buildMeasurementsCsv([]);
 
@@ -92,7 +131,9 @@ void main() {
       final csv = buildMeasurementsCsv([_measurement()]);
 
       final cells = _rowsOf(csv)[1].split(',');
-      expect(cells[csvColumns.indexOf('place')], isEmpty);
+      expect(cells[csvColumns.indexOf('source')], isEmpty);
+      expect(cells[csvColumns.indexOf('site')], isEmpty);
+      expect(cells[csvColumns.indexOf('room')], isEmpty);
       expect(csv, isNot(contains('null')));
     });
 
@@ -139,7 +180,7 @@ void main() {
       final cells = _rowsOf(csv)[1].split(',');
       expect(cells[csvColumns.indexOf('device_id')], 'AA:BB:CC:DD:EE:FF');
       expect(cells[csvColumns.indexOf('ph')], '7.24');
-      expect(cells[csvColumns.indexOf('place')], 'Кулер');
+      expect(cells[csvColumns.indexOf('source')], 'Кулер');
     });
   });
 
