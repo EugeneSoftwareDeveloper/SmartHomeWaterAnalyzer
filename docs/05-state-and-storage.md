@@ -23,8 +23,9 @@
 | `historyRepositoryProvider` | Provider | `history_provider.dart` | `HistoryRepository` — фасад над БД. |
 | `recentMeasurementsProvider` | StreamProvider | `history_provider.dart` | Стрим последних измерений. Auto-rebuild списка истории при `insert`/`delete`. |
 | `notificationServiceProvider` | Provider | `notification_provider.dart` | `NotificationService` с lazy-init (запрашивает разрешения, создаёт канал). |
-| `placesRepositoryProvider` | Provider | `history_provider.dart` | `PlacesRepository` — каталог мест замера. |
-| `placesProvider` | StreamProvider | `history_provider.dart` | Стрим каталога мест: недавно использованные сверху, остальные по алфавиту. |
+| `placeCatalogProvider` | Provider | `history_provider.dart` | `PlaceCatalogRepository` — каталог мест, комнат и источников. |
+| `sitesProvider` / `roomsProvider` / `sourcesProvider` | StreamProvider | `history_provider.dart` | Три уровня каталога отдельными стримами: недавно использованные сверху, остальные по алфавиту. |
+| `placeCatalogViewProvider` | Provider | `history_provider.dart` | Сводит три стрима в `PlaceCatalog` — связку, которая умеет собрать полный адрес источника. Ошибка любого из трёх становится ошибкой целого, загрузка любого — загрузкой целого: подменять недогруженный стрим пустым списком нельзя, список выбора показал бы «мест нет» там, где они просто не приехали. |
 | `locationServiceProvider` | Provider | `location_provider.dart` | `LocationService` поверх `geolocator`. Состояния не имеет — в провайдере только ради подмены в тестах. |
 
 ### Как добавить новый провайдер
@@ -117,7 +118,9 @@ MigrationStrategy get migration => MigrationStrategy(
 
 `Measurements.label` хранит **имя** места строкой, а не внешний ключ на `Places`. Это сделано намеренно: переименование или удаление места не должно переписывать историю задним числом — записанное «Кран на кухне» остаётся тем, чем было в момент замера. `Places` нужна только для списка выбора.
 
-Следствие: `PlacesRepository.deleteById` не трогает историю, а `markUsed` для отсутствующего в каталоге имени просто возвращает 0 затронутых строк.
+Следствие: удаление места, комнаты или источника не трогает историю — сохранённые замеры держат **имена** всех трёх уровней в своих колонках. `markSourceUsed` для отсутствующего источника просто ничего не делает.
+
+Начиная со схемы v6 адрес замера разложен по трём колонкам: `siteName`, `roomName` и `label`. Последняя означает **источник** и сохранила прежний смысл — если бы в неё писался весь путь, на границе обновления строка изменилась бы и разорвала тренды с фильтром графика.
 
 Сортировка каталога — недавно использованные сверху, затем по алфавиту:
 

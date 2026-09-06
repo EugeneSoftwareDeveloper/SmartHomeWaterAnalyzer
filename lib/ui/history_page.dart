@@ -442,7 +442,7 @@ class _MeasurementTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final timeFormat = DateFormat('HH:mm');
-    final hasLabel = row.label != null && row.label!.trim().isNotEmpty;
+    final place = MeasurementPlace.ofMeasurement(row);
 
     return ListTile(
       dense: true,
@@ -468,7 +468,7 @@ class _MeasurementTile extends StatelessWidget {
           Text(
             '${timeFormat.format(row.observedAt)} • TDS ${row.totalDissolvedSolidsPpm} ppm • EC ${row.electricalConductivityUsCm} µС/см',
           ),
-          if (hasLabel)
+          if (place.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 2),
               child: Row(
@@ -477,11 +477,17 @@ class _MeasurementTile extends StatelessWidget {
                   // прежний label_outline остался от времён свободной «метки».
                   Icon(Icons.place_outlined, size: 14, color: theme.colorScheme.primary),
                   const SizedBox(width: 4),
-                  Text(
-                    row.label!,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.primary,
-                      fontWeight: FontWeight.w500,
+                  Expanded(
+                    child: Text(
+                      // Весь путь, а не одно имя источника: «Кран на кухне» есть
+                      // и дома, и на даче, и в списке они были бы неотличимы.
+                      place.formatted,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 ],

@@ -62,7 +62,7 @@ lib/
 │   ├── database.dart               # Drift schema v4 (Measurements + Places) + AppDatabase.forTesting
 │   ├── database.g.dart             # Auto-generated, не редактировать
 │   ├── grouping.dart               # groupMeasurementsByDay → группы «Сегодня»/«Вчера»/dd.MM.yyyy
-│   └── repository.dart             # HistoryRepository + PlacesRepository (каталог мест замера)
+│   └── repository.dart             # HistoryRepository + PlaceCatalogRepository (места, комнаты, источники)
 ├── location/                       # Геометка замера
 │   ├── measurement_location.dart   # MeasurementLocation + LocationFailure (без зависимости от плагина)
 │   └── location_service.dart       # Обёртка geolocator: таймаут, разрешения, graceful degradation
