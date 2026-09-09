@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../history/database.dart';
 import '../history/place_catalog.dart';
+import '../l10n/generated/app_localizations.dart';
 import '../location/site_anchor.dart';
 import '../providers/history_provider.dart';
 import '../providers/location_provider.dart';
@@ -17,14 +18,15 @@ class PlacesPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
     final catalogAsync = ref.watch(placeCatalogViewProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Места замеров')),
+      appBar: AppBar(title: Text(l10n.placesTitle)),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _addSite(context, ref),
         icon: const Icon(Icons.add_home_outlined),
-        label: const Text('Место'),
+        label: Text(l10n.placesAddSite),
       ),
       body: catalogAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -42,7 +44,7 @@ class PlacesPage extends ConsumerWidget {
   }
 
   Future<void> _addSite(BuildContext context, WidgetRef ref) async {
-    final result = await _promptNameAndCity(context, title: 'Новое место');
+    final result = await _promptNameAndCity(context, title: AppL10n.of(context).placesNewSite);
     if (result == null) return;
 
     await ref.read(placeCatalogProvider).addSite(result.$1, city: result.$2);
@@ -54,13 +56,10 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Padding(
-        padding: EdgeInsets.all(32),
-        child: Text(
-          'Пока нет ни одного места.\nДобавьте дом или дачу — источники живут внутри них.',
-          textAlign: TextAlign.center,
-        ),
+        padding: const EdgeInsets.all(32),
+        child: Text(AppL10n.of(context).placesEmpty, textAlign: TextAlign.center),
       ),
     );
   }
@@ -75,6 +74,7 @@ class _SiteSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
     final theme = Theme.of(context);
     final rooms = catalog.roomsOfSite(site.id);
     final loose = catalog.sourcesDirectlyOnSite(site.id);
@@ -92,20 +92,20 @@ class _SiteSection extends ConsumerWidget {
         shape: const Border(),
         collapsedShape: const Border(),
         title: Text(site.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Text(_subtitle(hasAnchor)),
+        subtitle: Text(_subtitle(l10n, hasAnchor)),
         leading: Icon(
           hasAnchor ? Icons.my_location : Icons.location_disabled_outlined,
           color: hasAnchor ? theme.colorScheme.primary : theme.colorScheme.outline,
         ),
         trailing: PopupMenuButton<_SiteAction>(
           onSelected: (action) => _onAction(context, ref, action),
-          itemBuilder: (_) => const [
-            PopupMenuItem(value: _SiteAction.rename, child: Text('Переименовать')),
-            PopupMenuItem(value: _SiteAction.addRoom, child: Text('Добавить комнату')),
-            PopupMenuItem(value: _SiteAction.addSource, child: Text('Добавить источник')),
-            PopupMenuItem(value: _SiteAction.bind, child: Text('Привязать здесь')),
-            PopupMenuItem(value: _SiteAction.unbind, child: Text('Сбросить привязку')),
-            PopupMenuItem(value: _SiteAction.delete, child: Text('Удалить место')),
+          itemBuilder: (_) => [
+            PopupMenuItem(value: _SiteAction.rename, child: Text(l10n.commonRename)),
+            PopupMenuItem(value: _SiteAction.addRoom, child: Text(l10n.placesAddRoom)),
+            PopupMenuItem(value: _SiteAction.addSource, child: Text(l10n.placesAddSource)),
+            PopupMenuItem(value: _SiteAction.bind, child: Text(l10n.placesBindHere)),
+            PopupMenuItem(value: _SiteAction.unbind, child: Text(l10n.placesUnbind)),
+            PopupMenuItem(value: _SiteAction.delete, child: Text(l10n.placesDeleteSite)),
           ],
         ),
         children: [
@@ -116,27 +116,25 @@ class _SiteSection extends ConsumerWidget {
               _SourceRow(source: source, indent: 40),
           ],
           if (loose.isEmpty && rooms.isEmpty)
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
-              child: Text('Источников пока нет'),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: Text(l10n.placesNoSources),
             ),
         ],
       ),
     );
   }
 
-  String _subtitle(bool hasAnchor) {
+  String _subtitle(AppL10n l10n, bool hasAnchor) {
     final parts = <String>[
       if (site.city != null) site.city!,
-      if (hasAnchor)
-        'привязано по ${site.anchorSamples} замерам'
-      else
-        'без привязки — не подставляется автоматически',
+      if (hasAnchor) l10n.placesBoundToSamples(site.anchorSamples) else l10n.placesUnbound,
     ];
     return parts.join(' · ');
   }
 
   Future<void> _onAction(BuildContext context, WidgetRef ref, _SiteAction action) async {
+    final l10n = AppL10n.of(context);
     final catalogRepo = ref.read(placeCatalogProvider);
     final messenger = ScaffoldMessenger.of(context);
 
@@ -144,18 +142,18 @@ class _SiteSection extends ConsumerWidget {
       case _SiteAction.rename:
         final result = await _promptNameAndCity(
           context,
-          title: 'Переименовать место',
+          title: l10n.placesRenameSite,
           initialName: site.name,
           initialCity: site.city,
         );
         if (result != null) await catalogRepo.renameSite(site.id, result.$1, city: result.$2);
 
       case _SiteAction.addRoom:
-        final name = await _promptName(context, title: 'Новая комната');
+        final name = await _promptName(context, title: l10n.placesNewRoom);
         if (name != null) await catalogRepo.addRoom(site.id, name);
 
       case _SiteAction.addSource:
-        final name = await _promptName(context, title: 'Новый источник');
+        final name = await _promptName(context, title: l10n.placesNewSource);
         if (name != null) await catalogRepo.addSource(site.id, name);
 
       case _SiteAction.bind:
@@ -165,12 +163,12 @@ class _SiteSection extends ConsumerWidget {
         final point = location.location;
         if (point == null) {
           messenger.showSnackBar(
-            SnackBar(content: Text(location.failure?.message ?? 'Координаты недоступны')),
+            SnackBar(content: Text(location.failure?.message ?? l10n.placesCoordinatesUnavailable)),
           );
           return;
         }
         await catalogRepo.setSiteAnchor(site.id, updateAnchor(null, point));
-        messenger.showSnackBar(const SnackBar(content: Text('Место привязано к этой точке')));
+        messenger.showSnackBar(SnackBar(content: Text(l10n.placesBound)));
 
       case _SiteAction.unbind:
         await catalogRepo.setSiteAnchor(site.id, null);
@@ -178,10 +176,8 @@ class _SiteSection extends ConsumerWidget {
       case _SiteAction.delete:
         final confirmed = await _confirm(
           context,
-          title: 'Удалить «${site.name}»?',
-          message:
-              'Вместе с ним исчезнут его комнаты и источники. '
-              'Замеры останутся в истории со своими названиями.',
+          title: l10n.placesConfirmDeleteTitle(site.name),
+          message: l10n.placesConfirmDeleteSite,
         );
         if (confirmed) await catalogRepo.deleteSite(site.id);
     }
@@ -198,6 +194,7 @@ class _RoomRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
     final theme = Theme.of(context);
 
     return ListTile(
@@ -211,30 +208,31 @@ class _RoomRow extends ConsumerWidget {
       title: Text(room.name, style: theme.textTheme.labelLarge),
       trailing: PopupMenuButton<String>(
         onSelected: (value) async {
+          final l10n = AppL10n.of(context);
           final repo = ref.read(placeCatalogProvider);
           if (value == 'source') {
-            final name = await _promptName(context, title: 'Источник в «${room.name}»');
+            final name = await _promptName(context, title: l10n.placesSourceInRoom(room.name));
             if (name != null) await repo.addSource(room.siteId, name, roomId: room.id);
           } else if (value == 'rename') {
             final name = await _promptName(
               context,
-              title: 'Переименовать комнату',
+              title: l10n.placesRenameRoom,
               initial: room.name,
             );
             if (name != null) await repo.renameRoom(room.id, name);
           } else if (value == 'delete') {
             final confirmed = await _confirm(
               context,
-              title: 'Удалить «${room.name}»?',
-              message: 'Источники этой комнаты тоже исчезнут. История не меняется.',
+              title: l10n.placesConfirmDeleteTitle(room.name),
+              message: l10n.placesConfirmDeleteRoom,
             );
             if (confirmed) await repo.deleteRoom(room.id);
           }
         },
-        itemBuilder: (_) => const [
-          PopupMenuItem(value: 'source', child: Text('Добавить источник')),
-          PopupMenuItem(value: 'rename', child: Text('Переименовать')),
-          PopupMenuItem(value: 'delete', child: Text('Удалить комнату')),
+        itemBuilder: (_) => [
+          PopupMenuItem(value: 'source', child: Text(l10n.placesAddSource)),
+          PopupMenuItem(value: 'rename', child: Text(l10n.commonRename)),
+          PopupMenuItem(value: 'delete', child: Text(l10n.placesDeleteRoom)),
         ],
       ),
     );
@@ -249,6 +247,7 @@ class _SourceRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
     final theme = Theme.of(context);
 
     return ListTile(
@@ -258,26 +257,27 @@ class _SourceRow extends ConsumerWidget {
       title: Text(source.name),
       trailing: PopupMenuButton<String>(
         onSelected: (value) async {
+          final l10n = AppL10n.of(context);
           final repo = ref.read(placeCatalogProvider);
           if (value == 'rename') {
             final name = await _promptName(
               context,
-              title: 'Переименовать источник',
+              title: l10n.placesRenameSource,
               initial: source.name,
             );
             if (name != null) await repo.renameSource(source.id, name);
           } else if (value == 'delete') {
             final confirmed = await _confirm(
               context,
-              title: 'Удалить «${source.name}»?',
-              message: 'Замеры этого источника останутся в истории со своим названием.',
+              title: l10n.placesConfirmDeleteTitle(source.name),
+              message: l10n.placesConfirmDeleteSource,
             );
             if (confirmed) await repo.deleteSource(source.id);
           }
         },
-        itemBuilder: (_) => const [
-          PopupMenuItem(value: 'rename', child: Text('Переименовать')),
-          PopupMenuItem(value: 'delete', child: Text('Удалить источник')),
+        itemBuilder: (_) => [
+          PopupMenuItem(value: 'rename', child: Text(l10n.commonRename)),
+          PopupMenuItem(value: 'delete', child: Text(l10n.placesDeleteSource)),
         ],
       ),
     );
@@ -342,20 +342,21 @@ class _NameDialogState extends State<_NameDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     return AlertDialog(
       title: Text(widget.title),
       content: TextField(
         controller: _controller,
         autofocus: true,
         textCapitalization: TextCapitalization.sentences,
-        decoration: const InputDecoration(hintText: 'Название'),
+        decoration: InputDecoration(hintText: l10n.commonName),
         onSubmitted: (value) => Navigator.of(context).pop(value),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Отмена')),
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(l10n.commonCancel)),
         FilledButton(
           onPressed: () => Navigator.of(context).pop(_controller.text),
-          child: const Text('Готово'),
+          child: Text(l10n.commonDone),
         ),
       ],
     );
@@ -390,6 +391,7 @@ class _NameAndCityDialogState extends State<_NameAndCityDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     return AlertDialog(
       title: Text(widget.title),
       content: Column(
@@ -399,23 +401,23 @@ class _NameAndCityDialogState extends State<_NameAndCityDialog> {
             controller: _name,
             autofocus: true,
             textCapitalization: TextCapitalization.sentences,
-            decoration: const InputDecoration(labelText: 'Название', hintText: 'Дача'),
+            decoration: InputDecoration(labelText: l10n.commonName, hintText: l10n.placesNameHint),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _city,
             textCapitalization: TextCapitalization.sentences,
-            decoration: const InputDecoration(
-              labelText: 'Город (необязательно)',
-              hintText: 'Тверь',
+            decoration: InputDecoration(
+              labelText: l10n.placesCityLabel,
+              hintText: l10n.placesCityHint,
             ),
             onSubmitted: (_) => _submit(),
           ),
         ],
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Отмена')),
-        FilledButton(onPressed: _submit, child: const Text('Готово')),
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(l10n.commonCancel)),
+        FilledButton(onPressed: _submit, child: Text(l10n.commonDone)),
       ],
     );
   }
@@ -434,11 +436,11 @@ Future<bool> _confirm(
       actions: [
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: const Text('Отмена'),
+          child: Text(AppL10n.of(dialogContext).commonCancel),
         ),
         FilledButton.tonal(
           onPressed: () => Navigator.of(dialogContext).pop(true),
-          child: const Text('Удалить'),
+          child: Text(AppL10n.of(dialogContext).commonDelete),
         ),
       ],
     ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
+import '../l10n/generated/app_localizations.dart';
 import '../yinmik/decoder.dart';
 import '../yinmik/reading.dart';
 
@@ -36,18 +37,22 @@ class _DebugCommandsPageState extends State<DebugCommandsPage> {
   static final Guid _ff02 = Guid('0000ff02-0000-1000-8000-00805f9b34fb');
 
   /// Готовые пресеты для перебора. Назначение в комментариях — какую гипотезу проверяем.
+  ///
+  /// Подписи не локализуются: это имена байтовых экспериментов, которые попадают
+  /// в лог и сверяются с записями протокола. Один и тот же пресет должен
+  /// называться одинаково в любом отчёте, иначе их не сопоставить.
   static const List<_Preset> _presets = [
-    _Preset(label: 'Подсветка: бит статуса', bytes: [0x08], verifyBit: 0x08),
-    _Preset(label: 'Подсветка OFF', bytes: [0x00], verifyBit: 0x08),
-    _Preset(label: 'HOLD: бит статуса', bytes: [0x10], verifyBit: 0x10),
+    _Preset(label: 'Backlight: status bit', bytes: [0x08], verifyBit: 0x08),
+    _Preset(label: 'Backlight OFF', bytes: [0x00], verifyBit: 0x08),
+    _Preset(label: 'HOLD: status bit', bytes: [0x10], verifyBit: 0x10),
     _Preset(label: 'HOLD OFF', bytes: [0x00], verifyBit: 0x10),
     _Preset(label: 'Opcode 01 + 01', bytes: [0x01, 0x01], verifyBit: 0x08),
     _Preset(label: 'Opcode 01 + 00', bytes: [0x01, 0x00], verifyBit: 0x08),
     _Preset(label: 'Opcode 02 + 01', bytes: [0x02, 0x01], verifyBit: 0x10),
     _Preset(label: 'Opcode 02 + 00', bytes: [0x02, 0x00], verifyBit: 0x10),
-    _Preset(label: 'Префикс A5 + 08', bytes: [0xA5, 0x08], verifyBit: 0x08),
-    _Preset(label: 'Префикс A5 + 10', bytes: [0xA5, 0x10], verifyBit: 0x10),
-    _Preset(label: 'Префикс A5 + 00', bytes: [0xA5, 0x00], verifyBit: 0x08),
+    _Preset(label: 'Prefix A5 + 08', bytes: [0xA5, 0x08], verifyBit: 0x08),
+    _Preset(label: 'Prefix A5 + 10', bytes: [0xA5, 0x10], verifyBit: 0x10),
+    _Preset(label: 'Prefix A5 + 00', bytes: [0xA5, 0x00], verifyBit: 0x08),
     _Preset(label: 'Toggle byte AA', bytes: [0xAA], verifyBit: 0x08),
     _Preset(label: 'Toggle byte 55', bytes: [0x55], verifyBit: 0x08),
     _Preset(label: 'Status mask 18', bytes: [0x18], verifyBit: 0x08),
@@ -61,16 +66,17 @@ class _DebugCommandsPageState extends State<DebugCommandsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     final theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Отладка команд'),
+        title: Text(l10n.readingDebugCommands),
         actions: [
           if (_log.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.delete_sweep_outlined),
-              tooltip: 'Очистить лог',
+              tooltip: l10n.debugClearLog,
               onPressed: () => setState(_log.clear),
             ),
         ],
@@ -89,25 +95,18 @@ class _DebugCommandsPageState extends State<DebugCommandsPage> {
               children: [
                 Icon(Icons.science, color: theme.colorScheme.primary),
                 const SizedBox(width: 12),
-                const Expanded(
-                  child: Text(
-                    'Эта страница пробует разные байты команды и проверяет, изменился ли бит '
-                    'статуса 0x08 (подсветка) или 0x10 (HOLD) в кадре FF02 после записи. '
-                    'Если какой-то пресет сработает — увидишь «✓ бит изменился» в логе.',
-                    style: TextStyle(fontSize: 13),
-                  ),
-                ),
+                Expanded(child: Text(l10n.debugIntro, style: const TextStyle(fontSize: 13))),
               ],
             ),
           ),
           const SizedBox(height: 16),
-          _sectionTitle('Целевая характеристика'),
+          _sectionTitle(l10n.debugTargetCharacteristic),
           RadioListTile<Guid>(
             value: _ff15,
             // ignore: deprecated_member_use
             groupValue: _targetUuid,
-            title: const Text('FF15 (сервисная)'),
-            subtitle: const Text('Канонический кандидат для команд'),
+            title: const Text('FF15'),
+            subtitle: Text(l10n.debugFf15Subtitle),
             // ignore: deprecated_member_use
             onChanged: (value) => setState(() => _targetUuid = value!),
           ),
@@ -115,23 +114,23 @@ class _DebugCommandsPageState extends State<DebugCommandsPage> {
             value: _ff02,
             // ignore: deprecated_member_use
             groupValue: _targetUuid,
-            title: const Text('FF02 (характеристика данных)'),
-            subtitle: const Text('У некоторых вариантов поддерживает write'),
+            title: const Text('FF02'),
+            subtitle: Text(l10n.debugFf02Subtitle),
             // ignore: deprecated_member_use
             onChanged: (value) => setState(() => _targetUuid = value!),
           ),
           const SizedBox(height: 16),
-          _sectionTitle('Проверять бит'),
+          _sectionTitle(l10n.debugVerifyBit),
           SegmentedButton<int>(
-            segments: const [
-              ButtonSegment(value: 0x08, label: Text('Подсветка (0x08)')),
-              ButtonSegment(value: 0x10, label: Text('HOLD (0x10)')),
+            segments: [
+              ButtonSegment(value: 0x08, label: Text(l10n.debugBacklightBit)),
+              const ButtonSegment(value: 0x10, label: Text('HOLD (0x10)')),
             ],
             selected: {_verifyBit},
             onSelectionChanged: (set) => setState(() => _verifyBit = set.first),
           ),
           const SizedBox(height: 16),
-          _sectionTitle('Готовые пресеты'),
+          _sectionTitle(l10n.debugPresets),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -151,19 +150,19 @@ class _DebugCommandsPageState extends State<DebugCommandsPage> {
             ],
           ),
           const SizedBox(height: 16),
-          _sectionTitle('Ручной ввод (hex, через пробел)'),
+          _sectionTitle(l10n.debugManualInput),
           TextField(
             controller: _hexController,
-            decoration: const InputDecoration(
-              hintText: 'Например: 01 08',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              hintText: l10n.debugManualHint,
+              border: const OutlineInputBorder(),
               isDense: true,
             ),
           ),
           const SizedBox(height: 8),
           FilledButton.icon(
             icon: const Icon(Icons.send),
-            label: const Text('Отправить введённые байты'),
+            label: Text(l10n.debugSendManual),
             onPressed: _busy ? null : _sendManual,
           ),
           if (_busy) ...[
@@ -171,12 +170,12 @@ class _DebugCommandsPageState extends State<DebugCommandsPage> {
             const Center(child: CircularProgressIndicator()),
           ],
           const SizedBox(height: 24),
-          _sectionTitle('Лог попыток (новые сверху)'),
+          _sectionTitle(l10n.debugLogTitle),
           if (_log.isEmpty)
             Padding(
               padding: const EdgeInsets.all(16),
               child: Text(
-                'Пока ничего не отправлено',
+                l10n.debugLogEmpty,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -205,12 +204,17 @@ class _DebugCommandsPageState extends State<DebugCommandsPage> {
     final tokens = _hexController.text.split(RegExp(r'\s+')).where((t) => t.isNotEmpty).toList();
     if (tokens.isEmpty) return;
 
+    final l10n = AppL10n.of(context);
     final messenger = ScaffoldMessenger.of(context);
     try {
       final bytes = [for (final t in tokens) int.parse(t, radix: 16)];
-      await _tryPattern(bytes, label: 'Ручной: ${tokens.join(' ')}', verifyBit: _verifyBit);
+      await _tryPattern(
+        bytes,
+        label: l10n.debugManualLabel(tokens.join(' ')),
+        verifyBit: _verifyBit,
+      );
     } on FormatException catch (error) {
-      messenger.showSnackBar(SnackBar(content: Text('Неверный hex: $error')));
+      messenger.showSnackBar(SnackBar(content: Text(l10n.debugInvalidHex('$error'))));
     }
   }
 
@@ -237,14 +241,14 @@ class _DebugCommandsPageState extends State<DebugCommandsPage> {
       final mainServiceUuid = Guid('0000ff01-0000-1000-8000-00805f9b34fb');
       final mainService = services.firstWhere(
         (s) => s.uuid == mainServiceUuid,
-        orElse: () => throw StateError('Сервис FF01 не найден'),
+        orElse: () => throw StateError('Service FF01 not found'),
       );
 
       // 1) Читаем «до»
       final readUuid = Guid('0000ff02-0000-1000-8000-00805f9b34fb');
       final readChar = mainService.characteristics.firstWhere(
         (c) => c.uuid == readUuid,
-        orElse: () => throw StateError('Характеристика FF02 не найдена'),
+        orElse: () => throw StateError('Characteristic FF02 not found'),
       );
       final rawBefore = await readChar.read();
       attempt.statusBefore = _safeDecode(rawBefore)?.statusFlags;
@@ -252,7 +256,7 @@ class _DebugCommandsPageState extends State<DebugCommandsPage> {
       // 2) Пишем команду
       final writeChar = _findWritable(services, _targetUuid);
       if (writeChar == null) {
-        attempt.error = 'Характеристика не writable';
+        attempt.error = 'Characteristic is not writable';
       } else {
         await writeChar.write(bytes);
         attempt.writeSuccess = true;
@@ -342,6 +346,7 @@ class _LogEntry extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     final theme = Theme.of(context);
     final hasError = attempt.error != null;
     final success = attempt.bitChanged;
@@ -352,20 +357,22 @@ class _LogEntry extends StatelessWidget {
     if (hasError) {
       color = theme.colorScheme.error;
       icon = Icons.error_outline;
-      status = 'Ошибка: ${attempt.error}';
+      status = l10n.debugError('${attempt.error}');
     } else if (success) {
       color = const Color(0xFF388E3C);
       icon = Icons.check_circle;
-      status =
-          'Бит ${attempt.verifyBit.toRadixString(16)} изменился: '
-          '${(attempt.statusBefore! & attempt.verifyBit) != 0 ? "ON" : "OFF"} → '
-          '${(attempt.statusAfter! & attempt.verifyBit) != 0 ? "ON" : "OFF"}';
+      status = l10n.debugBitChanged(
+        attempt.verifyBit.toRadixString(16),
+        (attempt.statusBefore! & attempt.verifyBit) != 0 ? 'ON' : 'OFF',
+        (attempt.statusAfter! & attempt.verifyBit) != 0 ? 'ON' : 'OFF',
+      );
     } else {
       color = theme.colorScheme.outline;
       icon = Icons.remove_circle_outline;
-      status =
-          'Без изменений (status ${attempt.statusBefore?.toRadixString(16) ?? "?"} → '
-          '${attempt.statusAfter?.toRadixString(16) ?? "?"})';
+      status = l10n.debugBitUnchanged(
+        attempt.statusBefore?.toRadixString(16) ?? '?',
+        attempt.statusAfter?.toRadixString(16) ?? '?',
+      );
     }
 
     return Card(

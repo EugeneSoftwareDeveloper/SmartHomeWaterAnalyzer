@@ -170,4 +170,404 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get bluetoothOffSubtitle => 'Turn on Bluetooth to start scanning';
+
+  @override
+  String get commonCancel => 'Cancel';
+
+  @override
+  String get commonDelete => 'Delete';
+
+  @override
+  String get commonDone => 'Done';
+
+  @override
+  String get commonUndo => 'Undo';
+
+  @override
+  String get commonRename => 'Rename';
+
+  @override
+  String get commonName => 'Name';
+
+  @override
+  String get commonGotIt => 'Got it';
+
+  @override
+  String get helpTitle => 'Parameter reference';
+
+  @override
+  String get helpSubtitle => 'Detailed description of pH, ORP, EC and other values';
+
+  @override
+  String get trendUnchanged => 'unchanged';
+
+  @override
+  String get locationCardTitle => 'Measured at';
+
+  @override
+  String locationCardAccuracy(String accuracy) {
+    return 'Accuracy $accuracy';
+  }
+
+  @override
+  String get locationCardCopy => 'Copy';
+
+  @override
+  String get locationCardOpenMap => 'Open map';
+
+  @override
+  String get locationCardCopied => 'Coordinates copied';
+
+  @override
+  String get locationCardNoMapApp => 'No maps app found';
+
+  @override
+  String get placeFieldLabel => 'Where';
+
+  @override
+  String get placeNotSelected => 'Not selected';
+
+  @override
+  String get placeConfigure => 'Manage';
+
+  @override
+  String get placeNoAddress => 'No address';
+
+  @override
+  String get placeNoAddressSubtitle => 'The measurement will be saved without a site or source';
+
+  @override
+  String get placeBoundToCoordinates => 'Site is bound to coordinates';
+
+  @override
+  String get settingsPlaces => 'Measurement places';
+
+  @override
+  String get settingsPlacesSubtitle => 'Homes, rooms and water sources';
+
+  @override
+  String get settingsSaveLocation => 'Measurement coordinates';
+
+  @override
+  String get settingsSaveLocationSubtitle =>
+      'Save where a measurement was taken, so the spot can be opened on a map later';
+
+  @override
+  String get settingsAboutSubtitle => 'SmartHomeWaterAnalyzer • for YINMIK BLE-C600';
+
+  @override
+  String get settingsAboutLegalese => 'Personal project, license to be decided later.';
+
+  @override
+  String historyDeleteFailed(String error) {
+    return 'Could not delete: $error';
+  }
+
+  @override
+  String get historyMeasurementDeleted => 'Measurement deleted';
+
+  @override
+  String historyChartTitle(String parameter) {
+    return '$parameter over time';
+  }
+
+  @override
+  String get historyAllPlaces => 'All places';
+
+  @override
+  String get historyChartNeedsMore => 'At least 2 measurements are needed to draw a chart';
+
+  @override
+  String get readingDebugCommands => 'Command debugger';
+
+  @override
+  String get readingSaveMeasurement => 'Save measurement';
+
+  @override
+  String get readingSaved => 'Saved';
+
+  @override
+  String get readingAlreadySaved => 'This measurement is already saved';
+
+  @override
+  String readingSaveFailed(String error) {
+    return 'Could not save: $error';
+  }
+
+  @override
+  String get readingMeasurementSaved => 'Measurement saved';
+
+  @override
+  String readingAutoPlaceHint(int distance) {
+    return 'detected by coordinates, $distance m';
+  }
+
+  @override
+  String get readingFirstHere => 'First measurement here — nothing to compare with';
+
+  @override
+  String readingComparedWith(String moment) {
+    return 'Compared with the measurement from $moment';
+  }
+
+  @override
+  String get controlBacklightOn => 'Backlight ON';
+
+  @override
+  String get controlBacklightOff => 'Backlight OFF';
+
+  @override
+  String get controlNotImplemented => 'Command not implemented yet';
+
+  @override
+  String controlNotImplementedBody(String command) {
+    return 'The exact bytes of the “$command” command are not documented by the BLE-C600 manufacturer and have not been confirmed by reverse engineering yet.';
+  }
+
+  @override
+  String get controlNotImplementedWhat => 'What to do:';
+
+  @override
+  String get controlNotImplementedSteps =>
+      '1. On Android: Developer options → enable Bluetooth HCI snoop log.\n2. Launch the official YINMIK app and connect to the device.\n3. Toggle the setting (the backlight, for example) ON and OFF.\n4. Pull /sdcard/btsnoop_hci.log with adb or from a bug report.\n5. Open it in Wireshark, filter by btatt, find the write to FF15.\n6. Put the bytes into lib/yinmik/commands.dart and rebuild.';
+
+  @override
+  String get detailTitle => 'Measurement';
+
+  @override
+  String get detailChangePlace => 'Change address';
+
+  @override
+  String get detailDeleteMeasurement => 'Delete measurement';
+
+  @override
+  String detailPlaceChangeFailed(String error) {
+    return 'Could not change the address: $error';
+  }
+
+  @override
+  String get detailPlaceCleared => 'Address removed';
+
+  @override
+  String get detailDeleteConfirmTitle => 'Delete the measurement?';
+
+  @override
+  String detailDeleteConfirmBody(String moment) {
+    return 'The measurement from $moment will be deleted. This can be undone within 5 seconds.';
+  }
+
+  @override
+  String detailPlaceChanged(String place) {
+    return 'Address changed to “$place”';
+  }
+
+  @override
+  String get scanShowAllDevices => 'Show all devices';
+
+  @override
+  String get scanShowAllHint => 'If the device is not called “BLE-C600”, pick it manually.';
+
+  @override
+  String get scanAllDevicesHint =>
+      'Every visible BLE device. If yours is here, tap it to connect, bypassing the name filter.';
+
+  @override
+  String scanConnectTo(String device) {
+    return 'Connect to $device';
+  }
+
+  @override
+  String get scanLastDevice => 'Last device — no scanning';
+
+  @override
+  String scanLastDeviceSubtitle(String deviceId) {
+    return '$deviceId • no scanning';
+  }
+
+  @override
+  String get scanForgetDevice => 'Forget device';
+
+  @override
+  String get scanHelp => 'Help';
+
+  @override
+  String get bluetoothTurnOn => 'Turn on Bluetooth';
+
+  @override
+  String scanNoTargetFound(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'The scanner found $count devices, but none of them is a BLE-C600.',
+      one: 'The scanner found $count device, but none of them is a BLE-C600.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get placesTitle => 'Measurement places';
+
+  @override
+  String get placesAddSite => 'Place';
+
+  @override
+  String get placesNewSite => 'New place';
+
+  @override
+  String get placesRenameSite => 'Rename place';
+
+  @override
+  String get placesAddRoom => 'Add room';
+
+  @override
+  String get placesAddSource => 'Add source';
+
+  @override
+  String get placesNewRoom => 'New room';
+
+  @override
+  String get placesNewSource => 'New source';
+
+  @override
+  String get placesRenameRoom => 'Rename room';
+
+  @override
+  String get placesRenameSource => 'Rename source';
+
+  @override
+  String placesSourceInRoom(String room) {
+    return 'Source in “$room”';
+  }
+
+  @override
+  String get placesBindHere => 'Bind to this spot';
+
+  @override
+  String get placesUnbind => 'Clear binding';
+
+  @override
+  String get placesDeleteSite => 'Delete place';
+
+  @override
+  String get placesDeleteRoom => 'Delete room';
+
+  @override
+  String get placesDeleteSource => 'Delete source';
+
+  @override
+  String get placesEmpty => 'No places yet.\nAdd a home or a cottage — sources live inside them.';
+
+  @override
+  String get placesNoSources => 'No sources yet';
+
+  @override
+  String get placesUnbound => 'not bound — will not be selected automatically';
+
+  @override
+  String placesBoundToSamples(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'bound from $count measurements',
+      one: 'bound from $count measurement',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get placesCoordinatesUnavailable => 'Coordinates unavailable';
+
+  @override
+  String get placesBound => 'The place is bound to this spot';
+
+  @override
+  String placesConfirmDeleteTitle(String name) {
+    return 'Delete “$name”?';
+  }
+
+  @override
+  String get placesConfirmDeleteSite =>
+      'Its rooms and sources will go with it. Measurements stay in history under their own names.';
+
+  @override
+  String get placesConfirmDeleteRoom =>
+      'The sources of this room will go too. History does not change.';
+
+  @override
+  String get placesConfirmDeleteSource =>
+      'Measurements of this source stay in history under their own name.';
+
+  @override
+  String get placesCityLabel => 'City (optional)';
+
+  @override
+  String get placesCityHint => 'Cambridge';
+
+  @override
+  String get placesNameHint => 'Cottage';
+
+  @override
+  String get debugClearLog => 'Clear log';
+
+  @override
+  String get debugIntro =>
+      'This page tries different command bytes and checks whether status bit 0x08 (backlight) or 0x10 (HOLD) changed in the FF02 frame after the write. If a preset works, the log will say the bit changed.';
+
+  @override
+  String get debugTargetCharacteristic => 'Target characteristic';
+
+  @override
+  String get debugFf15Subtitle => 'The canonical candidate for commands';
+
+  @override
+  String get debugFf02Subtitle => 'Writable on some variants';
+
+  @override
+  String get debugVerifyBit => 'Bit to verify';
+
+  @override
+  String get debugBacklightBit => 'Backlight (0x08)';
+
+  @override
+  String get debugPresets => 'Presets';
+
+  @override
+  String get debugManualInput => 'Manual input (hex, space separated)';
+
+  @override
+  String get debugManualHint => 'For example: 01 08';
+
+  @override
+  String get debugSendManual => 'Send the entered bytes';
+
+  @override
+  String debugManualLabel(String bytes) {
+    return 'Manual: $bytes';
+  }
+
+  @override
+  String get debugLogTitle => 'Attempt log (newest first)';
+
+  @override
+  String get debugLogEmpty => 'Nothing sent yet';
+
+  @override
+  String debugInvalidHex(String error) {
+    return 'Invalid hex: $error';
+  }
+
+  @override
+  String debugError(String error) {
+    return 'Error: $error';
+  }
+
+  @override
+  String debugBitChanged(String bit, String before, String after) {
+    return 'Bit $bit changed: $before → $after';
+  }
+
+  @override
+  String debugBitUnchanged(String before, String after) {
+    return 'No change (status $before → $after)';
+  }
 }

@@ -94,7 +94,7 @@ class HistoryPage extends ConsumerWidget {
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(dialogContext).pop(false),
-                child: const Text('Отмена'),
+                child: Text(l10n.commonCancel),
               ),
               FilledButton(
                 onPressed: () => Navigator.of(dialogContext).pop(true),
@@ -190,6 +190,7 @@ class _DismissibleTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
     final theme = Theme.of(context);
     return Dismissible(
       key: ValueKey('dismiss-${row.id}'),
@@ -202,7 +203,7 @@ class _DismissibleTile extends ConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
             Text(
-              'Удалить',
+              l10n.commonDelete,
               style: theme.textTheme.labelLarge?.copyWith(
                 color: theme.colorScheme.onErrorContainer,
                 fontWeight: FontWeight.w600,
@@ -224,15 +225,15 @@ class _DismissibleTile extends ConsumerWidget {
         try {
           await repo.deleteById(row.id);
         } on Object catch (error) {
-          messenger.showSnackBar(SnackBar(content: Text('Не удалось удалить: $error')));
+          messenger.showSnackBar(SnackBar(content: Text(l10n.historyDeleteFailed('$error'))));
           return false;
         }
         await HapticFeedback.lightImpact();
         messenger.showSnackBar(
           SnackBar(
-            content: const Text('Замер удалён'),
+            content: Text(l10n.historyMeasurementDeleted),
             action: SnackBarAction(
-              label: 'Отменить',
+              label: l10n.commonUndo,
               onPressed: () => repo.restoreFromMeasurement(row),
             ),
             duration: const Duration(seconds: 5),
@@ -275,6 +276,7 @@ class _MeasurementChartState extends ConsumerState<_MeasurementChart> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     final theme = Theme.of(context);
     final profile = ref.watch(appSettingsProvider).normsProfile;
     final parameters = WaterParameterCatalog.forProfile(profile);
@@ -312,7 +314,7 @@ class _MeasurementChartState extends ConsumerState<_MeasurementChart> {
             children: [
               Expanded(
                 child: Text(
-                  '${parameter.displayLabel} во времени',
+                  l10n.historyChartTitle(parameter.displayLabel),
                   style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -346,7 +348,7 @@ class _MeasurementChartState extends ConsumerState<_MeasurementChart> {
                   Padding(
                     padding: const EdgeInsets.only(right: 8),
                     child: ChoiceChip(
-                      label: const Text('Все места'),
+                      label: Text(l10n.historyAllPlaces),
                       selected: activeFilter == null,
                       onSelected: (_) => setState(() => _placeFilter = null),
                     ),
@@ -371,7 +373,7 @@ class _MeasurementChartState extends ConsumerState<_MeasurementChart> {
               padding: const EdgeInsets.symmetric(vertical: 24),
               child: Center(
                 child: Text(
-                  'Нужно минимум 2 измерения для построения графика',
+                  l10n.historyChartNeedsMore,
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,

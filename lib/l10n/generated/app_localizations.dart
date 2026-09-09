@@ -404,6 +404,684 @@ abstract class AppL10n {
   /// In ru, this message translates to:
   /// **'Включи Bluetooth, чтобы начать сканирование'**
   String get bluetoothOffSubtitle;
+
+  /// No description provided for @commonCancel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отмена'**
+  String get commonCancel;
+
+  /// No description provided for @commonDelete.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удалить'**
+  String get commonDelete;
+
+  /// No description provided for @commonDone.
+  ///
+  /// In ru, this message translates to:
+  /// **'Готово'**
+  String get commonDone;
+
+  /// No description provided for @commonUndo.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отменить'**
+  String get commonUndo;
+
+  /// No description provided for @commonRename.
+  ///
+  /// In ru, this message translates to:
+  /// **'Переименовать'**
+  String get commonRename;
+
+  /// No description provided for @commonName.
+  ///
+  /// In ru, this message translates to:
+  /// **'Название'**
+  String get commonName;
+
+  /// No description provided for @commonGotIt.
+  ///
+  /// In ru, this message translates to:
+  /// **'Понятно'**
+  String get commonGotIt;
+
+  /// No description provided for @helpTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Справка по параметрам'**
+  String get helpTitle;
+
+  /// No description provided for @helpSubtitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Подробное описание pH, ORP, EC и других значений'**
+  String get helpSubtitle;
+
+  /// No description provided for @trendUnchanged.
+  ///
+  /// In ru, this message translates to:
+  /// **'без изменений'**
+  String get trendUnchanged;
+
+  /// No description provided for @locationCardTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Где сделан замер'**
+  String get locationCardTitle;
+
+  /// No description provided for @locationCardAccuracy.
+  ///
+  /// In ru, this message translates to:
+  /// **'Точность {accuracy}'**
+  String locationCardAccuracy(String accuracy);
+
+  /// No description provided for @locationCardCopy.
+  ///
+  /// In ru, this message translates to:
+  /// **'Копировать'**
+  String get locationCardCopy;
+
+  /// No description provided for @locationCardOpenMap.
+  ///
+  /// In ru, this message translates to:
+  /// **'На карте'**
+  String get locationCardOpenMap;
+
+  /// No description provided for @locationCardCopied.
+  ///
+  /// In ru, this message translates to:
+  /// **'Координаты скопированы'**
+  String get locationCardCopied;
+
+  /// No description provided for @locationCardNoMapApp.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не нашлось приложения для карт'**
+  String get locationCardNoMapApp;
+
+  /// No description provided for @placeFieldLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Где мерим'**
+  String get placeFieldLabel;
+
+  /// No description provided for @placeNotSelected.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не выбрано'**
+  String get placeNotSelected;
+
+  /// No description provided for @placeConfigure.
+  ///
+  /// In ru, this message translates to:
+  /// **'Настроить'**
+  String get placeConfigure;
+
+  /// No description provided for @placeNoAddress.
+  ///
+  /// In ru, this message translates to:
+  /// **'Без адреса'**
+  String get placeNoAddress;
+
+  /// No description provided for @placeNoAddressSubtitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Замер сохранится без места и источника'**
+  String get placeNoAddressSubtitle;
+
+  /// No description provided for @placeBoundToCoordinates.
+  ///
+  /// In ru, this message translates to:
+  /// **'Место привязано к координатам'**
+  String get placeBoundToCoordinates;
+
+  /// No description provided for @settingsPlaces.
+  ///
+  /// In ru, this message translates to:
+  /// **'Места замеров'**
+  String get settingsPlaces;
+
+  /// No description provided for @settingsPlacesSubtitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Дома, комнаты и источники воды'**
+  String get settingsPlacesSubtitle;
+
+  /// No description provided for @settingsSaveLocation.
+  ///
+  /// In ru, this message translates to:
+  /// **'Координаты замеров'**
+  String get settingsSaveLocation;
+
+  /// No description provided for @settingsSaveLocationSubtitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сохранять, где сделан замер — чтобы позже открыть точку на карте'**
+  String get settingsSaveLocationSubtitle;
+
+  /// No description provided for @settingsAboutSubtitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'SmartHomeWaterAnalyzer • для YINMIK BLE-C600'**
+  String get settingsAboutSubtitle;
+
+  /// No description provided for @settingsAboutLegalese.
+  ///
+  /// In ru, this message translates to:
+  /// **'Личный проект, лицензия будет определена позже.'**
+  String get settingsAboutLegalese;
+
+  /// No description provided for @historyDeleteFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось удалить: {error}'**
+  String historyDeleteFailed(String error);
+
+  /// No description provided for @historyMeasurementDeleted.
+  ///
+  /// In ru, this message translates to:
+  /// **'Замер удалён'**
+  String get historyMeasurementDeleted;
+
+  /// No description provided for @historyChartTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'{parameter} во времени'**
+  String historyChartTitle(String parameter);
+
+  /// No description provided for @historyAllPlaces.
+  ///
+  /// In ru, this message translates to:
+  /// **'Все места'**
+  String get historyAllPlaces;
+
+  /// No description provided for @historyChartNeedsMore.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нужно минимум 2 измерения для построения графика'**
+  String get historyChartNeedsMore;
+
+  /// No description provided for @readingDebugCommands.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отладка команд'**
+  String get readingDebugCommands;
+
+  /// No description provided for @readingSaveMeasurement.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сохранить замер'**
+  String get readingSaveMeasurement;
+
+  /// No description provided for @readingSaved.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сохранено'**
+  String get readingSaved;
+
+  /// No description provided for @readingAlreadySaved.
+  ///
+  /// In ru, this message translates to:
+  /// **'Этот замер уже сохранён'**
+  String get readingAlreadySaved;
+
+  /// No description provided for @readingSaveFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось сохранить: {error}'**
+  String readingSaveFailed(String error);
+
+  /// No description provided for @readingMeasurementSaved.
+  ///
+  /// In ru, this message translates to:
+  /// **'Замер сохранён'**
+  String get readingMeasurementSaved;
+
+  /// No description provided for @readingAutoPlaceHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'определено по координатам, {distance} м'**
+  String readingAutoPlaceHint(int distance);
+
+  /// No description provided for @readingFirstHere.
+  ///
+  /// In ru, this message translates to:
+  /// **'Первый замер в этом месте — сравнивать не с чем'**
+  String get readingFirstHere;
+
+  /// No description provided for @readingComparedWith.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сравнение с замером {moment}'**
+  String readingComparedWith(String moment);
+
+  /// No description provided for @controlBacklightOn.
+  ///
+  /// In ru, this message translates to:
+  /// **'Подсветка ON'**
+  String get controlBacklightOn;
+
+  /// No description provided for @controlBacklightOff.
+  ///
+  /// In ru, this message translates to:
+  /// **'Подсветка OFF'**
+  String get controlBacklightOff;
+
+  /// No description provided for @controlNotImplemented.
+  ///
+  /// In ru, this message translates to:
+  /// **'Команда пока не реализована'**
+  String get controlNotImplemented;
+
+  /// No description provided for @controlNotImplementedBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Точные байты команды «{command}» BLE-C600 не задокументированы производителем и пока не подтверждены реверс-инжинирингом.'**
+  String controlNotImplementedBody(String command);
+
+  /// No description provided for @controlNotImplementedWhat.
+  ///
+  /// In ru, this message translates to:
+  /// **'Что делать:'**
+  String get controlNotImplementedWhat;
+
+  /// No description provided for @controlNotImplementedSteps.
+  ///
+  /// In ru, this message translates to:
+  /// **'1. На Android: «Параметры разработчика» → включить «Bluetooth HCI snoop log».\n2. Запустить официальное приложение YINMIK, подключиться к прибору.\n3. Переключить параметр (например, подсветку) ON и OFF.\n4. Извлечь /sdcard/btsnoop_hci.log через adb или bug report.\n5. Открыть в Wireshark, отфильтровать btatt, найти write в FF15.\n6. Записать байты в lib/yinmik/commands.dart и пересобрать.'**
+  String get controlNotImplementedSteps;
+
+  /// No description provided for @detailTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Замер'**
+  String get detailTitle;
+
+  /// No description provided for @detailChangePlace.
+  ///
+  /// In ru, this message translates to:
+  /// **'Изменить адрес'**
+  String get detailChangePlace;
+
+  /// No description provided for @detailDeleteMeasurement.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удалить замер'**
+  String get detailDeleteMeasurement;
+
+  /// No description provided for @detailPlaceChangeFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось сменить адрес: {error}'**
+  String detailPlaceChangeFailed(String error);
+
+  /// No description provided for @detailPlaceCleared.
+  ///
+  /// In ru, this message translates to:
+  /// **'Адрес убран'**
+  String get detailPlaceCleared;
+
+  /// No description provided for @detailDeleteConfirmTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удалить замер?'**
+  String get detailDeleteConfirmTitle;
+
+  /// No description provided for @detailDeleteConfirmBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Замер от {moment} будет удалён. Действие можно отменить в течение 5 секунд.'**
+  String detailDeleteConfirmBody(String moment);
+
+  /// No description provided for @detailPlaceChanged.
+  ///
+  /// In ru, this message translates to:
+  /// **'Адрес изменён на «{place}»'**
+  String detailPlaceChanged(String place);
+
+  /// No description provided for @scanShowAllDevices.
+  ///
+  /// In ru, this message translates to:
+  /// **'Показать все устройства'**
+  String get scanShowAllDevices;
+
+  /// No description provided for @scanShowAllHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Если прибор называется не «BLE-C600», выбери его вручную.'**
+  String get scanShowAllHint;
+
+  /// No description provided for @scanAllDevicesHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Все видимые BLE-устройства. Если прибор здесь — нажми, чтобы подключиться (минуя фильтр по имени).'**
+  String get scanAllDevicesHint;
+
+  /// No description provided for @scanConnectTo.
+  ///
+  /// In ru, this message translates to:
+  /// **'Подключиться к {device}'**
+  String scanConnectTo(String device);
+
+  /// No description provided for @scanLastDevice.
+  ///
+  /// In ru, this message translates to:
+  /// **'Последний прибор — без сканирования'**
+  String get scanLastDevice;
+
+  /// No description provided for @scanLastDeviceSubtitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'{deviceId} • без сканирования'**
+  String scanLastDeviceSubtitle(String deviceId);
+
+  /// No description provided for @scanForgetDevice.
+  ///
+  /// In ru, this message translates to:
+  /// **'Забыть прибор'**
+  String get scanForgetDevice;
+
+  /// No description provided for @scanHelp.
+  ///
+  /// In ru, this message translates to:
+  /// **'Справка'**
+  String get scanHelp;
+
+  /// No description provided for @bluetoothTurnOn.
+  ///
+  /// In ru, this message translates to:
+  /// **'Включить Bluetooth'**
+  String get bluetoothTurnOn;
+
+  /// No description provided for @scanNoTargetFound.
+  ///
+  /// In ru, this message translates to:
+  /// **'{count, plural, one{Сканер нашёл {count} устройство, но среди них нет BLE-C600.} few{Сканер нашёл {count} устройства, но среди них нет BLE-C600.} other{Сканер нашёл {count} устройств, но среди них нет BLE-C600.}}'**
+  String scanNoTargetFound(int count);
+
+  /// No description provided for @placesTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Места замеров'**
+  String get placesTitle;
+
+  /// No description provided for @placesAddSite.
+  ///
+  /// In ru, this message translates to:
+  /// **'Место'**
+  String get placesAddSite;
+
+  /// No description provided for @placesNewSite.
+  ///
+  /// In ru, this message translates to:
+  /// **'Новое место'**
+  String get placesNewSite;
+
+  /// No description provided for @placesRenameSite.
+  ///
+  /// In ru, this message translates to:
+  /// **'Переименовать место'**
+  String get placesRenameSite;
+
+  /// No description provided for @placesAddRoom.
+  ///
+  /// In ru, this message translates to:
+  /// **'Добавить комнату'**
+  String get placesAddRoom;
+
+  /// No description provided for @placesAddSource.
+  ///
+  /// In ru, this message translates to:
+  /// **'Добавить источник'**
+  String get placesAddSource;
+
+  /// No description provided for @placesNewRoom.
+  ///
+  /// In ru, this message translates to:
+  /// **'Новая комната'**
+  String get placesNewRoom;
+
+  /// No description provided for @placesNewSource.
+  ///
+  /// In ru, this message translates to:
+  /// **'Новый источник'**
+  String get placesNewSource;
+
+  /// No description provided for @placesRenameRoom.
+  ///
+  /// In ru, this message translates to:
+  /// **'Переименовать комнату'**
+  String get placesRenameRoom;
+
+  /// No description provided for @placesRenameSource.
+  ///
+  /// In ru, this message translates to:
+  /// **'Переименовать источник'**
+  String get placesRenameSource;
+
+  /// No description provided for @placesSourceInRoom.
+  ///
+  /// In ru, this message translates to:
+  /// **'Источник в «{room}»'**
+  String placesSourceInRoom(String room);
+
+  /// No description provided for @placesBindHere.
+  ///
+  /// In ru, this message translates to:
+  /// **'Привязать здесь'**
+  String get placesBindHere;
+
+  /// No description provided for @placesUnbind.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сбросить привязку'**
+  String get placesUnbind;
+
+  /// No description provided for @placesDeleteSite.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удалить место'**
+  String get placesDeleteSite;
+
+  /// No description provided for @placesDeleteRoom.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удалить комнату'**
+  String get placesDeleteRoom;
+
+  /// No description provided for @placesDeleteSource.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удалить источник'**
+  String get placesDeleteSource;
+
+  /// No description provided for @placesEmpty.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пока нет ни одного места.\nДобавьте дом или дачу — источники живут внутри них.'**
+  String get placesEmpty;
+
+  /// No description provided for @placesNoSources.
+  ///
+  /// In ru, this message translates to:
+  /// **'Источников пока нет'**
+  String get placesNoSources;
+
+  /// No description provided for @placesUnbound.
+  ///
+  /// In ru, this message translates to:
+  /// **'без привязки — не подставляется автоматически'**
+  String get placesUnbound;
+
+  /// No description provided for @placesBoundToSamples.
+  ///
+  /// In ru, this message translates to:
+  /// **'{count, plural, one{привязано по {count} замеру} few{привязано по {count} замерам} other{привязано по {count} замерам}}'**
+  String placesBoundToSamples(int count);
+
+  /// No description provided for @placesCoordinatesUnavailable.
+  ///
+  /// In ru, this message translates to:
+  /// **'Координаты недоступны'**
+  String get placesCoordinatesUnavailable;
+
+  /// No description provided for @placesBound.
+  ///
+  /// In ru, this message translates to:
+  /// **'Место привязано к этой точке'**
+  String get placesBound;
+
+  /// No description provided for @placesConfirmDeleteTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удалить «{name}»?'**
+  String placesConfirmDeleteTitle(String name);
+
+  /// No description provided for @placesConfirmDeleteSite.
+  ///
+  /// In ru, this message translates to:
+  /// **'Вместе с ним исчезнут его комнаты и источники. Замеры останутся в истории со своими названиями.'**
+  String get placesConfirmDeleteSite;
+
+  /// No description provided for @placesConfirmDeleteRoom.
+  ///
+  /// In ru, this message translates to:
+  /// **'Источники этой комнаты тоже исчезнут. История не меняется.'**
+  String get placesConfirmDeleteRoom;
+
+  /// No description provided for @placesConfirmDeleteSource.
+  ///
+  /// In ru, this message translates to:
+  /// **'Замеры этого источника останутся в истории со своим названием.'**
+  String get placesConfirmDeleteSource;
+
+  /// No description provided for @placesCityLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Город (необязательно)'**
+  String get placesCityLabel;
+
+  /// No description provided for @placesCityHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Тверь'**
+  String get placesCityHint;
+
+  /// No description provided for @placesNameHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Дача'**
+  String get placesNameHint;
+
+  /// No description provided for @debugClearLog.
+  ///
+  /// In ru, this message translates to:
+  /// **'Очистить лог'**
+  String get debugClearLog;
+
+  /// No description provided for @debugIntro.
+  ///
+  /// In ru, this message translates to:
+  /// **'Эта страница пробует разные байты команды и проверяет, изменился ли бит статуса 0x08 (подсветка) или 0x10 (HOLD) в кадре FF02 после записи. Если какой-то пресет сработает, в логе появится «бит изменился».'**
+  String get debugIntro;
+
+  /// No description provided for @debugTargetCharacteristic.
+  ///
+  /// In ru, this message translates to:
+  /// **'Целевая характеристика'**
+  String get debugTargetCharacteristic;
+
+  /// No description provided for @debugFf15Subtitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Канонический кандидат для команд'**
+  String get debugFf15Subtitle;
+
+  /// No description provided for @debugFf02Subtitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'У некоторых вариантов поддерживает write'**
+  String get debugFf02Subtitle;
+
+  /// No description provided for @debugVerifyBit.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверять бит'**
+  String get debugVerifyBit;
+
+  /// No description provided for @debugBacklightBit.
+  ///
+  /// In ru, this message translates to:
+  /// **'Подсветка (0x08)'**
+  String get debugBacklightBit;
+
+  /// No description provided for @debugPresets.
+  ///
+  /// In ru, this message translates to:
+  /// **'Готовые пресеты'**
+  String get debugPresets;
+
+  /// No description provided for @debugManualInput.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ручной ввод (hex, через пробел)'**
+  String get debugManualInput;
+
+  /// No description provided for @debugManualHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Например: 01 08'**
+  String get debugManualHint;
+
+  /// No description provided for @debugSendManual.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отправить введённые байты'**
+  String get debugSendManual;
+
+  /// No description provided for @debugManualLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ручной: {bytes}'**
+  String debugManualLabel(String bytes);
+
+  /// No description provided for @debugLogTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Лог попыток (новые сверху)'**
+  String get debugLogTitle;
+
+  /// No description provided for @debugLogEmpty.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пока ничего не отправлено'**
+  String get debugLogEmpty;
+
+  /// No description provided for @debugInvalidHex.
+  ///
+  /// In ru, this message translates to:
+  /// **'Неверный hex: {error}'**
+  String debugInvalidHex(String error);
+
+  /// No description provided for @debugError.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ошибка: {error}'**
+  String debugError(String error);
+
+  /// No description provided for @debugBitChanged.
+  ///
+  /// In ru, this message translates to:
+  /// **'Бит {bit} изменился: {before} → {after}'**
+  String debugBitChanged(String bit, String before, String after);
+
+  /// No description provided for @debugBitUnchanged.
+  ///
+  /// In ru, this message translates to:
+  /// **'Без изменений (status {before} → {after})'**
+  String debugBitUnchanged(String before, String after);
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

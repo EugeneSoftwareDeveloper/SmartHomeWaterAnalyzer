@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../l10n/generated/app_localizations.dart';
 import '../../location/measurement_location.dart';
 
 /// Карточка с геометкой замера: координаты, точность и кнопки «на карте» / «копировать».
@@ -18,6 +19,7 @@ class LocationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     final theme = Theme.of(context);
     final accuracy = location.formattedAccuracy;
 
@@ -43,7 +45,7 @@ class LocationCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Где сделан замер',
+                          l10n.locationCardTitle,
                           style: theme.textTheme.labelMedium?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
@@ -55,7 +57,7 @@ class LocationCard extends StatelessWidget {
                         ),
                         if (accuracy != null)
                           Text(
-                            'Точность $accuracy',
+                            l10n.locationCardAccuracy(accuracy),
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: theme.colorScheme.onSurfaceVariant,
                             ),
@@ -72,13 +74,13 @@ class LocationCard extends StatelessWidget {
                   TextButton.icon(
                     onPressed: () => _copyCoordinates(context),
                     icon: const Icon(Icons.copy, size: 18),
-                    label: const Text('Копировать'),
+                    label: Text(l10n.locationCardCopy),
                   ),
                   const SizedBox(width: 4),
                   FilledButton.tonalIcon(
                     onPressed: () => _openInMaps(context),
                     icon: const Icon(Icons.map_outlined, size: 18),
-                    label: const Text('На карте'),
+                    label: Text(l10n.locationCardOpenMap),
                   ),
                 ],
               ),
@@ -90,12 +92,14 @@ class LocationCard extends StatelessWidget {
   }
 
   Future<void> _copyCoordinates(BuildContext context) async {
+    final l10n = AppL10n.of(context);
     final messenger = ScaffoldMessenger.of(context);
     await Clipboard.setData(ClipboardData(text: location.formatted));
-    messenger.showSnackBar(const SnackBar(content: Text('Координаты скопированы')));
+    messenger.showSnackBar(SnackBar(content: Text(l10n.locationCardCopied)));
   }
 
   Future<void> _openInMaps(BuildContext context) async {
+    final l10n = AppL10n.of(context);
     final messenger = ScaffoldMessenger.of(context);
     for (final uri in mapUris(location, label: label)) {
       try {
@@ -104,7 +108,7 @@ class LocationCard extends StatelessWidget {
         // Пробуем следующий вариант — например, если geo:-интент никто не принял.
       }
     }
-    messenger.showSnackBar(const SnackBar(content: Text('Не нашлось приложения для карт')));
+    messenger.showSnackBar(SnackBar(content: Text(l10n.locationCardNoMapApp)));
   }
 }
 

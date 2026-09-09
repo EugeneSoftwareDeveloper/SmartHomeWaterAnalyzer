@@ -113,6 +113,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   /// Диагностический режим: показать ВСЕ BLE-устройства, которые увидел сканер, без
   /// фильтра по имени. Полезно, если прибор называется не «BLE-C600», а как-то иначе.
   Future<void> _showAllDevices() async {
+    final l10n = AppL10n.of(context);
     final results = await FlutterBluePlus.scanResults.first;
     if (!mounted) return;
     await showModalBottomSheet<void>(
@@ -128,13 +129,9 @@ class _HomePageState extends ConsumerState<HomePage> {
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
               child: Column(
                 children: [
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8),
-                    child: Text(
-                      'Все видимые BLE-устройства. Если прибор здесь — нажми, '
-                      'чтобы подключиться (минуя фильтр по имени).',
-                      textAlign: TextAlign.center,
-                    ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Text(l10n.scanAllDevicesHint, textAlign: TextAlign.center),
                   ),
                   Expanded(
                     child: ListView.separated(
@@ -144,7 +141,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                       itemBuilder: (context, index) {
                         final result = results[index];
                         final name = result.device.platformName.isEmpty
-                            ? '(без имени)'
+                            ? l10n.scanNoDeviceName
                             : result.device.platformName;
                         return ListTile(
                           leading: const Icon(Icons.bluetooth),
@@ -228,7 +225,7 @@ class _HomePageState extends ConsumerState<HomePage> {
           ),
           IconButton(
             icon: const Icon(Icons.help_outline),
-            tooltip: 'Справка',
+            tooltip: l10n.scanHelp,
             onPressed: () => context.push('/help'),
           ),
           IconButton(
@@ -330,12 +327,12 @@ class _HomePageState extends ConsumerState<HomePage> {
                 TextButton.icon(
                   onPressed: _showAllDevices,
                   icon: const Icon(Icons.search, size: 18),
-                  label: const Text('Показать все устройства'),
+                  label: Text(l10n.scanShowAllDevices),
                 ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 32),
                   child: Text(
-                    'Если прибор называется не «BLE-C600», выбери его вручную.',
+                    l10n.scanShowAllHint,
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -352,17 +349,14 @@ class _HomePageState extends ConsumerState<HomePage> {
               if (_totalScanned > 0) ...[
                 const SizedBox(height: 16),
                 Text(
-                  'Сканер нашёл $_totalScanned устройств(а), но среди них нет BLE-C600.',
+                  l10n.scanNoTargetFound(_totalScanned),
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
                 const SizedBox(height: 4),
-                TextButton(
-                  onPressed: _showAllDevices,
-                  child: const Text('Показать все устройства'),
-                ),
+                TextButton(onPressed: _showAllDevices, child: Text(l10n.scanShowAllDevices)),
               ],
             ],
           ],
@@ -409,6 +403,7 @@ class _LastDeviceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     final theme = Theme.of(context);
     final title = deviceName ?? deviceId;
 
@@ -432,7 +427,7 @@ class _LastDeviceCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Подключиться к $title',
+                        l10n.scanConnectTo(title),
                         style: theme.textTheme.titleSmall?.copyWith(
                           color: theme.colorScheme.onPrimaryContainer,
                           fontWeight: FontWeight.w600,
@@ -443,8 +438,8 @@ class _LastDeviceCard extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         deviceName == null
-                            ? 'Последний прибор — без сканирования'
-                            : '$deviceId • без сканирования',
+                            ? l10n.scanLastDevice
+                            : l10n.scanLastDeviceSubtitle(deviceId),
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onPrimaryContainer.withValues(alpha: 0.75),
                         ),
@@ -457,7 +452,7 @@ class _LastDeviceCard extends StatelessWidget {
                 IconButton(
                   icon: const Icon(Icons.close, size: 20),
                   color: theme.colorScheme.onPrimaryContainer.withValues(alpha: 0.7),
-                  tooltip: 'Забыть прибор',
+                  tooltip: l10n.scanForgetDevice,
                   onPressed: onForget,
                 ),
               ],
@@ -521,7 +516,7 @@ class _BluetoothOffBody extends StatelessWidget {
           // На iOS метод бросает исключение — поэтому try/catch.
           FilledButton.icon(
             icon: const Icon(Icons.bluetooth),
-            label: const Text('Включить Bluetooth'),
+            label: Text(AppL10n.of(context).bluetoothTurnOn),
             onPressed: () async {
               try {
                 await FlutterBluePlus.turnOn();

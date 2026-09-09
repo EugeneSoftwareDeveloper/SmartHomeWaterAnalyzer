@@ -25,8 +25,8 @@ class SettingsPage extends ConsumerWidget {
         children: [
           ListTile(
             leading: const Icon(Icons.home_work_outlined),
-            title: const Text('Места замеров'),
-            subtitle: const Text('Дома, комнаты и источники воды'),
+            title: Text(l10n.settingsPlaces),
+            subtitle: Text(l10n.settingsPlacesSubtitle),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push('/places'),
           ),
@@ -61,18 +61,16 @@ class SettingsPage extends ConsumerWidget {
           const Divider(),
           SwitchListTile(
             secondary: const Icon(Icons.place_outlined),
-            title: const Text('Координаты замеров'),
-            subtitle: const Text(
-              'Сохранять, где сделан замер — чтобы позже открыть точку на карте',
-            ),
+            title: Text(l10n.settingsSaveLocation),
+            subtitle: Text(l10n.settingsSaveLocationSubtitle),
             value: settings.saveLocationEnabled,
             onChanged: notifier.setSaveLocationEnabled,
           ),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.help_outline),
-            title: const Text('Справка по параметрам'),
-            subtitle: const Text('Подробное описание pH, ORP, EC и других значений'),
+            title: Text(l10n.helpTitle),
+            subtitle: Text(l10n.helpSubtitle),
             onTap: () => context.push('/help'),
           ),
           const Divider(),
@@ -197,12 +195,12 @@ class _AboutSection extends ConsumerWidget {
     return ListTile(
       leading: const Icon(Icons.info_outline),
       title: Text(l10n.settingsAbout),
-      subtitle: const Text('SmartHomeWaterAnalyzer • для YINMIK BLE-C600'),
+      subtitle: Text(l10n.settingsAboutSubtitle),
       onTap: () => showAboutDialog(
         context: context,
         applicationName: l10n.appTitle,
         applicationVersion: version.valueOrNull ?? '',
-        applicationLegalese: 'Личный проект, лицензия будет определена позже.',
+        applicationLegalese: l10n.settingsAboutLegalese,
       ),
     );
   }

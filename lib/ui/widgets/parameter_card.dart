@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../l10n/generated/app_localizations.dart';
 import '../../quality/parameter.dart';
 import '../../quality/trend.dart';
 import '../../quality/zone.dart';
@@ -174,7 +175,7 @@ class _TrendLine extends StatelessWidget {
     };
 
     final (icon, text) = switch (trend.direction) {
-      TrendDirection.flat => (Icons.remove, 'без изменений'),
+      TrendDirection.flat => (Icons.remove, AppL10n.of(context).trendUnchanged),
       TrendDirection.up => (Icons.arrow_upward, parameter.formatDelta(trend.delta)),
       TrendDirection.down => (Icons.arrow_downward, parameter.formatDelta(trend.delta)),
     };

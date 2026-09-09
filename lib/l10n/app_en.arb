@@ -78,5 +78,240 @@
   "tabSettings": "Settings",
 
   "bluetoothOffTitle": "Bluetooth is off",
-  "bluetoothOffSubtitle": "Turn on Bluetooth to start scanning"
+  "bluetoothOffSubtitle": "Turn on Bluetooth to start scanning",
+
+  "commonCancel": "Cancel",
+  "commonDelete": "Delete",
+  "commonDone": "Done",
+  "commonUndo": "Undo",
+  "commonRename": "Rename",
+  "commonName": "Name",
+  "commonGotIt": "Got it",
+
+  "helpTitle": "Parameter reference",
+  "helpSubtitle": "Detailed description of pH, ORP, EC and other values",
+
+  "trendUnchanged": "unchanged",
+
+  "locationCardTitle": "Measured at",
+  "locationCardAccuracy": "Accuracy {accuracy}",
+  "@locationCardAccuracy": {
+    "placeholders": {
+      "accuracy": { "type": "String" }
+    }
+  },
+  "locationCardCopy": "Copy",
+  "locationCardOpenMap": "Open map",
+  "locationCardCopied": "Coordinates copied",
+  "locationCardNoMapApp": "No maps app found",
+
+  "placeFieldLabel": "Where",
+  "placeNotSelected": "Not selected",
+  "placeConfigure": "Manage",
+  "placeNoAddress": "No address",
+  "placeNoAddressSubtitle": "The measurement will be saved without a site or source",
+  "placeBoundToCoordinates": "Site is bound to coordinates",
+
+  "settingsPlaces": "Measurement places",
+  "settingsPlacesSubtitle": "Homes, rooms and water sources",
+  "settingsSaveLocation": "Measurement coordinates",
+  "settingsSaveLocationSubtitle": "Save where a measurement was taken, so the spot can be opened on a map later",
+  "settingsAboutSubtitle": "SmartHomeWaterAnalyzer • for YINMIK BLE-C600",
+  "settingsAboutLegalese": "Personal project, license to be decided later.",
+
+  "historyDeleteFailed": "Could not delete: {error}",
+  "@historyDeleteFailed": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "historyMeasurementDeleted": "Measurement deleted",
+  "historyChartTitle": "{parameter} over time",
+  "@historyChartTitle": {
+    "placeholders": {
+      "parameter": { "type": "String" }
+    }
+  },
+  "historyAllPlaces": "All places",
+  "historyChartNeedsMore": "At least 2 measurements are needed to draw a chart",
+
+  "readingDebugCommands": "Command debugger",
+  "readingSaveMeasurement": "Save measurement",
+  "readingSaved": "Saved",
+  "readingAlreadySaved": "This measurement is already saved",
+  "readingSaveFailed": "Could not save: {error}",
+  "@readingSaveFailed": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "readingMeasurementSaved": "Measurement saved",
+  "readingAutoPlaceHint": "detected by coordinates, {distance} m",
+  "@readingAutoPlaceHint": {
+    "placeholders": {
+      "distance": { "type": "int" }
+    }
+  },
+  "readingFirstHere": "First measurement here — nothing to compare with",
+  "readingComparedWith": "Compared with the measurement from {moment}",
+  "@readingComparedWith": {
+    "placeholders": {
+      "moment": { "type": "String" }
+    }
+  },
+
+  "controlBacklightOn": "Backlight ON",
+  "controlBacklightOff": "Backlight OFF",
+  "controlNotImplemented": "Command not implemented yet",
+  "controlNotImplementedBody": "The exact bytes of the “{command}” command are not documented by the BLE-C600 manufacturer and have not been confirmed by reverse engineering yet.",
+  "@controlNotImplementedBody": {
+    "placeholders": {
+      "command": { "type": "String" }
+    }
+  },
+  "controlNotImplementedWhat": "What to do:",
+  "controlNotImplementedSteps": "1. On Android: Developer options → enable Bluetooth HCI snoop log.\n2. Launch the official YINMIK app and connect to the device.\n3. Toggle the setting (the backlight, for example) ON and OFF.\n4. Pull /sdcard/btsnoop_hci.log with adb or from a bug report.\n5. Open it in Wireshark, filter by btatt, find the write to FF15.\n6. Put the bytes into lib/yinmik/commands.dart and rebuild.",
+
+  "detailTitle": "Measurement",
+  "detailChangePlace": "Change address",
+  "detailDeleteMeasurement": "Delete measurement",
+  "detailPlaceChangeFailed": "Could not change the address: {error}",
+  "@detailPlaceChangeFailed": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "detailPlaceCleared": "Address removed",
+  "detailDeleteConfirmTitle": "Delete the measurement?",
+  "detailDeleteConfirmBody": "The measurement from {moment} will be deleted. This can be undone within 5 seconds.",
+  "@detailDeleteConfirmBody": {
+    "placeholders": {
+      "moment": { "type": "String" }
+    }
+  },
+  "detailPlaceChanged": "Address changed to “{place}”",
+  "@detailPlaceChanged": {
+    "placeholders": {
+      "place": { "type": "String" }
+    }
+  },
+
+  "scanShowAllDevices": "Show all devices",
+  "scanShowAllHint": "If the device is not called “BLE-C600”, pick it manually.",
+  "scanAllDevicesHint": "Every visible BLE device. If yours is here, tap it to connect, bypassing the name filter.",
+  "scanConnectTo": "Connect to {device}",
+  "@scanConnectTo": {
+    "placeholders": {
+      "device": { "type": "String" }
+    }
+  },
+  "scanLastDevice": "Last device — no scanning",
+  "scanLastDeviceSubtitle": "{deviceId} • no scanning",
+  "@scanLastDeviceSubtitle": {
+    "placeholders": {
+      "deviceId": { "type": "String" }
+    }
+  },
+  "scanForgetDevice": "Forget device",
+  "scanHelp": "Help",
+  "bluetoothTurnOn": "Turn on Bluetooth",
+
+  "scanNoTargetFound": "{count, plural, one{The scanner found {count} device, but none of them is a BLE-C600.} other{The scanner found {count} devices, but none of them is a BLE-C600.}}",
+  "@scanNoTargetFound": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+
+  "placesTitle": "Measurement places",
+  "placesAddSite": "Place",
+  "placesNewSite": "New place",
+  "placesRenameSite": "Rename place",
+  "placesAddRoom": "Add room",
+  "placesAddSource": "Add source",
+  "placesNewRoom": "New room",
+  "placesNewSource": "New source",
+  "placesRenameRoom": "Rename room",
+  "placesRenameSource": "Rename source",
+  "placesSourceInRoom": "Source in “{room}”",
+  "@placesSourceInRoom": {
+    "placeholders": {
+      "room": { "type": "String" }
+    }
+  },
+  "placesBindHere": "Bind to this spot",
+  "placesUnbind": "Clear binding",
+  "placesDeleteSite": "Delete place",
+  "placesDeleteRoom": "Delete room",
+  "placesDeleteSource": "Delete source",
+  "placesEmpty": "No places yet.\nAdd a home or a cottage — sources live inside them.",
+  "placesNoSources": "No sources yet",
+  "placesUnbound": "not bound — will not be selected automatically",
+  "placesBoundToSamples": "{count, plural, one{bound from {count} measurement} other{bound from {count} measurements}}",
+  "@placesBoundToSamples": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "placesCoordinatesUnavailable": "Coordinates unavailable",
+  "placesBound": "The place is bound to this spot",
+  "placesConfirmDeleteTitle": "Delete “{name}”?",
+  "@placesConfirmDeleteTitle": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "placesConfirmDeleteSite": "Its rooms and sources will go with it. Measurements stay in history under their own names.",
+  "placesConfirmDeleteRoom": "The sources of this room will go too. History does not change.",
+  "placesConfirmDeleteSource": "Measurements of this source stay in history under their own name.",
+  "placesCityLabel": "City (optional)",
+  "placesCityHint": "Cambridge",
+  "placesNameHint": "Cottage",
+
+  "debugClearLog": "Clear log",
+  "debugIntro": "This page tries different command bytes and checks whether status bit 0x08 (backlight) or 0x10 (HOLD) changed in the FF02 frame after the write. If a preset works, the log will say the bit changed.",
+  "debugTargetCharacteristic": "Target characteristic",
+  "debugFf15Subtitle": "The canonical candidate for commands",
+  "debugFf02Subtitle": "Writable on some variants",
+  "debugVerifyBit": "Bit to verify",
+  "debugBacklightBit": "Backlight (0x08)",
+  "debugPresets": "Presets",
+  "debugManualInput": "Manual input (hex, space separated)",
+  "debugManualHint": "For example: 01 08",
+  "debugSendManual": "Send the entered bytes",
+  "debugManualLabel": "Manual: {bytes}",
+  "@debugManualLabel": {
+    "placeholders": {
+      "bytes": { "type": "String" }
+    }
+  },
+  "debugLogTitle": "Attempt log (newest first)",
+  "debugLogEmpty": "Nothing sent yet",
+  "debugInvalidHex": "Invalid hex: {error}",
+  "@debugInvalidHex": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "debugError": "Error: {error}",
+  "@debugError": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "debugBitChanged": "Bit {bit} changed: {before} → {after}",
+  "@debugBitChanged": {
+    "placeholders": {
+      "bit": { "type": "String" },
+      "before": { "type": "String" },
+      "after": { "type": "String" }
+    }
+  },
+  "debugBitUnchanged": "No change (status {before} → {after})",
+  "@debugBitUnchanged": {
+    "placeholders": {
+      "before": { "type": "String" },
+      "after": { "type": "String" }
+    }
+  }
 }

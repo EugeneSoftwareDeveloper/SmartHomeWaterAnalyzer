@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 
 import '../history/database.dart';
 import '../history/measurement_place.dart';
+import '../l10n/generated/app_localizations.dart';
 import '../location/measurement_location.dart';
 import '../location/site_anchor.dart';
 import '../location/site_match.dart';
@@ -78,8 +79,12 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
   /// и подмену не выдаёт.
   MeasurementPlace? _baselineLoadedFor;
 
-  /// Подпись под полем адреса, когда место определилось по координатам.
-  String? _autoSelectionHint;
+  /// Насколько далеко оказался фикс от привязки места, когда адрес
+  /// определился по координатам. `null` — адрес выбран не автоматически.
+  ///
+  /// Хранится числом, а не готовой подписью: текст собирается в `build`, иначе
+  /// смена языка оставила бы на экране фразу на прежнем.
+  int? _autoSelectionDistanceMeters;
 
   /// Пользователь выбрал адрес руками в этой сессии.
   ///
@@ -216,7 +221,7 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
 
     if (!mounted) return;
     setState(() {
-      _autoSelectionHint = 'определено по координатам, ${match.distanceMeters.round()} м';
+      _autoSelectionDistanceMeters = match.distanceMeters.round();
     });
   }
 
@@ -275,8 +280,12 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
     final reading = _reading;
     if (reading == null || _saving) return;
 
+    // Локализация берётся до первого await: дальше по коду `context` уже может
+    // указывать на снятый со сцены экран.
+    final l10n = AppL10n.of(context);
+
     if (identical(_savedReading, reading)) {
-      _showSnackBar('Этот замер уже сохранён');
+      _showSnackBar(l10n.readingAlreadySaved);
       return;
     }
 
@@ -329,9 +338,9 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
       await HapticFeedback.lightImpact();
 
       _showSnackBar(
-        'Замер сохранён',
+        l10n.readingMeasurementSaved,
         action: SnackBarAction(
-          label: 'Отменить',
+          label: l10n.commonUndo,
           onPressed: () async {
             await history.deleteById(id);
             if (!mounted) return;
@@ -350,7 +359,7 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
     } on Object catch (error) {
       if (!mounted) return;
       setState(() => _saving = false);
-      _showSnackBar('Не удалось сохранить: $error');
+      _showSnackBar(l10n.readingSaveFailed('$error'));
     }
   }
 
@@ -387,6 +396,8 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
+
     // Сменили место — сравнивать надо уже с историей нового места, иначе замер
     // на кухне сопоставлялся бы с прошлым замером в бассейне. Ровно та причина,
     // по которой у графика в 1.2.0 появился фильтр по месту.
@@ -395,8 +406,8 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
         // Выбор пришёл от пользователя — с этого момента автоопределение молчит,
         // а подпись «определено по координатам» перестаёт быть правдой.
         _selectionIsManual = true;
-        if (_autoSelectionHint != null) {
-          setState(() => _autoSelectionHint = null);
+        if (_autoSelectionDistanceMeters != null) {
+          setState(() => _autoSelectionDistanceMeters = null);
         }
       }
       unawaited(_loadBaseline());
@@ -415,7 +426,7 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.science_outlined),
-            tooltip: 'Отладка команд',
+            tooltip: l10n.readingDebugCommands,
             onPressed: () => context.push('/debug-commands', extra: widget.device),
           ),
           IconButton(
@@ -426,7 +437,7 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.refresh),
-            tooltip: 'Обновить',
+            tooltip: l10n.readingRefresh,
             onPressed: _loading ? null : _refresh,
           ),
         ],
@@ -442,7 +453,7 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : Icon(isSavedAlready ? Icons.check : Icons.save_outlined),
-              label: Text(isSavedAlready ? 'Сохранено' : 'Сохранить замер'),
+              label: Text(isSavedAlready ? l10n.readingSaved : l10n.readingSaveMeasurement),
               backgroundColor: isSavedAlready
                   ? Theme.of(context).colorScheme.surfaceContainerHigh
                   : null,
@@ -481,14 +492,14 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
           children: [
             const Icon(Icons.error_outline, size: 48, color: Colors.redAccent),
             const SizedBox(height: 12),
-            const Text(
-              'Не удалось прочитать показания',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            Text(
+              AppL10n.of(context).readingFailed,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
             Text(_error!, textAlign: TextAlign.center),
             const SizedBox(height: 16),
-            FilledButton(onPressed: _refresh, child: const Text('Повторить')),
+            FilledButton(onPressed: _refresh, child: Text(AppL10n.of(context).readingRetry)),
           ],
         ),
       );
@@ -514,7 +525,11 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.only(bottom: 96), // место под FAB
         children: [
-          PlacePickerField(hint: _autoSelectionHint),
+          PlacePickerField(
+            hint: _autoSelectionDistanceMeters == null
+                ? null
+                : AppL10n.of(context).readingAutoPlaceHint(_autoSelectionDistanceMeters!),
+          ),
           SummaryHeader(overview: overview, reading: reading),
           if (_baselineLoaded) _TrendBaselineNote(baseline: baseline),
           for (final parameter in parameters)
@@ -567,9 +582,10 @@ class _TrendBaselineNote extends StatelessWidget {
     final theme = Theme.of(context);
     final previous = baseline;
 
+    final l10n = AppL10n.of(context);
     final text = previous == null
-        ? 'Первый замер в этом месте — сравнивать не с чем'
-        : 'Сравнение с замером ${_describe(previous.observedAt)}';
+        ? l10n.readingFirstHere
+        : l10n.readingComparedWith(_describe(previous.observedAt));
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),

@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:water_analyzer/history/database.dart';
+import 'package:water_analyzer/l10n/generated/app_localizations.dart';
 import 'package:water_analyzer/history/repository.dart';
 import 'package:water_analyzer/providers/history_provider.dart';
 import 'package:water_analyzer/providers/preferences_provider.dart';
@@ -19,6 +20,8 @@ import 'package:water_analyzer/ui/widgets/place_picker.dart';
 /// стрим живым, и `pumpAndSettle` ждал бы его таймер бесконечно. Сама база
 /// проверяется отдельно в `place_catalog_repository_test.dart`, здесь же
 /// проверяется виджет.
+/// Локаль зафиксирована русской: тексты сравниваются буквально, и без этого
+/// тесты читали бы системную локаль машины, где их запускают.
 class _MockCatalog extends Mock implements PlaceCatalogRepository {}
 
 Site _site(int id, String name, {String? city, double? latitude}) {
@@ -80,7 +83,12 @@ void main() {
           roomsProvider.overrideWith((ref) => Stream.value(rooms)),
           sourcesProvider.overrideWith((ref) => Stream.value(sources)),
         ],
-        child: MaterialApp(home: Scaffold(body: child)),
+        child: MaterialApp(
+          locale: const Locale('ru'),
+          localizationsDelegates: AppL10n.localizationsDelegates,
+          supportedLocales: AppL10n.supportedLocales,
+          home: Scaffold(body: child),
+        ),
       ),
     );
     await tester.pumpAndSettle();

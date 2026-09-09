@@ -79,5 +79,240 @@
   "tabSettings": "Настройки",
 
   "bluetoothOffTitle": "Bluetooth выключен",
-  "bluetoothOffSubtitle": "Включи Bluetooth, чтобы начать сканирование"
+  "bluetoothOffSubtitle": "Включи Bluetooth, чтобы начать сканирование",
+
+  "commonCancel": "Отмена",
+  "commonDelete": "Удалить",
+  "commonDone": "Готово",
+  "commonUndo": "Отменить",
+  "commonRename": "Переименовать",
+  "commonName": "Название",
+  "commonGotIt": "Понятно",
+
+  "helpTitle": "Справка по параметрам",
+  "helpSubtitle": "Подробное описание pH, ORP, EC и других значений",
+
+  "trendUnchanged": "без изменений",
+
+  "locationCardTitle": "Где сделан замер",
+  "locationCardAccuracy": "Точность {accuracy}",
+  "@locationCardAccuracy": {
+    "placeholders": {
+      "accuracy": { "type": "String" }
+    }
+  },
+  "locationCardCopy": "Копировать",
+  "locationCardOpenMap": "На карте",
+  "locationCardCopied": "Координаты скопированы",
+  "locationCardNoMapApp": "Не нашлось приложения для карт",
+
+  "placeFieldLabel": "Где мерим",
+  "placeNotSelected": "Не выбрано",
+  "placeConfigure": "Настроить",
+  "placeNoAddress": "Без адреса",
+  "placeNoAddressSubtitle": "Замер сохранится без места и источника",
+  "placeBoundToCoordinates": "Место привязано к координатам",
+
+  "settingsPlaces": "Места замеров",
+  "settingsPlacesSubtitle": "Дома, комнаты и источники воды",
+  "settingsSaveLocation": "Координаты замеров",
+  "settingsSaveLocationSubtitle": "Сохранять, где сделан замер — чтобы позже открыть точку на карте",
+  "settingsAboutSubtitle": "SmartHomeWaterAnalyzer • для YINMIK BLE-C600",
+  "settingsAboutLegalese": "Личный проект, лицензия будет определена позже.",
+
+  "historyDeleteFailed": "Не удалось удалить: {error}",
+  "@historyDeleteFailed": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "historyMeasurementDeleted": "Замер удалён",
+  "historyChartTitle": "{parameter} во времени",
+  "@historyChartTitle": {
+    "placeholders": {
+      "parameter": { "type": "String" }
+    }
+  },
+  "historyAllPlaces": "Все места",
+  "historyChartNeedsMore": "Нужно минимум 2 измерения для построения графика",
+
+  "readingDebugCommands": "Отладка команд",
+  "readingSaveMeasurement": "Сохранить замер",
+  "readingSaved": "Сохранено",
+  "readingAlreadySaved": "Этот замер уже сохранён",
+  "readingSaveFailed": "Не удалось сохранить: {error}",
+  "@readingSaveFailed": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "readingMeasurementSaved": "Замер сохранён",
+  "readingAutoPlaceHint": "определено по координатам, {distance} м",
+  "@readingAutoPlaceHint": {
+    "placeholders": {
+      "distance": { "type": "int" }
+    }
+  },
+  "readingFirstHere": "Первый замер в этом месте — сравнивать не с чем",
+  "readingComparedWith": "Сравнение с замером {moment}",
+  "@readingComparedWith": {
+    "placeholders": {
+      "moment": { "type": "String" }
+    }
+  },
+
+  "controlBacklightOn": "Подсветка ON",
+  "controlBacklightOff": "Подсветка OFF",
+  "controlNotImplemented": "Команда пока не реализована",
+  "controlNotImplementedBody": "Точные байты команды «{command}» BLE-C600 не задокументированы производителем и пока не подтверждены реверс-инжинирингом.",
+  "@controlNotImplementedBody": {
+    "placeholders": {
+      "command": { "type": "String" }
+    }
+  },
+  "controlNotImplementedWhat": "Что делать:",
+  "controlNotImplementedSteps": "1. На Android: «Параметры разработчика» → включить «Bluetooth HCI snoop log».\n2. Запустить официальное приложение YINMIK, подключиться к прибору.\n3. Переключить параметр (например, подсветку) ON и OFF.\n4. Извлечь /sdcard/btsnoop_hci.log через adb или bug report.\n5. Открыть в Wireshark, отфильтровать btatt, найти write в FF15.\n6. Записать байты в lib/yinmik/commands.dart и пересобрать.",
+
+  "detailTitle": "Замер",
+  "detailChangePlace": "Изменить адрес",
+  "detailDeleteMeasurement": "Удалить замер",
+  "detailPlaceChangeFailed": "Не удалось сменить адрес: {error}",
+  "@detailPlaceChangeFailed": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "detailPlaceCleared": "Адрес убран",
+  "detailDeleteConfirmTitle": "Удалить замер?",
+  "detailDeleteConfirmBody": "Замер от {moment} будет удалён. Действие можно отменить в течение 5 секунд.",
+  "@detailDeleteConfirmBody": {
+    "placeholders": {
+      "moment": { "type": "String" }
+    }
+  },
+  "detailPlaceChanged": "Адрес изменён на «{place}»",
+  "@detailPlaceChanged": {
+    "placeholders": {
+      "place": { "type": "String" }
+    }
+  },
+
+  "scanShowAllDevices": "Показать все устройства",
+  "scanShowAllHint": "Если прибор называется не «BLE-C600», выбери его вручную.",
+  "scanAllDevicesHint": "Все видимые BLE-устройства. Если прибор здесь — нажми, чтобы подключиться (минуя фильтр по имени).",
+  "scanConnectTo": "Подключиться к {device}",
+  "@scanConnectTo": {
+    "placeholders": {
+      "device": { "type": "String" }
+    }
+  },
+  "scanLastDevice": "Последний прибор — без сканирования",
+  "scanLastDeviceSubtitle": "{deviceId} • без сканирования",
+  "@scanLastDeviceSubtitle": {
+    "placeholders": {
+      "deviceId": { "type": "String" }
+    }
+  },
+  "scanForgetDevice": "Забыть прибор",
+  "scanHelp": "Справка",
+  "bluetoothTurnOn": "Включить Bluetooth",
+
+  "scanNoTargetFound": "{count, plural, one{Сканер нашёл {count} устройство, но среди них нет BLE-C600.} few{Сканер нашёл {count} устройства, но среди них нет BLE-C600.} other{Сканер нашёл {count} устройств, но среди них нет BLE-C600.}}",
+  "@scanNoTargetFound": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+
+  "placesTitle": "Места замеров",
+  "placesAddSite": "Место",
+  "placesNewSite": "Новое место",
+  "placesRenameSite": "Переименовать место",
+  "placesAddRoom": "Добавить комнату",
+  "placesAddSource": "Добавить источник",
+  "placesNewRoom": "Новая комната",
+  "placesNewSource": "Новый источник",
+  "placesRenameRoom": "Переименовать комнату",
+  "placesRenameSource": "Переименовать источник",
+  "placesSourceInRoom": "Источник в «{room}»",
+  "@placesSourceInRoom": {
+    "placeholders": {
+      "room": { "type": "String" }
+    }
+  },
+  "placesBindHere": "Привязать здесь",
+  "placesUnbind": "Сбросить привязку",
+  "placesDeleteSite": "Удалить место",
+  "placesDeleteRoom": "Удалить комнату",
+  "placesDeleteSource": "Удалить источник",
+  "placesEmpty": "Пока нет ни одного места.\nДобавьте дом или дачу — источники живут внутри них.",
+  "placesNoSources": "Источников пока нет",
+  "placesUnbound": "без привязки — не подставляется автоматически",
+  "placesBoundToSamples": "{count, plural, one{привязано по {count} замеру} few{привязано по {count} замерам} other{привязано по {count} замерам}}",
+  "@placesBoundToSamples": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "placesCoordinatesUnavailable": "Координаты недоступны",
+  "placesBound": "Место привязано к этой точке",
+  "placesConfirmDeleteTitle": "Удалить «{name}»?",
+  "@placesConfirmDeleteTitle": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "placesConfirmDeleteSite": "Вместе с ним исчезнут его комнаты и источники. Замеры останутся в истории со своими названиями.",
+  "placesConfirmDeleteRoom": "Источники этой комнаты тоже исчезнут. История не меняется.",
+  "placesConfirmDeleteSource": "Замеры этого источника останутся в истории со своим названием.",
+  "placesCityLabel": "Город (необязательно)",
+  "placesCityHint": "Тверь",
+  "placesNameHint": "Дача",
+
+  "debugClearLog": "Очистить лог",
+  "debugIntro": "Эта страница пробует разные байты команды и проверяет, изменился ли бит статуса 0x08 (подсветка) или 0x10 (HOLD) в кадре FF02 после записи. Если какой-то пресет сработает, в логе появится «бит изменился».",
+  "debugTargetCharacteristic": "Целевая характеристика",
+  "debugFf15Subtitle": "Канонический кандидат для команд",
+  "debugFf02Subtitle": "У некоторых вариантов поддерживает write",
+  "debugVerifyBit": "Проверять бит",
+  "debugBacklightBit": "Подсветка (0x08)",
+  "debugPresets": "Готовые пресеты",
+  "debugManualInput": "Ручной ввод (hex, через пробел)",
+  "debugManualHint": "Например: 01 08",
+  "debugSendManual": "Отправить введённые байты",
+  "debugManualLabel": "Ручной: {bytes}",
+  "@debugManualLabel": {
+    "placeholders": {
+      "bytes": { "type": "String" }
+    }
+  },
+  "debugLogTitle": "Лог попыток (новые сверху)",
+  "debugLogEmpty": "Пока ничего не отправлено",
+  "debugInvalidHex": "Неверный hex: {error}",
+  "@debugInvalidHex": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "debugError": "Ошибка: {error}",
+  "@debugError": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "debugBitChanged": "Бит {bit} изменился: {before} → {after}",
+  "@debugBitChanged": {
+    "placeholders": {
+      "bit": { "type": "String" },
+      "before": { "type": "String" },
+      "after": { "type": "String" }
+    }
+  },
+  "debugBitUnchanged": "Без изменений (status {before} → {after})",
+  "@debugBitUnchanged": {
+    "placeholders": {
+      "before": { "type": "String" },
+      "after": { "type": "String" }
+    }
+  }
 }

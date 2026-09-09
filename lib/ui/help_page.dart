@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../help/parameter_help.dart';
+import '../l10n/generated/app_localizations.dart';
 import '../providers/app_settings.dart';
 
 /// Экран справки. Может показывать один параметр (если передан [focusedKey])
@@ -13,15 +14,14 @@ class HelpPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
     final profile = ref.watch(appSettingsProvider).normsProfile;
     final entries = focusedKey != null
         ? [ParameterHelpCatalog.byKey(focusedKey!, profile)]
         : ParameterHelpCatalog.all(profile);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(focusedKey != null ? entries.first.title : 'Справка по параметрам'),
-      ),
+      appBar: AppBar(title: Text(focusedKey != null ? entries.first.title : l10n.helpTitle)),
       body: ListView.builder(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         itemCount: entries.length,

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:water_analyzer/history/database.dart';
+import 'package:water_analyzer/l10n/generated/app_localizations.dart';
 import 'package:water_analyzer/history/repository.dart';
 import 'package:water_analyzer/location/location_service.dart';
 import 'package:water_analyzer/location/measurement_location.dart';
@@ -19,6 +20,8 @@ import 'package:water_analyzer/ui/places_page.dart';
 ///
 /// Каталог и геолокация подменены: настоящая БД держала бы drift-стрим живым, и
 /// `pumpAndSettle` ждал бы его таймер бесконечно.
+/// Локаль зафиксирована русской: тексты сравниваются буквально, и без этого
+/// тесты читали бы системную локаль машины, где их запускают.
 class _MockCatalog extends Mock implements PlaceCatalogRepository {}
 
 class _MockLocation extends Mock implements LocationService {}
@@ -102,7 +105,12 @@ void main() {
           roomsProvider.overrideWith((ref) => Stream.value(rooms)),
           sourcesProvider.overrideWith((ref) => Stream.value(sources)),
         ],
-        child: const MaterialApp(home: PlacesPage()),
+        child: const MaterialApp(
+          locale: Locale('ru'),
+          localizationsDelegates: AppL10n.localizationsDelegates,
+          supportedLocales: AppL10n.supportedLocales,
+          home: PlacesPage(),
+        ),
       ),
     );
     await tester.pumpAndSettle();

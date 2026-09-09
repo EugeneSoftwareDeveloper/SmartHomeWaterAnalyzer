@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
+import '../../l10n/generated/app_localizations.dart';
 import '../../yinmik/client.dart';
 import '../../yinmik/commands.dart';
 import '../../yinmik/reading.dart';
@@ -40,6 +41,7 @@ class _ControlPanelState extends State<ControlPanel> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     final theme = Theme.of(context);
 
     return Padding(
@@ -52,7 +54,7 @@ class _ControlPanelState extends State<ControlPanel> {
             child: Row(
               children: [
                 Text(
-                  'Управление прибором',
+                  l10n.controlSectionTitle,
                   style: theme.textTheme.titleSmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.w600,
@@ -91,8 +93,8 @@ class _ControlPanelState extends State<ControlPanel> {
                 _ControlTile(
                   icon: Icons.lightbulb_outline,
                   activeIcon: Icons.lightbulb,
-                  title: 'Подсветка',
-                  subtitle: 'Включить экран прибора',
+                  title: l10n.controlBacklight,
+                  subtitle: l10n.controlBacklightSubtitle,
                   value: widget.reading.backlightOn,
                   enabled: !_sending,
                   onChanged: _toggleBacklight,
@@ -101,8 +103,8 @@ class _ControlPanelState extends State<ControlPanel> {
                 _ControlTile(
                   icon: Icons.lock_open,
                   activeIcon: Icons.lock,
-                  title: 'Удержание показаний (HOLD)',
-                  subtitle: 'Зафиксировать текущие значения на экране',
+                  title: l10n.controlHold,
+                  subtitle: l10n.controlHoldSubtitle,
                   value: widget.reading.holdReadingOn,
                   enabled: !_sending,
                   onChanged: _toggleHold,
@@ -116,8 +118,9 @@ class _ControlPanelState extends State<ControlPanel> {
   }
 
   Future<void> _toggleBacklight(bool on) {
+    final l10n = AppL10n.of(context);
     return _runCommand(
-      commandName: on ? 'Подсветка ON' : 'Подсветка OFF',
+      commandName: on ? l10n.controlBacklightOn : l10n.controlBacklightOff,
       command: YinmikCommands.backlightCommand(on: on),
     );
   }
@@ -131,6 +134,8 @@ class _ControlPanelState extends State<ControlPanel> {
 
   Future<void> _runCommand({required String commandName, required Uint8List command}) async {
     if (_sending) return;
+    // До первого await: дальше `context` может указывать на закрытый экран.
+    final l10n = AppL10n.of(context);
     setState(() => _sending = true);
     await HapticFeedback.selectionClick();
 
@@ -148,7 +153,7 @@ class _ControlPanelState extends State<ControlPanel> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Не удалось отправить команду: $error')));
+        ).showSnackBar(SnackBar(content: Text(l10n.controlCommandFailed('$error'))));
       }
     } finally {
       if (mounted) setState(() => _sending = false);
@@ -159,35 +164,24 @@ class _ControlPanelState extends State<ControlPanel> {
     return showDialog<void>(
       context: context,
       builder: (context) {
+        final l10n = AppL10n.of(context);
         final theme = Theme.of(context);
         return AlertDialog(
           icon: const Icon(Icons.science_outlined),
-          title: const Text('Команда пока не реализована'),
+          title: Text(l10n.controlNotImplemented),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Точные байты команды «$commandName» BLE-C600 не задокументированы '
-                'производителем и пока не подтверждены реверс-инжинирингом.',
-                style: theme.textTheme.bodyMedium,
-              ),
+              Text(l10n.controlNotImplementedBody(commandName), style: theme.textTheme.bodyMedium),
               const SizedBox(height: 12),
-              Text('Что делать:', style: theme.textTheme.titleSmall),
+              Text(l10n.controlNotImplementedWhat, style: theme.textTheme.titleSmall),
               const SizedBox(height: 6),
-              Text(
-                '1. На Android: «Параметры разработчика» → включить «Bluetooth HCI snoop log».\n'
-                '2. Запустить официальное приложение YINMIK, подключиться к прибору.\n'
-                '3. Переключить параметр (например, подсветку) ON и OFF.\n'
-                '4. Извлечь /sdcard/btsnoop_hci.log через adb или bug report.\n'
-                '5. Открыть в Wireshark, отфильтровать btatt, найти write в FF15.\n'
-                '6. Записать байты в lib/yinmik/commands.dart и пересобрать.',
-                style: theme.textTheme.bodySmall,
-              ),
+              Text(l10n.controlNotImplementedSteps, style: theme.textTheme.bodySmall),
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Понятно')),
+            TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(l10n.commonGotIt)),
           ],
         );
       },

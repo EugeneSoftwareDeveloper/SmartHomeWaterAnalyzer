@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../history/database.dart';
 import '../../history/measurement_place.dart';
 import '../../history/place_catalog.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../../providers/app_settings.dart';
 import '../../providers/history_provider.dart';
 
@@ -38,6 +39,7 @@ class PlacePickerField extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
     final theme = Theme.of(context);
     final selectedId = ref.watch(appSettingsProvider.select((s) => s.currentSourceId));
     final catalog = ref.watch(placeCatalogViewProvider).valueOrNull;
@@ -63,13 +65,13 @@ class PlacePickerField extends ConsumerWidget {
             child: InputDecorator(
               decoration: InputDecoration(
                 prefixIcon: const Icon(Icons.place_outlined, size: 20),
-                labelText: 'Где мерим',
+                labelText: l10n.placeFieldLabel,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 isDense: true,
                 suffixIcon: const Icon(Icons.arrow_drop_down),
               ),
               child: Text(
-                place?.formatted ?? 'Не выбрано',
+                place?.formatted ?? l10n.placeNotSelected,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: place != null
                       ? theme.colorScheme.onSurface
@@ -158,6 +160,7 @@ class _PlacePickerSheetState extends ConsumerState<_PlacePickerSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     final theme = Theme.of(context);
     final catalogAsync = ref.watch(placeCatalogViewProvider);
 
@@ -172,14 +175,14 @@ class _PlacePickerSheetState extends ConsumerState<_PlacePickerSheet> {
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               child: Row(
                 children: [
-                  Expanded(child: Text('Где мерим', style: theme.textTheme.titleMedium)),
+                  Expanded(child: Text(l10n.placeFieldLabel, style: theme.textTheme.titleMedium)),
                   TextButton.icon(
                     onPressed: () {
                       Navigator.of(context).pop();
                       GoRouter.of(context).push('/places');
                     },
                     icon: const Icon(Icons.tune, size: 18),
-                    label: const Text('Настроить'),
+                    label: Text(l10n.placeConfigure),
                   ),
                 ],
               ),
@@ -189,7 +192,7 @@ class _PlacePickerSheetState extends ConsumerState<_PlacePickerSheet> {
               child: catalogAsync.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (error, _) => Center(child: Text('$error')),
-                data: (catalog) => _buildList(controller, catalog, theme),
+                data: (catalog) => _buildList(controller, catalog, theme, l10n),
               ),
             ),
           ],
@@ -198,7 +201,12 @@ class _PlacePickerSheetState extends ConsumerState<_PlacePickerSheet> {
     );
   }
 
-  Widget _buildList(ScrollController controller, PlaceCatalog catalog, ThemeData theme) {
+  Widget _buildList(
+    ScrollController controller,
+    PlaceCatalog catalog,
+    ThemeData theme,
+    AppL10n l10n,
+  ) {
     final selectedId = widget.initialSourceId;
 
     return ListView(
@@ -231,8 +239,8 @@ class _PlacePickerSheetState extends ConsumerState<_PlacePickerSheet> {
             selectedId == null ? Icons.radio_button_checked : Icons.radio_button_unchecked,
             color: theme.colorScheme.onSurfaceVariant,
           ),
-          title: const Text('Без адреса'),
-          subtitle: const Text('Замер сохранится без места и источника'),
+          title: Text(l10n.placeNoAddress),
+          subtitle: Text(l10n.placeNoAddressSubtitle),
           onTap: _busy ? null : () => _select(null, catalog),
         ),
         const SizedBox(height: 16),
@@ -271,7 +279,7 @@ class _SiteHeader extends StatelessWidget {
           ),
           if (hasAnchor)
             Tooltip(
-              message: 'Место привязано к координатам',
+              message: AppL10n.of(context).placeBoundToCoordinates,
               child: Icon(Icons.my_location, size: 14, color: theme.colorScheme.outline),
             ),
         ],

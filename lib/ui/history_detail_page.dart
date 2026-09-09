@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../history/database.dart';
 import '../history/measurement_place.dart';
+import '../l10n/generated/app_localizations.dart';
 import '../location/measurement_location.dart';
 import '../providers/app_settings.dart';
 import '../providers/history_provider.dart';
@@ -53,6 +54,7 @@ class _HistoryDetailPageState extends ConsumerState<HistoryDetailPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     if (_measurements.isEmpty) {
       // Был последний замер, его удалили — закрываем экран.
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -72,7 +74,7 @@ class _HistoryDetailPageState extends ConsumerState<HistoryDetailPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              place.isEmpty ? 'Замер' : place.formatted,
+              place.isEmpty ? l10n.detailTitle : place.formatted,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -94,14 +96,14 @@ class _HistoryDetailPageState extends ConsumerState<HistoryDetailPage> {
           ),
           PopupMenuButton<_DetailAction>(
             onSelected: (action) => _onMenuAction(action, current),
-            itemBuilder: (context) => const [
+            itemBuilder: (context) => [
               PopupMenuItem(
                 value: _DetailAction.editPlace,
                 child: Row(
                   children: [
-                    Icon(Icons.place_outlined),
-                    SizedBox(width: 12),
-                    Text('Изменить адрес'),
+                    const Icon(Icons.place_outlined),
+                    const SizedBox(width: 12),
+                    Text(l10n.detailChangePlace),
                   ],
                 ),
               ),
@@ -109,9 +111,9 @@ class _HistoryDetailPageState extends ConsumerState<HistoryDetailPage> {
                 value: _DetailAction.delete,
                 child: Row(
                   children: [
-                    Icon(Icons.delete_outline),
-                    SizedBox(width: 12),
-                    Text('Удалить замер'),
+                    const Icon(Icons.delete_outline),
+                    const SizedBox(width: 12),
+                    Text(l10n.detailDeleteMeasurement),
                   ],
                 ),
               ),
@@ -141,6 +143,8 @@ class _HistoryDetailPageState extends ConsumerState<HistoryDetailPage> {
   /// показаний. Раньше здесь было свободное текстовое поле: оно писало прямо в
   /// базу мимо каталога, и получалось «место», которого нет в списке выбора.
   Future<void> _editPlace(Measurement current) async {
+    // Локализация берётся до листа выбора: после await экран мог уже закрыться.
+    final l10n = AppL10n.of(context);
     final selection = await showPlacePicker(context);
     // null — пользователь закрыл лист, ничего не выбрав.
     if (selection == null || !mounted) return;
@@ -154,7 +158,7 @@ class _HistoryDetailPageState extends ConsumerState<HistoryDetailPage> {
       await repo.updatePlace(current.id, newPlace);
     } on Object catch (error) {
       if (!mounted) return;
-      messenger.showSnackBar(SnackBar(content: Text('Не удалось сменить адрес: $error')));
+      messenger.showSnackBar(SnackBar(content: Text(l10n.detailPlaceChangeFailed('$error'))));
       return;
     }
 
@@ -175,29 +179,27 @@ class _HistoryDetailPageState extends ConsumerState<HistoryDetailPage> {
     messenger.showSnackBar(
       SnackBar(
         content: Text(
-          newPlace.isEmpty ? 'Адрес убран' : 'Адрес изменён на «${newPlace.formatted}»',
+          newPlace.isEmpty ? l10n.detailPlaceCleared : l10n.detailPlaceChanged(newPlace.formatted),
         ),
       ),
     );
   }
 
   Future<void> _delete(Measurement current) async {
+    final l10n = AppL10n.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Удалить замер?'),
-        content: Text(
-          'Замер от ${_timeFormat.format(current.observedAt)} будет удалён. '
-          'Действие можно отменить в течение 5 секунд.',
-        ),
+        title: Text(l10n.detailDeleteConfirmTitle),
+        content: Text(l10n.detailDeleteConfirmBody(_timeFormat.format(current.observedAt))),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Отмена'),
+            child: Text(l10n.commonCancel),
           ),
           FilledButton.tonal(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Удалить'),
+            child: Text(l10n.commonDelete),
           ),
         ],
       ),
@@ -224,9 +226,9 @@ class _HistoryDetailPageState extends ConsumerState<HistoryDetailPage> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Text('Замер удалён'),
+        content: Text(l10n.historyMeasurementDeleted),
         action: SnackBarAction(
-          label: 'Отменить',
+          label: l10n.commonUndo,
           onPressed: () async {
             await repo.restoreFromMeasurement(current);
             if (!mounted) return;
