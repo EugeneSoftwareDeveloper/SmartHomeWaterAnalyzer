@@ -67,6 +67,11 @@ dev_dependencies:
 
   # Тестирование.
   mocktail: ^1.0.4
+  # Платформенный интерфейс геолокатора: LocationService дёргает Geolocator
+  # статически, и подменить его можно только через GeolocatorPlatform.instance.
+  # Без этого ветки разрешений и таймаутов проверялись бы только на устройстве.
+  geolocator_platform_interface: ^4.3.0
+  plugin_platform_interface: ^2.1.8
 
   # Прямой доступ к SQLite в тестах миграций: нужно создать базу в состоянии
   # старой схемы до того, как её откроет drift.
