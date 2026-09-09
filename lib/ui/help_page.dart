@@ -15,10 +15,11 @@ class HelpPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppL10n.of(context);
+    final locale = Localizations.localeOf(context);
     final profile = ref.watch(appSettingsProvider).normsProfile;
     final entries = focusedKey != null
-        ? [ParameterHelpCatalog.byKey(focusedKey!, profile)]
-        : ParameterHelpCatalog.all(profile);
+        ? [ParameterHelpCatalog.byKey(focusedKey!, profile, locale)]
+        : ParameterHelpCatalog.all(profile, locale);
 
     return Scaffold(
       appBar: AppBar(title: Text(focusedKey != null ? entries.first.title : l10n.helpTitle)),
