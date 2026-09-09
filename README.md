@@ -250,7 +250,7 @@ keytool -genkey -v -keystore water-analyzer-release.jks -keyalg RSA -keysize 204
   - [`02-ble-protocol.md`](./docs/02-ble-protocol.md) — GATT-структура, декодер кадра FF02, эталонные кадры.
   - [`03-control-commands.md`](./docs/03-control-commands.md) — HCI snoop guide, как добыть точные байты команд.
   - [`04-ui-design.md`](./docs/04-ui-design.md) — Material 3, виджеты, цветовые конвенции.
-  - [`05-state-and-storage.md`](./docs/05-state-and-storage.md) — Riverpod-провайдеры, drift schema v2, миграции, l10n, навигация.
+  - [`05-state-and-storage.md`](./docs/05-state-and-storage.md) — Riverpod-провайдеры, схема drift и миграции, локализация, навигация.
   - [`06-roadmap.md`](./docs/06-roadmap.md) — приоритезированный список планов.
 
 ## Связанный репозиторий

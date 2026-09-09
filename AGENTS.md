@@ -169,7 +169,7 @@ flutter build apk --release --split-per-abi              # release APK по ар
 
 ```powershell
 python tools/ship.py --check        # те же проверки, что в CI, в том же порядке
-python tools/ship.py --tag 1.3.0    # проверки, затем тег v1.3.0 и push
+python tools/ship.py --tag 1.5.0    # проверки, затем тег v1.5.0 и push
 ```
 
 `ship.py` повторяет шаги `ci.yml` (зависимости, l10n, build_runner, формат с
