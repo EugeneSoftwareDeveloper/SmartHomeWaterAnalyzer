@@ -286,30 +286,11 @@ class _SourceRow extends ConsumerWidget {
 
 /// Диалог с одним полем имени. Возвращает `null`, если отменили или ввели пусто.
 Future<String?> _promptName(BuildContext context, {required String title, String? initial}) async {
-  final controller = TextEditingController(text: initial);
-
   final result = await showDialog<String>(
     context: context,
-    builder: (dialogContext) => AlertDialog(
-      title: Text(title),
-      content: TextField(
-        controller: controller,
-        autofocus: true,
-        textCapitalization: TextCapitalization.sentences,
-        decoration: const InputDecoration(hintText: 'Название'),
-        onSubmitted: (value) => Navigator.of(dialogContext).pop(value),
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Отмена')),
-        FilledButton(
-          onPressed: () => Navigator.of(dialogContext).pop(controller.text),
-          child: const Text('Готово'),
-        ),
-      ],
-    ),
+    builder: (_) => _NameDialog(title: title, initial: initial),
   );
 
-  controller.dispose();
   final trimmed = result?.trim();
   return (trimmed == null || trimmed.isEmpty) ? null : trimmed;
 }
@@ -322,53 +303,122 @@ Future<(String, String?)?> _promptNameAndCity(
   String? initialName,
   String? initialCity,
 }) async {
-  final nameController = TextEditingController(text: initialName);
-  final cityController = TextEditingController(text: initialCity);
-
-  final confirmed = await showDialog<bool>(
+  final result = await showDialog<(String, String)>(
     context: context,
-    builder: (dialogContext) => AlertDialog(
-      title: Text(title),
+    builder: (_) =>
+        _NameAndCityDialog(title: title, initialName: initialName, initialCity: initialCity),
+  );
+  if (result == null) return null;
+
+  final name = result.$1.trim();
+  final city = result.$2.trim();
+  return name.isEmpty ? null : (name, city.isEmpty ? null : city);
+}
+
+/// Контроллеры полей живут внутри виджета диалога, а не в вызывающей функции.
+///
+/// `showDialog` завершает свой Future в момент `pop`, когда диалог ещё
+/// анимируется наружу и продолжает перестраиваться каждый кадр. Освобождение
+/// контроллера сразу после `await` — обращение к уже уничтоженному объекту;
+/// в отладочной сборке это падение, в релизной — тихая работа с мусором.
+class _NameDialog extends StatefulWidget {
+  final String title;
+  final String? initial;
+
+  const _NameDialog({required this.title, this.initial});
+
+  @override
+  State<_NameDialog> createState() => _NameDialogState();
+}
+
+class _NameDialogState extends State<_NameDialog> {
+  late final TextEditingController _controller = TextEditingController(text: widget.initial);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.title),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        textCapitalization: TextCapitalization.sentences,
+        decoration: const InputDecoration(hintText: 'Название'),
+        onSubmitted: (value) => Navigator.of(context).pop(value),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Отмена')),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(_controller.text),
+          child: const Text('Готово'),
+        ),
+      ],
+    );
+  }
+}
+
+/// Имя и город одним диалогом. Результат уезжает в `pop` целиком, чтобы поля не
+/// приходилось читать после закрытия — см. комментарий у [_NameDialog].
+class _NameAndCityDialog extends StatefulWidget {
+  final String title;
+  final String? initialName;
+  final String? initialCity;
+
+  const _NameAndCityDialog({required this.title, this.initialName, this.initialCity});
+
+  @override
+  State<_NameAndCityDialog> createState() => _NameAndCityDialogState();
+}
+
+class _NameAndCityDialogState extends State<_NameAndCityDialog> {
+  late final TextEditingController _name = TextEditingController(text: widget.initialName);
+  late final TextEditingController _city = TextEditingController(text: widget.initialCity);
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _city.dispose();
+    super.dispose();
+  }
+
+  void _submit() => Navigator.of(context).pop((_name.text, _city.text));
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.title),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           TextField(
-            controller: nameController,
+            controller: _name,
             autofocus: true,
             textCapitalization: TextCapitalization.sentences,
             decoration: const InputDecoration(labelText: 'Название', hintText: 'Дача'),
           ),
           const SizedBox(height: 12),
           TextField(
-            controller: cityController,
+            controller: _city,
             textCapitalization: TextCapitalization.sentences,
             decoration: const InputDecoration(
               labelText: 'Город (необязательно)',
               hintText: 'Тверь',
             ),
+            onSubmitted: (_) => _submit(),
           ),
         ],
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: const Text('Отмена'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(dialogContext).pop(true),
-          child: const Text('Готово'),
-        ),
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Отмена')),
+        FilledButton(onPressed: _submit, child: const Text('Готово')),
       ],
-    ),
-  );
-
-  final name = nameController.text.trim();
-  final city = cityController.text.trim();
-  nameController.dispose();
-  cityController.dispose();
-
-  if (confirmed != true || name.isEmpty) return null;
-  return (name, city.isEmpty ? null : city);
+    );
+  }
 }
 
 Future<bool> _confirm(
