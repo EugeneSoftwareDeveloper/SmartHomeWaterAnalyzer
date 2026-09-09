@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../l10n/generated/app_localizations.dart';
 import '../quality/profile.dart';
 import 'preferences_provider.dart';
 
@@ -39,6 +40,14 @@ class AppSettings {
   /// сохранение — замер просто останется без координат.
   final bool saveLocationEnabled;
 
+  /// Выбранный язык интерфейса. `null` — определять по системе.
+  ///
+  /// Отдельное значение вместо «языка по умолчанию» нужно, чтобы отличить
+  /// «пользователь не выбирал» от «пользователь выбрал ровно тот язык, который
+  /// сейчас в системе»: в первом случае смена языка телефона должна менять и
+  /// язык приложения, во втором — нет.
+  final Locale? locale;
+
   const AppSettings({
     required this.themeMode,
     required this.normsProfile,
@@ -48,6 +57,7 @@ class AppSettings {
     required this.currentSourceId,
     required this.legacySelectedLabel,
     required this.saveLocationEnabled,
+    required this.locale,
   });
 
   AppSettings copyWith({
@@ -59,6 +69,7 @@ class AppSettings {
     int? currentSourceId,
     String? legacySelectedLabel,
     bool? saveLocationEnabled,
+    Locale? locale,
     bool clearLastDevice = false,
     // Отдельный флаг для имени: подключение к безымянному прибору должно стирать имя
     // предыдущего, а `lastDeviceName: null` из-за `??` ниже откатился бы к старому
@@ -66,6 +77,9 @@ class AppSettings {
     bool clearLastDeviceName = false,
     bool clearSource = false,
     bool clearLegacySelection = false,
+    // Тот же приём, что и с прибором: `locale: null` из-за `??` откатился бы к
+    // прежнему языку, и «По системе» нельзя было бы выбрать обратно.
+    bool clearLocale = false,
   }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
@@ -80,6 +94,7 @@ class AppSettings {
           ? null
           : (legacySelectedLabel ?? this.legacySelectedLabel),
       saveLocationEnabled: saveLocationEnabled ?? this.saveLocationEnabled,
+      locale: clearLocale ? null : (locale ?? this.locale),
     );
   }
 }
@@ -99,6 +114,7 @@ class AppSettingsNotifier extends StateNotifier<AppSettings> {
   /// Ключ версий до 1.4.0. Читается один раз ради переноса выбора и удаляется.
   static const _kLegacyCurrentLabel = 'settings.currentLabel';
   static const _kSaveLocation = 'settings.saveLocationEnabled';
+  static const _kLocale = 'settings.locale';
 
   static AppSettings _load(SharedPreferences prefs) {
     return AppSettings(
@@ -116,7 +132,32 @@ class AppSettingsNotifier extends StateNotifier<AppSettings> {
       currentSourceId: prefs.getInt(_kCurrentSource),
       legacySelectedLabel: prefs.getString(_kLegacyCurrentLabel),
       saveLocationEnabled: prefs.getBool(_kSaveLocation) ?? true,
+      locale: _readLocale(prefs.getString(_kLocale)),
     );
+  }
+
+  /// Превращает сохранённый код языка в поддерживаемую локаль.
+  ///
+  /// Неизвестный код — это язык, который приложение когда-то поддерживало, а
+  /// теперь нет. Такой выбор молча становится автоопределением: показывать
+  /// интерфейс на первом попавшемся языке хуже, чем на системном.
+  static Locale? _readLocale(String? code) {
+    if (code == null) return null;
+    for (final locale in AppL10n.supportedLocales) {
+      if (locale.languageCode == code) return locale;
+    }
+    return null;
+  }
+
+  /// Задаёт язык интерфейса. `null` возвращает автоопределение по системе.
+  Future<void> setLocale(Locale? locale) async {
+    if (locale == null) {
+      state = state.copyWith(clearLocale: true);
+      await _prefs.remove(_kLocale);
+    } else {
+      state = state.copyWith(locale: locale);
+      await _prefs.setString(_kLocale, locale.languageCode);
+    }
   }
 
   Future<void> setSaveLocationEnabled(bool enabled) async {

@@ -67,6 +67,8 @@
   "settingsThemeLight": "Light",
   "settingsThemeDark": "Dark",
   "settingsTheme": "Theme",
+  "settingsLanguage": "Language",
+  "settingsLanguageSystem": "System",
   "settingsProfile": "Norms profile",
   "settingsNotifications": "Notify on out-of-range",
   "settingsAbout": "About",

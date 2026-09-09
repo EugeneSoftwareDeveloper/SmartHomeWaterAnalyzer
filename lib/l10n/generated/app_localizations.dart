@@ -345,6 +345,18 @@ abstract class AppL10n {
   /// **'Тема оформления'**
   String get settingsTheme;
 
+  /// No description provided for @settingsLanguage.
+  ///
+  /// In ru, this message translates to:
+  /// **'Язык'**
+  String get settingsLanguage;
+
+  /// No description provided for @settingsLanguageSystem.
+  ///
+  /// In ru, this message translates to:
+  /// **'По системе'**
+  String get settingsLanguageSystem;
+
   /// No description provided for @settingsProfile.
   ///
   /// In ru, this message translates to:

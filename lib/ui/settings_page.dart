@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../l10n/generated/app_localizations.dart';
+import '../l10n/language_names.dart';
 import '../providers/app_settings.dart';
 import '../providers/app_version_provider.dart';
 import '../quality/profile.dart';
@@ -44,6 +45,13 @@ class SettingsPage extends ConsumerWidget {
             onTap: () => _showThemePicker(context, ref),
           ),
           const Divider(),
+          ListTile(
+            leading: const Icon(Icons.translate),
+            title: Text(l10n.settingsLanguage),
+            subtitle: Text(_languageLabel(l10n, settings.locale)),
+            onTap: () => _showLanguagePicker(context, ref),
+          ),
+          const Divider(),
           SwitchListTile(
             secondary: const Icon(Icons.notifications_active_outlined),
             title: Text(l10n.settingsNotifications),
@@ -81,6 +89,10 @@ class SettingsPage extends ConsumerWidget {
     NormsProfile.hydroponics => l10n.profileHydroponics,
   };
 
+  /// Подпись выбранного языка. «По системе» переводится, сами языки — нет.
+  String _languageLabel(AppL10n l10n, Locale? locale) =>
+      locale == null ? l10n.settingsLanguageSystem : languageName(locale);
+
   String _themeLabel(AppL10n l10n, ThemeMode mode) => switch (mode) {
     ThemeMode.system => l10n.settingsThemeSystem,
     ThemeMode.light => l10n.settingsThemeLight,
@@ -106,6 +118,34 @@ class SettingsPage extends ConsumerWidget {
                   if (value != null) {
                     ref.read(appSettingsProvider.notifier).setNormsProfile(value);
                   }
+                  Navigator.of(sheetContext).pop();
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showLanguagePicker(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
+    final current = ref.read(appSettingsProvider).locale;
+
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // `null` первым: автоопределение — это состояние по умолчанию, и
+            // вернуться к нему должно быть так же просто, как уйти от него.
+            for (final locale in <Locale?>[null, ...AppL10n.supportedLocales])
+              RadioListTile<Locale?>(
+                value: locale,
+                groupValue: current,
+                title: Text(_languageLabel(l10n, locale)),
+                onChanged: (value) {
+                  ref.read(appSettingsProvider.notifier).setLocale(value);
                   Navigator.of(sheetContext).pop();
                 },
               ),

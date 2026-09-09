@@ -142,6 +142,12 @@ class AppL10nEn extends AppL10n {
   String get settingsTheme => 'Theme';
 
   @override
+  String get settingsLanguage => 'Language';
+
+  @override
+  String get settingsLanguageSystem => 'System';
+
+  @override
   String get settingsProfile => 'Norms profile';
 
   @override

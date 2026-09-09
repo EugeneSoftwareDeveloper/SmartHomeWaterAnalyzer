@@ -143,6 +143,12 @@ class AppL10nRu extends AppL10n {
   String get settingsTheme => 'Тема оформления';
 
   @override
+  String get settingsLanguage => 'Язык';
+
+  @override
+  String get settingsLanguageSystem => 'По системе';
+
+  @override
   String get settingsProfile => 'Профиль норм';
 
   @override

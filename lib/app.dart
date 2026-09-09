@@ -26,6 +26,9 @@ class WaterAnalyzerApp extends ConsumerWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
+      // `null` отдаёт выбор языка Flutter'у: он подберёт поддерживаемый по
+      // языкам системы, а если ни один не подошёл — первый из списка.
+      locale: settings.locale,
       supportedLocales: AppL10n.supportedLocales,
       routerConfig: appRouter,
     );

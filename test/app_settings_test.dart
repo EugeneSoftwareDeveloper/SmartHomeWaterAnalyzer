@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:water_analyzer/providers/app_settings.dart';
@@ -104,5 +105,59 @@ void main() {
 
     expect(notifier.state.lastDeviceId, 'AA:BB');
     expect(notifier.state.lastDeviceName, isNull);
+  });
+
+  group('AppSettingsNotifier.setLocale', () {
+    test('по умолчанию язык не выбран — значит, определяется по системе', () async {
+      final notifier = await createNotifier();
+
+      expect(notifier.state.locale, isNull);
+    });
+
+    test('выбранный язык переживает перезапуск', () async {
+      final notifier = await createNotifier();
+
+      await notifier.setLocale(const Locale('en'));
+
+      expect(notifier.state.locale, const Locale('en'));
+      final restarted = await createNotifier({'settings.locale': 'en'});
+      expect(restarted.state.locale, const Locale('en'));
+    });
+
+    test('возврат к автоопределению стирает выбор, а не подставляет язык', () async {
+      // `null` из-за `??` в copyWith откатился бы к прежнему языку, и «По системе»
+      // нельзя было бы выбрать обратно.
+      SharedPreferences.setMockInitialValues({'settings.locale': 'en'});
+      final prefs = await SharedPreferences.getInstance();
+      final notifier = AppSettingsNotifier(prefs);
+
+      await notifier.setLocale(null);
+
+      expect(notifier.state.locale, isNull);
+      expect(
+        prefs.getString('settings.locale'),
+        isNull,
+        reason: 'иначе выбор вернётся при запуске',
+      );
+    });
+
+    test('язык, который приложение больше не поддерживает, читается как автоопределение', () async {
+      // Показывать интерфейс на первом попавшемся языке хуже, чем на системном.
+      final notifier = await createNotifier({'settings.locale': 'de'});
+
+      expect(notifier.state.locale, isNull);
+    });
+
+    test('смена языка не задевает остальные настройки', () async {
+      final notifier = await createNotifier({
+        'settings.lastDeviceId': 'AA:BB',
+        'settings.notificationsEnabled': true,
+      });
+
+      await notifier.setLocale(const Locale('ru'));
+
+      expect(notifier.state.lastDeviceId, 'AA:BB');
+      expect(notifier.state.notificationsEnabled, isTrue);
+    });
   });
 }

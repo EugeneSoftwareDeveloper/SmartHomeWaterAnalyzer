@@ -68,6 +68,8 @@
   "settingsThemeLight": "Светлая",
   "settingsThemeDark": "Тёмная",
   "settingsTheme": "Тема оформления",
+  "settingsLanguage": "Язык",
+  "settingsLanguageSystem": "По системе",
   "settingsProfile": "Профиль норм",
   "settingsNotifications": "Уведомления при выходе из нормы",
   "settingsAbout": "О приложении",
