@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../location/measurement_location.dart';
 import '../location/site_anchor.dart';
+import 'catalog_seed.dart';
 
 part 'database.g.dart';
 
@@ -172,35 +173,19 @@ class SamplingPoints extends Table {
   // `{siteId, roomId, name}` пропустил бы два одинаковых источника без комнаты.
 }
 
-/// Источники, которые предлагаются при первом запуске. Подобраны под реальные
-/// сценарии бытового тестера и профили норм: питьевая вода (кран / фильтр / кулер /
-/// бутилированная), автономные источники (скважина, колодец, родник), аквариум и
-/// бассейн. Пользователь может удалить лишние и добавить свои.
-const List<String> defaultSourceNames = <String>[
-  'Кран на кухне',
-  'После фильтра',
-  'Кулер',
-  'Бутилированная',
-  'Скважина',
-  'Колодец',
-  'Родник',
-  'Аквариум',
-  'Бассейн',
-];
-
-/// Имя места, которое создаётся при первом запуске и в которое переезжают плоские
-/// места при обновлении. «Дом» — самый вероятный вариант для первого объекта;
-/// переименовать его можно в один тап.
-const String defaultSiteName = 'Дом';
-
 @DriftDatabase(tables: [Measurements, Sites, Rooms, SamplingPoints])
 class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(_openConnection());
+  /// Имена первого места и стартовых источников. Приходят снаружи, потому что
+  /// это данные на языке пользователя, а не подписи интерфейса — подробности в
+  /// [CatalogSeed].
+  final CatalogSeed seed;
+
+  AppDatabase(this.seed) : super(_openConnection());
 
   /// Конструктор для unit-тестов: позволяет передать произвольный `QueryExecutor`,
   /// обычно `NativeDatabase.memory()` для in-memory SQLite. Production-код использует
   /// дефолтный конструктор с файловой БД в documents-directory.
-  AppDatabase.forTesting(super.executor);
+  AppDatabase.forTesting(super.executor, this.seed);
 
   @override
   int get schemaVersion => 6;
@@ -285,13 +270,13 @@ class AppDatabase extends _$AppDatabase {
   Future<void> _seedDefaultCatalog() async {
     final now = DateTime.now();
     final siteId = await into(sites).insert(
-      SitesCompanion.insert(name: defaultSiteName, createdAt: now),
+      SitesCompanion.insert(name: seed.siteName, createdAt: now),
       mode: InsertMode.insertOrIgnore,
     );
 
     await batch((batch) {
       batch.insertAll(samplingPoints, [
-        for (final name in defaultSourceNames)
+        for (final name in seed.sourceNames)
           SamplingPointsCompanion.insert(siteId: siteId, name: name, createdAt: now),
       ], mode: InsertMode.insertOrIgnore);
     });
@@ -328,7 +313,7 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> _seedLegacyPlaces() async {
     final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-    for (final name in defaultSourceNames) {
+    for (final name in seed.sourceNames) {
       await customStatement('INSERT OR IGNORE INTO places (name, created_at) VALUES (?, ?)', [
         name,
         now,
@@ -348,7 +333,7 @@ class AppDatabase extends _$AppDatabase {
   Future<void> _migrateLegacyPlacesIntoHierarchy() async {
     final now = DateTime.now();
     final siteId = await into(sites).insert(
-      SitesCompanion.insert(name: defaultSiteName, createdAt: now),
+      SitesCompanion.insert(name: seed.siteName, createdAt: now),
       mode: InsertMode.insertOrIgnore,
     );
 
@@ -450,7 +435,7 @@ class AppDatabase extends _$AppDatabase {
   /// и submit с клавиатуры срабатывают почти одновременно), и БД отвечает
   /// `UNIQUE constraint failed`.
   Future<Site> insertOrGetSite(String name, DateTime createdAt, {String? city}) async {
-    final trimmed = _requireName(name, 'места');
+    final trimmed = _requireName(name, 'site');
 
     await into(sites).insert(
       SitesCompanion.insert(name: trimmed, createdAt: createdAt, city: Value(city)),
@@ -461,7 +446,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<Room> insertOrGetRoom(int siteId, String name, DateTime createdAt) async {
-    final trimmed = _requireName(name, 'комнаты');
+    final trimmed = _requireName(name, 'room');
 
     await into(rooms).insert(
       RoomsCompanion.insert(siteId: siteId, name: trimmed, createdAt: createdAt),
@@ -481,7 +466,7 @@ class AppDatabase extends _$AppDatabase {
     DateTime createdAt, {
     int? roomId,
   }) async {
-    final trimmed = _requireName(name, 'источника');
+    final trimmed = _requireName(name, 'source');
 
     await into(samplingPoints).insert(
       SamplingPointsCompanion.insert(
@@ -511,7 +496,10 @@ class AppDatabase extends _$AppDatabase {
     if (trimmed.isEmpty) {
       // Без этой проверки пустое имя молча создавало бы безымянную запись:
       // пустая строка проходит в TEXT NOT NULL и занимает уникальный индекс.
-      throw ArgumentError.value(name, 'name', 'Название $what не может быть пустым');
+      // Сообщение английское и не переводится: пустое имя до базы не
+      // доходит — UI отсекает его раньше, — и увидеть эту ошибку может только
+      // тот, кто читает стектрейс.
+      throw ArgumentError.value(name, 'name', 'A $what name must not be empty');
     }
     return trimmed;
   }
@@ -562,19 +550,19 @@ class AppDatabase extends _$AppDatabase {
 
   Future<int> renameSite(int siteId, String name, {String? city}) {
     return (update(sites)..where((t) => t.id.equals(siteId))).write(
-      SitesCompanion(name: Value(_requireName(name, 'места')), city: Value(city)),
+      SitesCompanion(name: Value(_requireName(name, 'site')), city: Value(city)),
     );
   }
 
   Future<int> renameRoom(int roomId, String name) {
     return (update(rooms)..where((t) => t.id.equals(roomId))).write(
-      RoomsCompanion(name: Value(_requireName(name, 'комнаты'))),
+      RoomsCompanion(name: Value(_requireName(name, 'room'))),
     );
   }
 
   Future<int> renameSource(int sourceId, String name) {
     return (update(samplingPoints)..where((t) => t.id.equals(sourceId))).write(
-      SamplingPointsCompanion(name: Value(_requireName(name, 'источника'))),
+      SamplingPointsCompanion(name: Value(_requireName(name, 'source'))),
     );
   }
 

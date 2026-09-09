@@ -1,7 +1,10 @@
 import 'dart:io';
 
 import 'package:drift/native.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:water_analyzer/history/catalog_seed.dart';
+import 'package:water_analyzer/l10n/generated/app_localizations.dart';
 import 'package:sqlite3/sqlite3.dart';
 import 'package:water_analyzer/history/database.dart';
 import 'package:water_analyzer/history/measurement_place.dart';
@@ -14,6 +17,12 @@ import 'package:water_analyzer/yinmik/reading.dart';
 /// и реальный путь обновления пользователя остался бы непроверенным. Старая
 /// схема создаётся сырым DDL и помечается `PRAGMA user_version`, после чего файл
 /// открывается production-классом — ровно как это произойдёт на телефоне.
+
+/// Стартовый каталог задаётся явно: в тестах проверяются знакомые русские имена,
+/// а язык машины, на которой их запускают, к делу отношения не имеет.
+final l10n = lookupAppL10n(const Locale('ru'));
+final seed = CatalogSeed.from(l10n);
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -148,7 +157,7 @@ void main() {
   }
 
   Future<AppDatabase> openMigrated() async {
-    final database = AppDatabase.forTesting(NativeDatabase(dbFile));
+    final database = AppDatabase.forTesting(NativeDatabase(dbFile), seed);
     // Любой запрос заставляет drift выполнить миграцию.
     await database.customSelect('SELECT 1').get();
     return database;
@@ -161,7 +170,7 @@ void main() {
       addTearDown(db.close);
       final catalog = PlaceCatalogRepository(db);
 
-      expect((await catalog.sites()).map((s) => s.name), [defaultSiteName]);
+      expect((await catalog.sites()).map((s) => s.name), [seed.siteName]);
 
       final sources = await catalog.sources();
       expect(sources.map((s) => s.name), containsAll(['Кран на кухне', 'Аквариум']));
@@ -301,7 +310,7 @@ void main() {
 
       expect(sources, contains('Дача, колодец'));
       expect(sources, contains('Аквариум'));
-      expect(sources, containsAll(defaultSourceNames));
+      expect(sources, containsAll(seed.sourceNames));
     });
 
     test('метки, различающиеся пробелами, схлопываются в один источник', () async {
@@ -323,7 +332,7 @@ void main() {
 
       // Сравниваем множествами: каталог отдаётся в порядке свежести, а не в
       // порядке объявления дефолтов.
-      expect(sources.map((s) => s.name).toSet(), defaultSourceNames.toSet());
+      expect(sources.map((s) => s.name).toSet(), seed.sourceNames.toSet());
     });
 
     test('старые замеры остаются без профиля норм', () async {
@@ -378,7 +387,7 @@ void main() {
       final source = await PlaceCatalogRepository(db).sourceByLegacyLabel('Кулер');
       final baseline = await HistoryRepository(db).latestForPlace(
         'AA:BB',
-        const MeasurementPlace(siteName: defaultSiteName, sourceName: 'Кулер'),
+        MeasurementPlace(siteName: seed.siteName, sourceName: 'Кулер'),
         legacyLabel: source!.legacyLabel,
       );
 

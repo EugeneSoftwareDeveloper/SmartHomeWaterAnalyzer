@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../history/database.dart';
 import '../history/place_catalog.dart';
 import '../l10n/generated/app_localizations.dart';
+import '../location/measurement_location.dart';
 import '../location/site_anchor.dart';
 import '../providers/history_provider.dart';
 import '../providers/location_provider.dart';
@@ -163,7 +164,9 @@ class _SiteSection extends ConsumerWidget {
         final point = location.location;
         if (point == null) {
           messenger.showSnackBar(
-            SnackBar(content: Text(location.failure?.message ?? l10n.placesCoordinatesUnavailable)),
+            SnackBar(
+              content: Text(location.failure?.message(l10n) ?? l10n.placesCoordinatesUnavailable),
+            ),
           );
           return;
         }

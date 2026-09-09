@@ -121,7 +121,7 @@ class _HistoryBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final groups = groupMeasurementsByDay(rows);
+    final groups = groupMeasurementsByDay(rows, AppL10n.of(context));
 
     return ListView(
       children: [

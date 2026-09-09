@@ -4,6 +4,8 @@ import 'dart:typed_data';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../l10n/generated/app_localizations.dart';
+
 import 'commands.dart';
 import 'decoder.dart';
 import 'reading.dart';
@@ -176,7 +178,7 @@ class YinmikBleClient {
   Future<YinmikReading> sendCommandAndRead(
     BluetoothDevice device,
     Uint8List command, {
-    String commandName = 'неизвестная команда',
+    String commandName = 'unknown command',
     Duration timeout = const Duration(seconds: 20),
   }) async {
     if (!YinmikCommands.areCommandsKnown) {
@@ -273,13 +275,14 @@ enum PermissionResult {
   locationDenied;
 
   bool get isGranted => this == PermissionResult.granted;
+}
 
-  String get message => switch (this) {
-    PermissionResult.granted => 'Все разрешения получены',
-    PermissionResult.bluetoothScanDenied =>
-      'Не дано разрешение «Устройства поблизости» (Bluetooth-сканирование).',
-    PermissionResult.bluetoothConnectDenied => 'Не дано разрешение на подключение по Bluetooth.',
-    PermissionResult.locationDenied =>
-      'На этой версии Android для BLE-сканирования нужна геолокация.',
+/// Объяснение отказа на языке интерфейса.
+extension PermissionResultText on PermissionResult {
+  String message(AppL10n l10n) => switch (this) {
+    PermissionResult.granted => l10n.permissionGranted,
+    PermissionResult.bluetoothScanDenied => l10n.permissionScanDenied,
+    PermissionResult.bluetoothConnectDenied => l10n.permissionConnectDenied,
+    PermissionResult.locationDenied => l10n.permissionLocationDenied,
   };
 }

@@ -1,7 +1,10 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:water_analyzer/history/catalog_seed.dart';
 import 'package:water_analyzer/history/database.dart';
 import 'package:water_analyzer/history/grouping.dart';
 import 'package:water_analyzer/history/measurement_place.dart';
+import 'package:water_analyzer/l10n/generated/app_localizations.dart';
 
 /// Хелпер для создания тестового [Measurement]. Конкретные значения параметров
 /// для группировки не важны — нам нужна только дата.
@@ -26,6 +29,11 @@ Measurement _at(DateTime when, {int id = 0, String? label, String? siteName, Str
     holdReadingOn: false,
   );
 }
+
+/// Стартовый каталог задаётся явно: в тестах проверяются знакомые русские имена,
+/// а язык машины, на которой их запускают, к делу отношения не имеет.
+final l10n = lookupAppL10n(const Locale('ru'));
+final seed = CatalogSeed.from(l10n);
 
 void main() {
   group('placesInHistory', () {
@@ -156,14 +164,14 @@ void main() {
 
   group('groupMeasurementsByDay', () {
     test('пустой ввод — пустой список групп', () {
-      expect(groupMeasurementsByDay(const []), isEmpty);
+      expect(groupMeasurementsByDay(const [], l10n), isEmpty);
     });
 
     test('запись «сегодня» попадает в группу «Сегодня»', () {
       final now = DateTime(2026, 5, 24, 14, 30);
       final rows = [_at(DateTime(2026, 5, 24, 9, 0), id: 1)];
 
-      final groups = groupMeasurementsByDay(rows, now: now);
+      final groups = groupMeasurementsByDay(rows, l10n, now: now);
 
       expect(groups, hasLength(1));
       expect(groups.first.label, 'Сегодня');
@@ -174,7 +182,7 @@ void main() {
       final now = DateTime(2026, 5, 24, 14, 30);
       final rows = [_at(DateTime(2026, 5, 23, 18, 0), id: 1)];
 
-      final groups = groupMeasurementsByDay(rows, now: now);
+      final groups = groupMeasurementsByDay(rows, l10n, now: now);
 
       expect(groups, hasLength(1));
       expect(groups.first.label, 'Вчера');
@@ -184,7 +192,7 @@ void main() {
       final now = DateTime(2026, 5, 24, 14, 30);
       final rows = [_at(DateTime(2026, 5, 22, 10, 0), id: 1)];
 
-      final groups = groupMeasurementsByDay(rows, now: now);
+      final groups = groupMeasurementsByDay(rows, l10n, now: now);
 
       expect(groups, hasLength(1));
       expect(groups.first.label, '22.05.2026');
@@ -198,7 +206,7 @@ void main() {
         _at(DateTime(2026, 5, 24, 9, 0), id: 1),
       ];
 
-      final groups = groupMeasurementsByDay(rows, now: now);
+      final groups = groupMeasurementsByDay(rows, l10n, now: now);
 
       expect(groups, hasLength(1));
       expect(groups.first.label, 'Сегодня');
@@ -216,7 +224,7 @@ void main() {
         _at(DateTime(2026, 5, 21, 9, 0), id: 1), // 21.05
       ];
 
-      final groups = groupMeasurementsByDay(rows, now: now);
+      final groups = groupMeasurementsByDay(rows, l10n, now: now);
 
       expect(groups.map((g) => g.label).toList(), ['Сегодня', 'Вчера', '21.05.2026']);
     });
@@ -229,7 +237,7 @@ void main() {
         _at(DateTime(2026, 5, 22, 5, 0), id: 10),
       ];
 
-      final groups = groupMeasurementsByDay(rows, now: now);
+      final groups = groupMeasurementsByDay(rows, l10n, now: now);
 
       expect(groups, hasLength(1));
       expect(groups.first.measurements.map((m) => m.id), [30, 20, 10]);
@@ -242,7 +250,7 @@ void main() {
         _at(DateTime(2026, 5, 23, 23, 59, 59), id: 1), // вчера (последняя секунда)
       ];
 
-      final groups = groupMeasurementsByDay(rows, now: now);
+      final groups = groupMeasurementsByDay(rows, l10n, now: now);
 
       expect(groups, hasLength(2));
       expect(groups[0].label, 'Сегодня');

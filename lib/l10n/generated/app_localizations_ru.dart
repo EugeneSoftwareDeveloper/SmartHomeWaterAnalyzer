@@ -834,4 +834,68 @@ class AppL10nRu extends AppL10n {
 
   @override
   String get summaryAllMeasured => 'Все параметры измерены.';
+
+  @override
+  String get locationDeniedOnce => 'Замер сохранён без координат: нет разрешения на геолокацию.';
+
+  @override
+  String get locationDeniedForever =>
+      'Замер сохранён без координат: доступ к геолокации запрещён. Разрешить можно в настройках приложения.';
+
+  @override
+  String get locationServiceOff => 'Замер сохранён без координат: геолокация выключена в системе.';
+
+  @override
+  String get locationUnavailable =>
+      'Замер сохранён без координат: не удалось определить местоположение.';
+
+  @override
+  String get permissionGranted => 'Все разрешения получены';
+
+  @override
+  String get permissionScanDenied =>
+      'Не дано разрешение «Устройства поблизости» (Bluetooth-сканирование).';
+
+  @override
+  String get permissionConnectDenied => 'Не дано разрешение на подключение по Bluetooth.';
+
+  @override
+  String get permissionLocationDenied =>
+      'На этой версии Android для BLE-сканирования нужна геолокация.';
+
+  @override
+  String get dateToday => 'Сегодня';
+
+  @override
+  String get dateYesterday => 'Вчера';
+
+  @override
+  String get seedSiteHome => 'Дом';
+
+  @override
+  String get seedSourceKitchenTap => 'Кран на кухне';
+
+  @override
+  String get seedSourceAfterFilter => 'После фильтра';
+
+  @override
+  String get seedSourceCooler => 'Кулер';
+
+  @override
+  String get seedSourceBottled => 'Бутилированная';
+
+  @override
+  String get seedSourceBorehole => 'Скважина';
+
+  @override
+  String get seedSourceWell => 'Колодец';
+
+  @override
+  String get seedSourceSpring => 'Родник';
+
+  @override
+  String get seedSourceAquarium => 'Аквариум';
+
+  @override
+  String get seedSourcePool => 'Бассейн';
 }

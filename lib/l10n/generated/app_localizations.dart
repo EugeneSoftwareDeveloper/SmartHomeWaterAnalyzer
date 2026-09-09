@@ -1586,6 +1586,126 @@ abstract class AppL10n {
   /// In ru, this message translates to:
   /// **'Все параметры измерены.'**
   String get summaryAllMeasured;
+
+  /// No description provided for @locationDeniedOnce.
+  ///
+  /// In ru, this message translates to:
+  /// **'Замер сохранён без координат: нет разрешения на геолокацию.'**
+  String get locationDeniedOnce;
+
+  /// No description provided for @locationDeniedForever.
+  ///
+  /// In ru, this message translates to:
+  /// **'Замер сохранён без координат: доступ к геолокации запрещён. Разрешить можно в настройках приложения.'**
+  String get locationDeniedForever;
+
+  /// No description provided for @locationServiceOff.
+  ///
+  /// In ru, this message translates to:
+  /// **'Замер сохранён без координат: геолокация выключена в системе.'**
+  String get locationServiceOff;
+
+  /// No description provided for @locationUnavailable.
+  ///
+  /// In ru, this message translates to:
+  /// **'Замер сохранён без координат: не удалось определить местоположение.'**
+  String get locationUnavailable;
+
+  /// No description provided for @permissionGranted.
+  ///
+  /// In ru, this message translates to:
+  /// **'Все разрешения получены'**
+  String get permissionGranted;
+
+  /// No description provided for @permissionScanDenied.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не дано разрешение «Устройства поблизости» (Bluetooth-сканирование).'**
+  String get permissionScanDenied;
+
+  /// No description provided for @permissionConnectDenied.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не дано разрешение на подключение по Bluetooth.'**
+  String get permissionConnectDenied;
+
+  /// No description provided for @permissionLocationDenied.
+  ///
+  /// In ru, this message translates to:
+  /// **'На этой версии Android для BLE-сканирования нужна геолокация.'**
+  String get permissionLocationDenied;
+
+  /// No description provided for @dateToday.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сегодня'**
+  String get dateToday;
+
+  /// No description provided for @dateYesterday.
+  ///
+  /// In ru, this message translates to:
+  /// **'Вчера'**
+  String get dateYesterday;
+
+  /// No description provided for @seedSiteHome.
+  ///
+  /// In ru, this message translates to:
+  /// **'Дом'**
+  String get seedSiteHome;
+
+  /// No description provided for @seedSourceKitchenTap.
+  ///
+  /// In ru, this message translates to:
+  /// **'Кран на кухне'**
+  String get seedSourceKitchenTap;
+
+  /// No description provided for @seedSourceAfterFilter.
+  ///
+  /// In ru, this message translates to:
+  /// **'После фильтра'**
+  String get seedSourceAfterFilter;
+
+  /// No description provided for @seedSourceCooler.
+  ///
+  /// In ru, this message translates to:
+  /// **'Кулер'**
+  String get seedSourceCooler;
+
+  /// No description provided for @seedSourceBottled.
+  ///
+  /// In ru, this message translates to:
+  /// **'Бутилированная'**
+  String get seedSourceBottled;
+
+  /// No description provided for @seedSourceBorehole.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скважина'**
+  String get seedSourceBorehole;
+
+  /// No description provided for @seedSourceWell.
+  ///
+  /// In ru, this message translates to:
+  /// **'Колодец'**
+  String get seedSourceWell;
+
+  /// No description provided for @seedSourceSpring.
+  ///
+  /// In ru, this message translates to:
+  /// **'Родник'**
+  String get seedSourceSpring;
+
+  /// No description provided for @seedSourceAquarium.
+  ///
+  /// In ru, this message translates to:
+  /// **'Аквариум'**
+  String get seedSourceAquarium;
+
+  /// No description provided for @seedSourcePool.
+  ///
+  /// In ru, this message translates to:
+  /// **'Бассейн'**
+  String get seedSourcePool;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

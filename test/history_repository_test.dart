@@ -1,8 +1,11 @@
 import 'package:drift/native.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:water_analyzer/history/catalog_seed.dart';
 import 'package:water_analyzer/history/database.dart';
 import 'package:water_analyzer/history/measurement_place.dart';
 import 'package:water_analyzer/history/repository.dart';
+import 'package:water_analyzer/l10n/generated/app_localizations.dart';
 import 'package:water_analyzer/location/measurement_location.dart';
 import 'package:water_analyzer/yinmik/reading.dart';
 
@@ -23,6 +26,11 @@ YinmikReading _reading({double ph = 7.2, int orp = 380}) {
   );
 }
 
+/// Стартовый каталог задаётся явно: в тестах проверяются знакомые русские имена,
+/// а язык машины, на которой их запускают, к делу отношения не имеет.
+final l10n = lookupAppL10n(const Locale('ru'));
+final seed = CatalogSeed.from(l10n);
+
 void main() {
   // drift в тестах требует initialized binding (например, для NativeDatabase.memory)
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -32,7 +40,7 @@ void main() {
     late HistoryRepository repo;
 
     setUp(() {
-      db = AppDatabase.forTesting(NativeDatabase.memory());
+      db = AppDatabase.forTesting(NativeDatabase.memory(), seed);
       repo = HistoryRepository(db);
     });
 
@@ -259,7 +267,7 @@ void main() {
     late HistoryRepository repo;
 
     setUp(() {
-      db = AppDatabase.forTesting(NativeDatabase.memory());
+      db = AppDatabase.forTesting(NativeDatabase.memory(), seed);
       repo = HistoryRepository(db);
     });
 

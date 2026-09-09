@@ -1,4 +1,6 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:water_analyzer/l10n/generated/app_localizations.dart';
 import 'package:water_analyzer/location/measurement_location.dart';
 import 'package:water_analyzer/ui/widgets/location_card.dart';
 
@@ -101,14 +103,23 @@ void main() {
   });
 
   group('LocationFailure', () {
-    test('у каждой причины есть человеческое объяснение', () {
+    test('у каждой причины есть человеческое объяснение на обоих языках', () {
+      for (final locale in AppL10n.supportedLocales) {
+        final l10n = lookupAppL10n(locale);
+        for (final failure in LocationFailure.values) {
+          expect(failure.message(l10n), isNotEmpty, reason: '$failure, $locale');
+        }
+      }
+    });
+
+    test('объяснение говорит, что замер сохранён — просто без геометки', () {
+      // Главное, что должен понять человек: показания не потеряны.
+      final ru = lookupAppL10n(const Locale('ru'));
+      final en = lookupAppL10n(const Locale('en'));
+
       for (final failure in LocationFailure.values) {
-        expect(failure.message, isNotEmpty, reason: '$failure без сообщения');
-        expect(
-          failure.message,
-          contains('без координат'),
-          reason: 'сообщение должно объяснять, что замер сохранён, но без геометки',
-        );
+        expect(failure.message(ru), contains('без координат'), reason: '$failure');
+        expect(failure.message(en), contains('without coordinates'), reason: '$failure');
       }
     });
   });

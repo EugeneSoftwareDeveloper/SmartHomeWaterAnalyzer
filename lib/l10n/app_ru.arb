@@ -410,5 +410,29 @@
   "zoneSgMineralized": "Минерализован.",
   "zoneSgVeryDense": "Очень плотная",
 
-  "summaryAllMeasured": "Все параметры измерены."
+  "summaryAllMeasured": "Все параметры измерены.",
+
+  "locationDeniedOnce": "Замер сохранён без координат: нет разрешения на геолокацию.",
+  "locationDeniedForever": "Замер сохранён без координат: доступ к геолокации запрещён. Разрешить можно в настройках приложения.",
+  "locationServiceOff": "Замер сохранён без координат: геолокация выключена в системе.",
+  "locationUnavailable": "Замер сохранён без координат: не удалось определить местоположение.",
+
+  "permissionGranted": "Все разрешения получены",
+  "permissionScanDenied": "Не дано разрешение «Устройства поблизости» (Bluetooth-сканирование).",
+  "permissionConnectDenied": "Не дано разрешение на подключение по Bluetooth.",
+  "permissionLocationDenied": "На этой версии Android для BLE-сканирования нужна геолокация.",
+
+  "dateToday": "Сегодня",
+  "dateYesterday": "Вчера",
+
+  "seedSiteHome": "Дом",
+  "seedSourceKitchenTap": "Кран на кухне",
+  "seedSourceAfterFilter": "После фильтра",
+  "seedSourceCooler": "Кулер",
+  "seedSourceBottled": "Бутилированная",
+  "seedSourceBorehole": "Скважина",
+  "seedSourceWell": "Колодец",
+  "seedSourceSpring": "Родник",
+  "seedSourceAquarium": "Аквариум",
+  "seedSourcePool": "Бассейн"
 }

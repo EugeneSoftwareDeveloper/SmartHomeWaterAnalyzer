@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:water_analyzer/history/database.dart';
-import 'package:water_analyzer/l10n/generated/app_localizations.dart';
 import 'package:water_analyzer/history/repository.dart';
+import 'package:water_analyzer/l10n/generated/app_localizations.dart';
 import 'package:water_analyzer/location/location_service.dart';
 import 'package:water_analyzer/location/measurement_location.dart';
 import 'package:water_analyzer/location/site_anchor.dart';
@@ -365,7 +365,10 @@ void main() {
       await openSiteMenu(tester, 'Привязать здесь');
 
       verifyNever(() => catalog.setSiteAnchor(any(), any()));
-      expect(find.text(LocationFailure.serviceDisabled.message), findsOneWidget);
+      expect(
+        find.text(LocationFailure.serviceDisabled.message(lookupAppL10n(const Locale('ru')))),
+        findsOneWidget,
+      );
     });
 
     testWidgets('сброс привязки очищает координаты', (tester) async {

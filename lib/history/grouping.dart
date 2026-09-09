@@ -1,5 +1,6 @@
 import 'package:intl/intl.dart';
 
+import '../l10n/generated/app_localizations.dart';
 import 'database.dart';
 import 'measurement_place.dart';
 
@@ -63,10 +64,17 @@ bool measurementIsAt(Measurement row, MeasurementPlace place) {
 /// передают (берётся `DateTime.now()`), в тестах — фиксированная дата, чтобы
 /// результат был детерминированным.
 ///
+/// Подписи «Сегодня» и «Вчера» приходят словарём: заголовки видит пользователь,
+/// и на английском интерфейсе они должны быть английскими.
+///
 /// Возвращает список групп в порядке первого появления записи каждого дня
 /// во входном списке. Если `rows` отсортирован `desc by observedAt`, то первая
 /// группа — самая свежая.
-List<MeasurementDayGroup> groupMeasurementsByDay(List<Measurement> rows, {DateTime? now}) {
+List<MeasurementDayGroup> groupMeasurementsByDay(
+  List<Measurement> rows,
+  AppL10n l10n, {
+  DateTime? now,
+}) {
   final reference = now ?? DateTime.now();
   final today = DateTime(reference.year, reference.month, reference.day);
   final dateFormat = DateFormat('dd.MM.yyyy');
@@ -77,9 +85,9 @@ List<MeasurementDayGroup> groupMeasurementsByDay(List<Measurement> rows, {DateTi
     final diff = today.difference(day).inDays;
     final String label;
     if (diff == 0) {
-      label = 'Сегодня';
+      label = l10n.dateToday;
     } else if (diff == 1) {
-      label = 'Вчера';
+      label = l10n.dateYesterday;
     } else {
       label = dateFormat.format(day);
     }

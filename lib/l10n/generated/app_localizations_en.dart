@@ -831,4 +831,70 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get summaryAllMeasured => 'All parameters measured.';
+
+  @override
+  String get locationDeniedOnce =>
+      'Measurement saved without coordinates: location permission was not granted.';
+
+  @override
+  String get locationDeniedForever =>
+      'Measurement saved without coordinates: location access is denied. You can allow it in the app settings.';
+
+  @override
+  String get locationServiceOff =>
+      'Measurement saved without coordinates: location is turned off system-wide.';
+
+  @override
+  String get locationUnavailable =>
+      'Measurement saved without coordinates: the location could not be determined.';
+
+  @override
+  String get permissionGranted => 'All permissions granted';
+
+  @override
+  String get permissionScanDenied =>
+      'The Nearby devices permission (Bluetooth scanning) was not granted.';
+
+  @override
+  String get permissionConnectDenied => 'The Bluetooth connect permission was not granted.';
+
+  @override
+  String get permissionLocationDenied =>
+      'This Android version needs location access for BLE scanning.';
+
+  @override
+  String get dateToday => 'Today';
+
+  @override
+  String get dateYesterday => 'Yesterday';
+
+  @override
+  String get seedSiteHome => 'Home';
+
+  @override
+  String get seedSourceKitchenTap => 'Kitchen tap';
+
+  @override
+  String get seedSourceAfterFilter => 'After the filter';
+
+  @override
+  String get seedSourceCooler => 'Water cooler';
+
+  @override
+  String get seedSourceBottled => 'Bottled';
+
+  @override
+  String get seedSourceBorehole => 'Borehole';
+
+  @override
+  String get seedSourceWell => 'Well';
+
+  @override
+  String get seedSourceSpring => 'Spring';
+
+  @override
+  String get seedSourceAquarium => 'Aquarium';
+
+  @override
+  String get seedSourcePool => 'Swimming pool';
 }

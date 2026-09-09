@@ -356,7 +356,7 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
       final failure = locationResult?.failure;
       if (failure != null && !_locationFailureReported) {
         _locationFailureReported = true;
-        _showSnackBar(failure.message);
+        _showSnackBar(failure.message(l10n));
       }
     } on Object catch (error) {
       if (!mounted) return;

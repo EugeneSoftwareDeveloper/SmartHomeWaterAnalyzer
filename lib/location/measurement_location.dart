@@ -1,3 +1,5 @@
+import '../l10n/generated/app_localizations.dart';
+
 /// Координаты, привязанные к замеру.
 ///
 /// Отдельный тип вместо голой пары double нужен, чтобы «нет координат» было
@@ -52,18 +54,16 @@ enum LocationFailure {
   serviceDisabled,
 
   /// Фикс не успел прийти за отведённое время или платформа вернула ошибку.
-  unavailable;
+  unavailable,
+}
 
-  String get message => switch (this) {
-    LocationFailure.permissionDenied =>
-      'Замер сохранён без координат: нет разрешения на геолокацию.',
-    LocationFailure.permissionPermanentlyDenied =>
-      'Замер сохранён без координат: доступ к геолокации запрещён. '
-          'Разрешить можно в настройках приложения.',
-    LocationFailure.serviceDisabled =>
-      'Замер сохранён без координат: геолокация выключена в системе.',
-    LocationFailure.unavailable =>
-      'Замер сохранён без координат: не удалось определить местоположение.',
+/// Объяснение отказа на языке интерфейса.
+extension LocationFailureText on LocationFailure {
+  String message(AppL10n l10n) => switch (this) {
+    LocationFailure.permissionDenied => l10n.locationDeniedOnce,
+    LocationFailure.permissionPermanentlyDenied => l10n.locationDeniedForever,
+    LocationFailure.serviceDisabled => l10n.locationServiceOff,
+    LocationFailure.unavailable => l10n.locationUnavailable,
   };
 }
 

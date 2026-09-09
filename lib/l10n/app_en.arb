@@ -409,5 +409,29 @@
   "zoneSgMineralized": "Mineralized",
   "zoneSgVeryDense": "Very dense",
 
-  "summaryAllMeasured": "All parameters measured."
+  "summaryAllMeasured": "All parameters measured.",
+
+  "locationDeniedOnce": "Measurement saved without coordinates: location permission was not granted.",
+  "locationDeniedForever": "Measurement saved without coordinates: location access is denied. You can allow it in the app settings.",
+  "locationServiceOff": "Measurement saved without coordinates: location is turned off system-wide.",
+  "locationUnavailable": "Measurement saved without coordinates: the location could not be determined.",
+
+  "permissionGranted": "All permissions granted",
+  "permissionScanDenied": "The Nearby devices permission (Bluetooth scanning) was not granted.",
+  "permissionConnectDenied": "The Bluetooth connect permission was not granted.",
+  "permissionLocationDenied": "This Android version needs location access for BLE scanning.",
+
+  "dateToday": "Today",
+  "dateYesterday": "Yesterday",
+
+  "seedSiteHome": "Home",
+  "seedSourceKitchenTap": "Kitchen tap",
+  "seedSourceAfterFilter": "After the filter",
+  "seedSourceCooler": "Water cooler",
+  "seedSourceBottled": "Bottled",
+  "seedSourceBorehole": "Borehole",
+  "seedSourceWell": "Well",
+  "seedSourceSpring": "Spring",
+  "seedSourceAquarium": "Aquarium",
+  "seedSourcePool": "Swimming pool"
 }

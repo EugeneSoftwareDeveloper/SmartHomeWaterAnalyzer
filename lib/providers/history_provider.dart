@@ -1,11 +1,26 @@
+import 'dart:ui';
+
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../history/catalog_seed.dart';
 import '../history/database.dart';
 import '../history/place_catalog.dart';
 import '../history/repository.dart';
+import '../l10n/generated/app_localizations.dart';
+import 'app_settings.dart';
 
 final appDatabaseProvider = Provider<AppDatabase>((ref) {
-  final database = AppDatabase();
+  // Стартовый каталог создаётся один раз — при первой установке или при
+  // переезде плоских мест в иерархию, — и попадает в историю именами, которые
+  // потом не переведёшь. Поэтому язык берётся выбранный, а при автоопределении
+  // — системный, приведённый к поддерживаемому.
+  final chosen = ref.read(appSettingsProvider).locale;
+  final locale =
+      chosen ??
+      basicLocaleListResolution(PlatformDispatcher.instance.locales, AppL10n.supportedLocales);
+
+  final database = AppDatabase(CatalogSeed.from(lookupAppL10n(locale)));
   ref.onDispose(database.close);
   return database;
 });

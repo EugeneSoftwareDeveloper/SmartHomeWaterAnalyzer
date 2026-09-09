@@ -11,7 +11,7 @@ import '../l10n/generated/app_localizations.dart';
 import '../providers/app_settings.dart';
 import '../providers/bluetooth_state_provider.dart';
 import '../providers/yinmik_client_provider.dart';
-import '../yinmik/client.dart' show ScanState;
+import '../yinmik/client.dart' show PermissionResultText, ScanState;
 
 /// Главный экран: проверка состояния Bluetooth, сканирование и список найденных
 /// устройств. На стартовом экране слева — пустота, потом по итогам сканирования
@@ -61,12 +61,13 @@ class _HomePageState extends ConsumerState<HomePage> {
       _scanning = true;
     });
 
+    final l10n = AppL10n.of(context);
     final client = ref.read(yinmikBleClientProvider);
     final permission = await client.ensurePermissions();
     if (!permission.isGranted) {
       if (!mounted) return;
       setState(() {
-        _error = permission.message;
+        _error = permission.message(l10n);
         _showSettingsButton = true;
         _scanning = false;
       });
@@ -189,6 +190,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   /// занят официальным приложением — ошибка будет показана уже на экране показаний
   /// (там есть «Повторить»), а список сканирования остаётся под рукой.
   Future<void> _reconnectToLastDevice(String deviceId) async {
+    final l10n = AppL10n.of(context);
     await HapticFeedback.selectionClick();
     await _stopScan();
 
@@ -199,7 +201,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     if (!mounted) return;
     if (!permission.isGranted) {
       setState(() {
-        _error = permission.message;
+        _error = permission.message(l10n);
         _showSettingsButton = true;
         _scanning = false;
       });

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:water_analyzer/l10n/generated/app_localizations.dart';
 import 'package:geolocator_platform_interface/geolocator_platform_interface.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
@@ -144,9 +145,12 @@ void main() {
       expect(result.failure, LocationFailure.unavailable);
     });
 
-    test('у каждой причины отказа есть человеческий текст', () async {
-      for (final failure in LocationFailure.values) {
-        expect(failure.message, isNotEmpty, reason: failure.name);
+    test('у каждой причины отказа есть человеческий текст на обоих языках', () async {
+      for (final locale in AppL10n.supportedLocales) {
+        final l10n = lookupAppL10n(locale);
+        for (final failure in LocationFailure.values) {
+          expect(failure.message(l10n), isNotEmpty, reason: '${failure.name}, $locale');
+        }
       }
     });
   });

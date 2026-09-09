@@ -1,8 +1,11 @@
 import 'package:drift/native.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:water_analyzer/history/catalog_seed.dart';
 import 'package:water_analyzer/history/database.dart';
 import 'package:water_analyzer/history/place_catalog.dart';
 import 'package:water_analyzer/history/repository.dart';
+import 'package:water_analyzer/l10n/generated/app_localizations.dart';
 import 'package:water_analyzer/location/site_anchor.dart';
 
 /// Каталог «место → комната → источник».
@@ -10,6 +13,12 @@ import 'package:water_analyzer/location/site_anchor.dart';
 /// Главное, что здесь проверяется: уникальность имён считается **внутри** места,
 /// а не глобально (иначе «Кухня» не могла бы существовать и дома, и на даче),
 /// и что необязательная комната не ломает эту уникальность.
+
+/// Стартовый каталог задаётся явно: в тестах проверяются знакомые русские имена,
+/// а язык машины, на которой их запускают, к делу отношения не имеет.
+final l10n = lookupAppL10n(const Locale('ru'));
+final seed = CatalogSeed.from(l10n);
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -17,7 +26,7 @@ void main() {
   late PlaceCatalogRepository repo;
 
   setUp(() {
-    db = AppDatabase.forTesting(NativeDatabase.memory());
+    db = AppDatabase.forTesting(NativeDatabase.memory(), seed);
     repo = PlaceCatalogRepository(db);
   });
 
@@ -30,9 +39,23 @@ void main() {
       final sites = await repo.sites();
       final sources = await repo.sources();
 
-      expect(sites.map((s) => s.name), [defaultSiteName]);
-      expect(sources.map((s) => s.name), containsAll(defaultSourceNames));
-      expect(sources, hasLength(defaultSourceNames.length));
+      expect(sites.map((s) => s.name), [seed.siteName]);
+      expect(sources.map((s) => s.name), containsAll(seed.sourceNames));
+      expect(sources, hasLength(seed.sourceNames.length));
+    });
+
+    test('стартовый каталог создаётся на языке пользователя', () async {
+      // Замер хранит имя источника, а не ссылку: «Кран на кухне», однажды
+      // попавший в историю, останется там навсегда. Значит, раздать имена надо
+      // сразу правильно — переводить их задним числом уже нельзя.
+      final english = CatalogSeed.from(lookupAppL10n(const Locale('en')));
+      final db = AppDatabase.forTesting(NativeDatabase.memory(), english);
+      addTearDown(db.close);
+
+      final catalog = PlaceCatalogRepository(db);
+
+      expect((await catalog.sites()).map((s) => s.name), ['Home']);
+      expect((await catalog.sources()).map((s) => s.name), contains('Kitchen tap'));
     });
 
     test('дефолтные источники висят прямо на месте, без комнаты', () async {
@@ -118,7 +141,7 @@ void main() {
       final aquarium = await repo.addSource(site.id, 'Аквариум', roomId: kitchen.id);
 
       expect(filter.id, isNot(aquarium.id));
-      expect(await repo.sources(), hasLength(defaultSourceNames.length + 2));
+      expect(await repo.sources(), hasLength(seed.sourceNames.length + 2));
     });
 
     test('источник без комнаты не дублируется в пределах места', () async {
@@ -209,8 +232,8 @@ void main() {
       await repo.deleteSite(dacha.id);
 
       // Дефолтное место со своими источниками осталось нетронутым.
-      expect((await repo.sites()).map((s) => s.name), [defaultSiteName]);
-      expect(await repo.sources(), hasLength(defaultSourceNames.length));
+      expect((await repo.sites()).map((s) => s.name), [seed.siteName]);
+      expect(await repo.sources(), hasLength(seed.sourceNames.length));
     });
 
     test('удаление комнаты уносит её источники, но не место', () async {
