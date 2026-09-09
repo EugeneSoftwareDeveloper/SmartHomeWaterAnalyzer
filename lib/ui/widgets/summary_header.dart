@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/generated/app_localizations.dart';
 import '../../quality/overview.dart';
 import '../../quality/zone.dart';
 import '../../yinmik/reading.dart';
@@ -14,6 +15,7 @@ class SummaryHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     final theme = Theme.of(context);
     final color = overview.worstCategory.color;
     final icon = _iconFor(overview.worstCategory);
@@ -49,12 +51,12 @@ class SummaryHeader extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      overview.headline,
+                      overview.headline(l10n),
                       style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      overview.description,
+                      overview.description(l10n),
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),

@@ -1,3 +1,4 @@
+import '../l10n/generated/app_localizations.dart';
 import 'catalog.dart';
 import 'parameter.dart';
 import 'profile.dart';
@@ -23,34 +24,34 @@ class WaterQualityOverview {
   bool get isAllGood =>
       worstCategory == QualityCategory.excellent || worstCategory == QualityCategory.good;
 
-  String get headline {
+  String headline(AppL10n l10n) {
     return switch (worstCategory) {
-      QualityCategory.excellent => 'Отличное качество воды',
-      QualityCategory.good => 'Хорошее качество воды',
-      QualityCategory.acceptable => 'Приемлемое качество воды',
-      QualityCategory.caution => 'Требует внимания',
-      QualityCategory.danger => 'Опасное качество воды',
+      QualityCategory.excellent => l10n.qualityExcellent,
+      QualityCategory.good => l10n.qualityGood,
+      QualityCategory.acceptable => l10n.qualityAcceptable,
+      QualityCategory.caution => l10n.qualityCaution,
+      QualityCategory.danger => l10n.qualityDanger,
     };
   }
 
-  String get description {
-    if (isAllGood) return 'Все измеренные параметры в пределах нормы.';
-    if (problematicParameters.isEmpty) return 'Все параметры измерены.';
-    final names = problematicParameters.map((item) => item.shortLabel).join(', ');
-    return 'Вне нормы: $names';
+  String description(AppL10n l10n) {
+    if (isAllGood) return l10n.summaryAllGood;
+    if (problematicParameters.isEmpty) return l10n.summaryAllMeasured;
+    return l10n.summaryProblematic(problematicParameters.map((item) => item.shortLabel).join(', '));
   }
 
   /// Считает оценку по [values] (map по [WaterParameter.key]) для конкретного [profile].
   /// Параметры, для которых нет значения, в расчёт не идут.
   static WaterQualityOverview compute(
     Map<String, double> values, {
+    required AppL10n l10n,
     NormsProfile profile = NormsProfile.drinking,
   }) {
     var worst = QualityCategory.excellent;
     final problematic = <WaterParameter>[];
     var total = 0;
 
-    for (final parameter in WaterParameterCatalog.forProfile(profile)) {
+    for (final parameter in WaterParameterCatalog.forProfile(profile, l10n)) {
       final value = values[parameter.key];
       if (value == null) continue;
       total++;

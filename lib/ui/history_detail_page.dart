@@ -269,9 +269,10 @@ class _MeasurementDetailView extends ConsumerWidget {
       measurement.normsProfile,
       fallback: ref.watch(appSettingsProvider).normsProfile,
     );
-    final parameters = WaterParameterCatalog.forProfile(profile);
+    final l10n = AppL10n.of(context);
+    final parameters = WaterParameterCatalog.forProfile(profile, l10n);
     final values = measurementValues(measurement);
-    final overview = WaterQualityOverview.compute(values, profile: profile);
+    final overview = WaterQualityOverview.compute(values, profile: profile, l10n: l10n);
     final reading = readingFromMeasurement(measurement);
 
     final location = MeasurementLocation.fromNullable(

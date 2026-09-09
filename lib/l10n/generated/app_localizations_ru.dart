@@ -574,4 +574,264 @@ class AppL10nRu extends AppL10n {
   String debugBitUnchanged(String before, String after) {
     return 'Без изменений (status $before → $after)';
   }
+
+  @override
+  String get categoryDanger => 'Опасно';
+
+  @override
+  String get categoryCaution => 'Внимание';
+
+  @override
+  String get categoryAcceptable => 'Приемлемо';
+
+  @override
+  String get categoryGood => 'Хорошо';
+
+  @override
+  String get categoryExcellent => 'Отлично';
+
+  @override
+  String get paramPh => 'Кислотность';
+
+  @override
+  String get paramOrp => 'Редокс-потенциал';
+
+  @override
+  String get paramEc => 'Электропроводность';
+
+  @override
+  String get paramTds => 'Минерализация';
+
+  @override
+  String get paramSalinity => 'Солёность';
+
+  @override
+  String get paramSalinityShort => 'Соль';
+
+  @override
+  String get paramTemperature => 'Температура';
+
+  @override
+  String get paramSg => 'Плотность воды';
+
+  @override
+  String get unitMillivolt => 'мВ';
+
+  @override
+  String get unitMicrosiemens => 'мкСм/см';
+
+  @override
+  String get paramPhDescriptionDrinking => 'Кислотность/щёлочность. Норма питьевой воды 6.5–8.5.';
+
+  @override
+  String get paramPhDescriptionPool =>
+      'Кислотность бассейна. Оптимум 7.2–7.6 для эффективной дезинфекции.';
+
+  @override
+  String get paramPhDescriptionAquarium =>
+      'Кислотность аквариума. Большинство пресноводных рыб 6.5–7.5; уточняй по видам.';
+
+  @override
+  String get paramPhDescriptionHydroponics =>
+      'Кислотность раствора. Оптимум 5.8–6.5 для усвоения большинства питательных веществ.';
+
+  @override
+  String get paramOrpDescription =>
+      'Окислительно-восстановительный потенциал. Для питьевой воды обычно 200–600 мВ.';
+
+  @override
+  String get paramOrpDescriptionPool =>
+      'Окислительный потенциал бассейна. ВОЗ рекомендует ≥650 мВ для безопасности.';
+
+  @override
+  String get paramEcDescription => 'Электропроводность. Для питьевой воды до 1500 мкСм/см.';
+
+  @override
+  String get paramEcDescriptionHydroponics =>
+      'Концентрация раствора. Большинство культур 1200–2000 мкСм/см.';
+
+  @override
+  String get paramTdsDescriptionDrinking => 'Общая минерализация. Для питьевой воды до 1000 ppm.';
+
+  @override
+  String get paramTdsDescriptionPool => 'Минерализация бассейна.';
+
+  @override
+  String get paramTdsDescriptionAquarium =>
+      'Минерализация. Для большинства пресноводных рыб 80–300 ppm.';
+
+  @override
+  String get paramTdsDescriptionHydroponics => 'Минерализация раствора.';
+
+  @override
+  String get paramSalinityDescription => 'Соленость в ppm. Для пресной воды близко к нулю.';
+
+  @override
+  String get paramSalinityDescriptionPool =>
+      'Соленость бассейна. Для соляных систем 2700–3400 ppm (вне шкалы).';
+
+  @override
+  String get paramTemperatureDescription => 'Температура воды.';
+
+  @override
+  String get paramSgDescription => 'Удельная плотность. Для пресной воды близко к 1.000.';
+
+  @override
+  String get zonePhStronglyAcidic => 'Сильно кислая';
+
+  @override
+  String get zonePhAcidic => 'Кислая';
+
+  @override
+  String get zonePhLow => 'Низкая';
+
+  @override
+  String get zonePhNormal => 'Норма';
+
+  @override
+  String get zonePhOptimum => 'Оптимум';
+
+  @override
+  String get zonePhHigh => 'Высокая';
+
+  @override
+  String get zonePhAlkaline => 'Щелочная';
+
+  @override
+  String get zonePhStronglyAlkaline => 'Сильно щелочная';
+
+  @override
+  String get zoneOrpLow => 'Низкий';
+
+  @override
+  String get zoneOrpSlightlyLow => 'Маловато';
+
+  @override
+  String get zoneOrpOptimum => 'Оптимум';
+
+  @override
+  String get zoneOrpHigh => 'Высокий';
+
+  @override
+  String get zoneOrpVeryHigh => 'Сильно высокий';
+
+  @override
+  String get zoneOrpReducing => 'Восстановит.';
+
+  @override
+  String get zoneOrpNeutral => 'Нейтральная';
+
+  @override
+  String get zoneOrpOxidizing => 'Окислит.';
+
+  @override
+  String get zoneOrpStronglyOxidizing => 'Сильно окислит.';
+
+  @override
+  String get zoneEcPurified => 'Очищенная';
+
+  @override
+  String get zoneEcOptimum => 'Оптимум';
+
+  @override
+  String get zoneEcNormal => 'Норма';
+
+  @override
+  String get zoneEcAcceptable => 'Приемлемо';
+
+  @override
+  String get zoneEcHigh => 'Высоко';
+
+  @override
+  String get zoneEcVeryHigh => 'Очень высоко';
+
+  @override
+  String get zoneEcWeakSolution => 'Слабый раствор';
+
+  @override
+  String get zoneEcConcentrated => 'Концентрир.';
+
+  @override
+  String get zoneEcTooStrong => 'Слишком';
+
+  @override
+  String get zoneTdsPurified => 'Очищенная';
+
+  @override
+  String get zoneTdsNormal => 'Норма';
+
+  @override
+  String get zoneTdsAcceptable => 'Приемлемо';
+
+  @override
+  String get zoneTdsHard => 'Жёсткая';
+
+  @override
+  String get zoneTdsNotDrinkable => 'Не питьевая';
+
+  @override
+  String get zoneSalinityFresh => 'Пресная';
+
+  @override
+  String get zoneSalinityLow => 'Низко';
+
+  @override
+  String get zoneSalinityBrackish => 'Солоноватая';
+
+  @override
+  String get zoneSalinityHigh => 'Высоко';
+
+  @override
+  String get zoneTempVeryCold => 'Очень холодная';
+
+  @override
+  String get zoneTempCold => 'Холодная';
+
+  @override
+  String get zoneTempCool => 'Прохладная';
+
+  @override
+  String get zoneTempRoom => 'Комнатная';
+
+  @override
+  String get zoneTempWarm => 'Тёплая';
+
+  @override
+  String get zoneTempHot => 'Горячая';
+
+  @override
+  String get zoneTempComfort => 'Комфорт';
+
+  @override
+  String get zoneTempOverheated => 'Перегрета';
+
+  @override
+  String get zoneTempAquaCold => 'Холодно';
+
+  @override
+  String get zoneTempAquaCool => 'Прохладно';
+
+  @override
+  String get zoneTempAquaNormal => 'Норма';
+
+  @override
+  String get zoneTempAquaWarm => 'Тёпло';
+
+  @override
+  String get zoneTempAquaOverheat => 'Перегрев';
+
+  @override
+  String get zoneSgLow => 'Низкая';
+
+  @override
+  String get zoneSgNormal => 'Норма';
+
+  @override
+  String get zoneSgMineralized => 'Минерализован.';
+
+  @override
+  String get zoneSgVeryDense => 'Очень плотная';
+
+  @override
+  String get summaryAllMeasured => 'Все параметры измерены.';
 }

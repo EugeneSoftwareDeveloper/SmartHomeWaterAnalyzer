@@ -28,7 +28,9 @@
 // его вывод.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:water_analyzer/l10n/generated/app_localizations.dart';
 import 'package:water_analyzer/quality/catalog.dart';
+import 'package:water_analyzer/quality/profile.dart';
 import 'package:water_analyzer/quality/parameter.dart';
 import 'package:water_analyzer/quality/trend.dart';
 import 'package:water_analyzer/ui/widgets/color_gauge.dart';
@@ -42,20 +44,13 @@ const _scene = String.fromEnvironment('SCENE', defaultValue: 'cards');
 /// температуры одновременно.
 List<double> _samples(WaterParameter p) {
   final span = p.scaleMax - p.scaleMin;
-  return [
-    p.scaleMin + span * 0.1,
-    p.scaleMin + span * 0.5,
-    p.scaleMin + span * 0.9,
-  ];
+  return [p.scaleMin + span * 0.1, p.scaleMin + span * 0.5, p.scaleMin + span * 0.9];
 }
 
 Widget _themed(Brightness brightness, Widget child) {
   return Theme(
     data: ThemeData(
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFF2F6FD0),
-        brightness: brightness,
-      ),
+      colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF2F6FD0), brightness: brightness),
       useMaterial3: true,
     ),
     child: Builder(
@@ -67,18 +62,22 @@ Widget _themed(Brightness brightness, Widget child) {
   );
 }
 
-Future<void> _shoot(
-  WidgetTester tester,
-  Widget child,
-  String name,
-  Size size,
-) async {
+Future<void> _shoot(WidgetTester tester, Widget child, String name, Size size) async {
   // Поверхность теста по умолчанию 800x600: содержимое в неё не влезает
   // и рендер падает с overflow, а мелкие сцены приезжают с полями.
   await tester.binding.setSurfaceSize(size);
   addTearDown(() => tester.binding.setSurfaceSize(null));
+  // Карточки берут подписи из словаря: без Localizations поверх дерева
+  // рендер падает ещё до снимка.
   await tester.pumpWidget(
-    Directionality(textDirection: TextDirection.ltr, child: child),
+    Directionality(
+      textDirection: TextDirection.ltr,
+      child: Localizations(
+        locale: const Locale('ru'),
+        delegates: AppL10n.localizationsDelegates,
+        child: child,
+      ),
+    ),
   );
   await expectLater(
     find.byType(Directionality),
@@ -89,7 +88,11 @@ Future<void> _shoot(
 
 void main() {
   testWidgets('preview: $_scene', (tester) async {
-    final parameters = WaterParameterCatalog.all;
+    // Снимки делаются на русском: они идут в документацию проекта.
+    final parameters = WaterParameterCatalog.forProfile(
+      NormsProfile.drinking,
+      lookupAppL10n(const Locale('ru')),
+    );
 
     switch (_scene) {
       case 'gauges':
@@ -108,10 +111,7 @@ void main() {
                       for (final value in _samples(parameter))
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 8),
-                          child: ColorGauge(
-                            parameter: parameter,
-                            value: value,
-                          ),
+                          child: ColorGauge(parameter: parameter, value: value),
                         ),
                     ],
                   ),

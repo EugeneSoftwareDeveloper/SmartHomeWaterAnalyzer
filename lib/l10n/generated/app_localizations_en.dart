@@ -570,4 +570,265 @@ class AppL10nEn extends AppL10n {
   String debugBitUnchanged(String before, String after) {
     return 'No change (status $before → $after)';
   }
+
+  @override
+  String get categoryDanger => 'Dangerous';
+
+  @override
+  String get categoryCaution => 'Attention';
+
+  @override
+  String get categoryAcceptable => 'Acceptable';
+
+  @override
+  String get categoryGood => 'Good';
+
+  @override
+  String get categoryExcellent => 'Excellent';
+
+  @override
+  String get paramPh => 'Acidity';
+
+  @override
+  String get paramOrp => 'Redox potential';
+
+  @override
+  String get paramEc => 'Conductivity';
+
+  @override
+  String get paramTds => 'Dissolved solids';
+
+  @override
+  String get paramSalinity => 'Salinity';
+
+  @override
+  String get paramSalinityShort => 'Salt';
+
+  @override
+  String get paramTemperature => 'Temperature';
+
+  @override
+  String get paramSg => 'Water density';
+
+  @override
+  String get unitMillivolt => 'mV';
+
+  @override
+  String get unitMicrosiemens => 'µS/cm';
+
+  @override
+  String get paramPhDescriptionDrinking =>
+      'Acidity and alkalinity. Drinking water is normally 6.5–8.5.';
+
+  @override
+  String get paramPhDescriptionPool =>
+      'Pool acidity. 7.2–7.6 is optimal for effective disinfection.';
+
+  @override
+  String get paramPhDescriptionAquarium =>
+      'Aquarium acidity. Most freshwater fish want 6.5–7.5; check your species.';
+
+  @override
+  String get paramPhDescriptionHydroponics =>
+      'Solution acidity. 5.8–6.5 is optimal for uptake of most nutrients.';
+
+  @override
+  String get paramOrpDescription =>
+      'Oxidation-reduction potential. Drinking water is usually 200–600 mV.';
+
+  @override
+  String get paramOrpDescriptionPool =>
+      'Pool oxidation potential. The WHO recommends ≥650 mV for safety.';
+
+  @override
+  String get paramEcDescription => 'Electrical conductivity. Up to 1500 µS/cm for drinking water.';
+
+  @override
+  String get paramEcDescriptionHydroponics => 'Solution strength. Most crops want 1200–2000 µS/cm.';
+
+  @override
+  String get paramTdsDescriptionDrinking =>
+      'Total dissolved solids. Up to 1000 ppm for drinking water.';
+
+  @override
+  String get paramTdsDescriptionPool => 'Dissolved solids in the pool.';
+
+  @override
+  String get paramTdsDescriptionAquarium =>
+      'Dissolved solids. Most freshwater fish want 80–300 ppm.';
+
+  @override
+  String get paramTdsDescriptionHydroponics => 'Dissolved solids in the solution.';
+
+  @override
+  String get paramSalinityDescription => 'Salinity in ppm. Close to zero for fresh water.';
+
+  @override
+  String get paramSalinityDescriptionPool =>
+      'Pool salinity. Salt systems want 2700–3400 ppm (off this scale).';
+
+  @override
+  String get paramTemperatureDescription => 'Water temperature.';
+
+  @override
+  String get paramSgDescription => 'Specific gravity. Close to 1.000 for fresh water.';
+
+  @override
+  String get zonePhStronglyAcidic => 'Strongly acidic';
+
+  @override
+  String get zonePhAcidic => 'Acidic';
+
+  @override
+  String get zonePhLow => 'Low';
+
+  @override
+  String get zonePhNormal => 'Normal';
+
+  @override
+  String get zonePhOptimum => 'Optimum';
+
+  @override
+  String get zonePhHigh => 'High';
+
+  @override
+  String get zonePhAlkaline => 'Alkaline';
+
+  @override
+  String get zonePhStronglyAlkaline => 'Strongly alkaline';
+
+  @override
+  String get zoneOrpLow => 'Low';
+
+  @override
+  String get zoneOrpSlightlyLow => 'A bit low';
+
+  @override
+  String get zoneOrpOptimum => 'Optimum';
+
+  @override
+  String get zoneOrpHigh => 'High';
+
+  @override
+  String get zoneOrpVeryHigh => 'Very high';
+
+  @override
+  String get zoneOrpReducing => 'Reducing';
+
+  @override
+  String get zoneOrpNeutral => 'Neutral';
+
+  @override
+  String get zoneOrpOxidizing => 'Oxidizing';
+
+  @override
+  String get zoneOrpStronglyOxidizing => 'Strongly oxid.';
+
+  @override
+  String get zoneEcPurified => 'Purified';
+
+  @override
+  String get zoneEcOptimum => 'Optimum';
+
+  @override
+  String get zoneEcNormal => 'Normal';
+
+  @override
+  String get zoneEcAcceptable => 'Acceptable';
+
+  @override
+  String get zoneEcHigh => 'High';
+
+  @override
+  String get zoneEcVeryHigh => 'Very high';
+
+  @override
+  String get zoneEcWeakSolution => 'Weak solution';
+
+  @override
+  String get zoneEcConcentrated => 'Concentrated';
+
+  @override
+  String get zoneEcTooStrong => 'Too strong';
+
+  @override
+  String get zoneTdsPurified => 'Purified';
+
+  @override
+  String get zoneTdsNormal => 'Normal';
+
+  @override
+  String get zoneTdsAcceptable => 'Acceptable';
+
+  @override
+  String get zoneTdsHard => 'Hard';
+
+  @override
+  String get zoneTdsNotDrinkable => 'Not drinkable';
+
+  @override
+  String get zoneSalinityFresh => 'Fresh';
+
+  @override
+  String get zoneSalinityLow => 'Low';
+
+  @override
+  String get zoneSalinityBrackish => 'Brackish';
+
+  @override
+  String get zoneSalinityHigh => 'High';
+
+  @override
+  String get zoneTempVeryCold => 'Very cold';
+
+  @override
+  String get zoneTempCold => 'Cold';
+
+  @override
+  String get zoneTempCool => 'Cool';
+
+  @override
+  String get zoneTempRoom => 'Room';
+
+  @override
+  String get zoneTempWarm => 'Warm';
+
+  @override
+  String get zoneTempHot => 'Hot';
+
+  @override
+  String get zoneTempComfort => 'Comfort';
+
+  @override
+  String get zoneTempOverheated => 'Overheated';
+
+  @override
+  String get zoneTempAquaCold => 'Cold';
+
+  @override
+  String get zoneTempAquaCool => 'Cool';
+
+  @override
+  String get zoneTempAquaNormal => 'Normal';
+
+  @override
+  String get zoneTempAquaWarm => 'Warm';
+
+  @override
+  String get zoneTempAquaOverheat => 'Overheated';
+
+  @override
+  String get zoneSgLow => 'Low';
+
+  @override
+  String get zoneSgNormal => 'Normal';
+
+  @override
+  String get zoneSgMineralized => 'Mineralized';
+
+  @override
+  String get zoneSgVeryDense => 'Very dense';
+
+  @override
+  String get summaryAllMeasured => 'All parameters measured.';
 }

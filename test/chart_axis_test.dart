@@ -1,7 +1,13 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:water_analyzer/l10n/generated/app_localizations.dart';
 import 'package:water_analyzer/quality/catalog.dart';
 import 'package:water_analyzer/quality/profile.dart';
 import 'package:water_analyzer/ui/widgets/chart_axis.dart';
+
+/// Тексты каталога приходят из словаря, поэтому тестам нужен свой набор.
+/// Русский взят намеренно: проверки сравнивают знакомые формулировки.
+final l10n = lookupAppL10n(const Locale('ru'));
 
 void main() {
   group('niceAxisInterval', () {
@@ -44,28 +50,28 @@ void main() {
 
   group('formatChartAxisLabel', () {
     test('параметр с малым диапазоном (pH) — десятичный формат', () {
-      final ph = WaterParameterCatalog.parameterFor(NormsProfile.drinking, 'ph');
+      final ph = WaterParameterCatalog.parameterFor(NormsProfile.drinking, 'ph', l10n);
       expect(formatChartAxisLabel(7, ph), '7.0');
       expect(formatChartAxisLabel(8.5, ph), '8.5');
       expect(formatChartAxisLabel(0, ph), '0.0');
     });
 
     test('параметр с большим диапазоном (TDS) до 1000 — целое число', () {
-      final tds = WaterParameterCatalog.parameterFor(NormsProfile.drinking, 'tds');
+      final tds = WaterParameterCatalog.parameterFor(NormsProfile.drinking, 'tds', l10n);
       // tds.scaleMax >= 1000, поэтому формат для значений < 1000 — целое.
       expect(formatChartAxisLabel(500, tds), '500');
       expect(formatChartAxisLabel(0, tds), '0');
     });
 
     test('параметр с большим диапазоном — тысячи в компактном формате', () {
-      final tds = WaterParameterCatalog.parameterFor(NormsProfile.drinking, 'tds');
+      final tds = WaterParameterCatalog.parameterFor(NormsProfile.drinking, 'tds', l10n);
       expect(formatChartAxisLabel(1000, tds), '1.0k');
       expect(formatChartAxisLabel(1500, tds), '1.5k');
       expect(formatChartAxisLabel(2500, tds), '2.5k');
     });
 
     test('SG (плотность 0.99..1.05) — два знака после запятой ограничены 1', () {
-      final sg = WaterParameterCatalog.parameterFor(NormsProfile.drinking, 'sg');
+      final sg = WaterParameterCatalog.parameterFor(NormsProfile.drinking, 'sg', l10n);
       // fractionDigits может быть >=2, но clamp(0, 1) ограничивает до 1 знака.
       final label = formatChartAxisLabel(1.02, sg);
       expect(label.split('.').last.length, lessThanOrEqualTo(1));

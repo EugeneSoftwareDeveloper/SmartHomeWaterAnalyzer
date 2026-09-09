@@ -1082,6 +1082,510 @@ abstract class AppL10n {
   /// In ru, this message translates to:
   /// **'Без изменений (status {before} → {after})'**
   String debugBitUnchanged(String before, String after);
+
+  /// No description provided for @categoryDanger.
+  ///
+  /// In ru, this message translates to:
+  /// **'Опасно'**
+  String get categoryDanger;
+
+  /// No description provided for @categoryCaution.
+  ///
+  /// In ru, this message translates to:
+  /// **'Внимание'**
+  String get categoryCaution;
+
+  /// No description provided for @categoryAcceptable.
+  ///
+  /// In ru, this message translates to:
+  /// **'Приемлемо'**
+  String get categoryAcceptable;
+
+  /// No description provided for @categoryGood.
+  ///
+  /// In ru, this message translates to:
+  /// **'Хорошо'**
+  String get categoryGood;
+
+  /// No description provided for @categoryExcellent.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отлично'**
+  String get categoryExcellent;
+
+  /// No description provided for @paramPh.
+  ///
+  /// In ru, this message translates to:
+  /// **'Кислотность'**
+  String get paramPh;
+
+  /// No description provided for @paramOrp.
+  ///
+  /// In ru, this message translates to:
+  /// **'Редокс-потенциал'**
+  String get paramOrp;
+
+  /// No description provided for @paramEc.
+  ///
+  /// In ru, this message translates to:
+  /// **'Электропроводность'**
+  String get paramEc;
+
+  /// No description provided for @paramTds.
+  ///
+  /// In ru, this message translates to:
+  /// **'Минерализация'**
+  String get paramTds;
+
+  /// No description provided for @paramSalinity.
+  ///
+  /// In ru, this message translates to:
+  /// **'Солёность'**
+  String get paramSalinity;
+
+  /// No description provided for @paramSalinityShort.
+  ///
+  /// In ru, this message translates to:
+  /// **'Соль'**
+  String get paramSalinityShort;
+
+  /// No description provided for @paramTemperature.
+  ///
+  /// In ru, this message translates to:
+  /// **'Температура'**
+  String get paramTemperature;
+
+  /// No description provided for @paramSg.
+  ///
+  /// In ru, this message translates to:
+  /// **'Плотность воды'**
+  String get paramSg;
+
+  /// No description provided for @unitMillivolt.
+  ///
+  /// In ru, this message translates to:
+  /// **'мВ'**
+  String get unitMillivolt;
+
+  /// No description provided for @unitMicrosiemens.
+  ///
+  /// In ru, this message translates to:
+  /// **'мкСм/см'**
+  String get unitMicrosiemens;
+
+  /// No description provided for @paramPhDescriptionDrinking.
+  ///
+  /// In ru, this message translates to:
+  /// **'Кислотность/щёлочность. Норма питьевой воды 6.5–8.5.'**
+  String get paramPhDescriptionDrinking;
+
+  /// No description provided for @paramPhDescriptionPool.
+  ///
+  /// In ru, this message translates to:
+  /// **'Кислотность бассейна. Оптимум 7.2–7.6 для эффективной дезинфекции.'**
+  String get paramPhDescriptionPool;
+
+  /// No description provided for @paramPhDescriptionAquarium.
+  ///
+  /// In ru, this message translates to:
+  /// **'Кислотность аквариума. Большинство пресноводных рыб 6.5–7.5; уточняй по видам.'**
+  String get paramPhDescriptionAquarium;
+
+  /// No description provided for @paramPhDescriptionHydroponics.
+  ///
+  /// In ru, this message translates to:
+  /// **'Кислотность раствора. Оптимум 5.8–6.5 для усвоения большинства питательных веществ.'**
+  String get paramPhDescriptionHydroponics;
+
+  /// No description provided for @paramOrpDescription.
+  ///
+  /// In ru, this message translates to:
+  /// **'Окислительно-восстановительный потенциал. Для питьевой воды обычно 200–600 мВ.'**
+  String get paramOrpDescription;
+
+  /// No description provided for @paramOrpDescriptionPool.
+  ///
+  /// In ru, this message translates to:
+  /// **'Окислительный потенциал бассейна. ВОЗ рекомендует ≥650 мВ для безопасности.'**
+  String get paramOrpDescriptionPool;
+
+  /// No description provided for @paramEcDescription.
+  ///
+  /// In ru, this message translates to:
+  /// **'Электропроводность. Для питьевой воды до 1500 мкСм/см.'**
+  String get paramEcDescription;
+
+  /// No description provided for @paramEcDescriptionHydroponics.
+  ///
+  /// In ru, this message translates to:
+  /// **'Концентрация раствора. Большинство культур 1200–2000 мкСм/см.'**
+  String get paramEcDescriptionHydroponics;
+
+  /// No description provided for @paramTdsDescriptionDrinking.
+  ///
+  /// In ru, this message translates to:
+  /// **'Общая минерализация. Для питьевой воды до 1000 ppm.'**
+  String get paramTdsDescriptionDrinking;
+
+  /// No description provided for @paramTdsDescriptionPool.
+  ///
+  /// In ru, this message translates to:
+  /// **'Минерализация бассейна.'**
+  String get paramTdsDescriptionPool;
+
+  /// No description provided for @paramTdsDescriptionAquarium.
+  ///
+  /// In ru, this message translates to:
+  /// **'Минерализация. Для большинства пресноводных рыб 80–300 ppm.'**
+  String get paramTdsDescriptionAquarium;
+
+  /// No description provided for @paramTdsDescriptionHydroponics.
+  ///
+  /// In ru, this message translates to:
+  /// **'Минерализация раствора.'**
+  String get paramTdsDescriptionHydroponics;
+
+  /// No description provided for @paramSalinityDescription.
+  ///
+  /// In ru, this message translates to:
+  /// **'Соленость в ppm. Для пресной воды близко к нулю.'**
+  String get paramSalinityDescription;
+
+  /// No description provided for @paramSalinityDescriptionPool.
+  ///
+  /// In ru, this message translates to:
+  /// **'Соленость бассейна. Для соляных систем 2700–3400 ppm (вне шкалы).'**
+  String get paramSalinityDescriptionPool;
+
+  /// No description provided for @paramTemperatureDescription.
+  ///
+  /// In ru, this message translates to:
+  /// **'Температура воды.'**
+  String get paramTemperatureDescription;
+
+  /// No description provided for @paramSgDescription.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удельная плотность. Для пресной воды близко к 1.000.'**
+  String get paramSgDescription;
+
+  /// No description provided for @zonePhStronglyAcidic.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сильно кислая'**
+  String get zonePhStronglyAcidic;
+
+  /// No description provided for @zonePhAcidic.
+  ///
+  /// In ru, this message translates to:
+  /// **'Кислая'**
+  String get zonePhAcidic;
+
+  /// No description provided for @zonePhLow.
+  ///
+  /// In ru, this message translates to:
+  /// **'Низкая'**
+  String get zonePhLow;
+
+  /// No description provided for @zonePhNormal.
+  ///
+  /// In ru, this message translates to:
+  /// **'Норма'**
+  String get zonePhNormal;
+
+  /// No description provided for @zonePhOptimum.
+  ///
+  /// In ru, this message translates to:
+  /// **'Оптимум'**
+  String get zonePhOptimum;
+
+  /// No description provided for @zonePhHigh.
+  ///
+  /// In ru, this message translates to:
+  /// **'Высокая'**
+  String get zonePhHigh;
+
+  /// No description provided for @zonePhAlkaline.
+  ///
+  /// In ru, this message translates to:
+  /// **'Щелочная'**
+  String get zonePhAlkaline;
+
+  /// No description provided for @zonePhStronglyAlkaline.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сильно щелочная'**
+  String get zonePhStronglyAlkaline;
+
+  /// No description provided for @zoneOrpLow.
+  ///
+  /// In ru, this message translates to:
+  /// **'Низкий'**
+  String get zoneOrpLow;
+
+  /// No description provided for @zoneOrpSlightlyLow.
+  ///
+  /// In ru, this message translates to:
+  /// **'Маловато'**
+  String get zoneOrpSlightlyLow;
+
+  /// No description provided for @zoneOrpOptimum.
+  ///
+  /// In ru, this message translates to:
+  /// **'Оптимум'**
+  String get zoneOrpOptimum;
+
+  /// No description provided for @zoneOrpHigh.
+  ///
+  /// In ru, this message translates to:
+  /// **'Высокий'**
+  String get zoneOrpHigh;
+
+  /// No description provided for @zoneOrpVeryHigh.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сильно высокий'**
+  String get zoneOrpVeryHigh;
+
+  /// No description provided for @zoneOrpReducing.
+  ///
+  /// In ru, this message translates to:
+  /// **'Восстановит.'**
+  String get zoneOrpReducing;
+
+  /// No description provided for @zoneOrpNeutral.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нейтральная'**
+  String get zoneOrpNeutral;
+
+  /// No description provided for @zoneOrpOxidizing.
+  ///
+  /// In ru, this message translates to:
+  /// **'Окислит.'**
+  String get zoneOrpOxidizing;
+
+  /// No description provided for @zoneOrpStronglyOxidizing.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сильно окислит.'**
+  String get zoneOrpStronglyOxidizing;
+
+  /// No description provided for @zoneEcPurified.
+  ///
+  /// In ru, this message translates to:
+  /// **'Очищенная'**
+  String get zoneEcPurified;
+
+  /// No description provided for @zoneEcOptimum.
+  ///
+  /// In ru, this message translates to:
+  /// **'Оптимум'**
+  String get zoneEcOptimum;
+
+  /// No description provided for @zoneEcNormal.
+  ///
+  /// In ru, this message translates to:
+  /// **'Норма'**
+  String get zoneEcNormal;
+
+  /// No description provided for @zoneEcAcceptable.
+  ///
+  /// In ru, this message translates to:
+  /// **'Приемлемо'**
+  String get zoneEcAcceptable;
+
+  /// No description provided for @zoneEcHigh.
+  ///
+  /// In ru, this message translates to:
+  /// **'Высоко'**
+  String get zoneEcHigh;
+
+  /// No description provided for @zoneEcVeryHigh.
+  ///
+  /// In ru, this message translates to:
+  /// **'Очень высоко'**
+  String get zoneEcVeryHigh;
+
+  /// No description provided for @zoneEcWeakSolution.
+  ///
+  /// In ru, this message translates to:
+  /// **'Слабый раствор'**
+  String get zoneEcWeakSolution;
+
+  /// No description provided for @zoneEcConcentrated.
+  ///
+  /// In ru, this message translates to:
+  /// **'Концентрир.'**
+  String get zoneEcConcentrated;
+
+  /// No description provided for @zoneEcTooStrong.
+  ///
+  /// In ru, this message translates to:
+  /// **'Слишком'**
+  String get zoneEcTooStrong;
+
+  /// No description provided for @zoneTdsPurified.
+  ///
+  /// In ru, this message translates to:
+  /// **'Очищенная'**
+  String get zoneTdsPurified;
+
+  /// No description provided for @zoneTdsNormal.
+  ///
+  /// In ru, this message translates to:
+  /// **'Норма'**
+  String get zoneTdsNormal;
+
+  /// No description provided for @zoneTdsAcceptable.
+  ///
+  /// In ru, this message translates to:
+  /// **'Приемлемо'**
+  String get zoneTdsAcceptable;
+
+  /// No description provided for @zoneTdsHard.
+  ///
+  /// In ru, this message translates to:
+  /// **'Жёсткая'**
+  String get zoneTdsHard;
+
+  /// No description provided for @zoneTdsNotDrinkable.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не питьевая'**
+  String get zoneTdsNotDrinkable;
+
+  /// No description provided for @zoneSalinityFresh.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пресная'**
+  String get zoneSalinityFresh;
+
+  /// No description provided for @zoneSalinityLow.
+  ///
+  /// In ru, this message translates to:
+  /// **'Низко'**
+  String get zoneSalinityLow;
+
+  /// No description provided for @zoneSalinityBrackish.
+  ///
+  /// In ru, this message translates to:
+  /// **'Солоноватая'**
+  String get zoneSalinityBrackish;
+
+  /// No description provided for @zoneSalinityHigh.
+  ///
+  /// In ru, this message translates to:
+  /// **'Высоко'**
+  String get zoneSalinityHigh;
+
+  /// No description provided for @zoneTempVeryCold.
+  ///
+  /// In ru, this message translates to:
+  /// **'Очень холодная'**
+  String get zoneTempVeryCold;
+
+  /// No description provided for @zoneTempCold.
+  ///
+  /// In ru, this message translates to:
+  /// **'Холодная'**
+  String get zoneTempCold;
+
+  /// No description provided for @zoneTempCool.
+  ///
+  /// In ru, this message translates to:
+  /// **'Прохладная'**
+  String get zoneTempCool;
+
+  /// No description provided for @zoneTempRoom.
+  ///
+  /// In ru, this message translates to:
+  /// **'Комнатная'**
+  String get zoneTempRoom;
+
+  /// No description provided for @zoneTempWarm.
+  ///
+  /// In ru, this message translates to:
+  /// **'Тёплая'**
+  String get zoneTempWarm;
+
+  /// No description provided for @zoneTempHot.
+  ///
+  /// In ru, this message translates to:
+  /// **'Горячая'**
+  String get zoneTempHot;
+
+  /// No description provided for @zoneTempComfort.
+  ///
+  /// In ru, this message translates to:
+  /// **'Комфорт'**
+  String get zoneTempComfort;
+
+  /// No description provided for @zoneTempOverheated.
+  ///
+  /// In ru, this message translates to:
+  /// **'Перегрета'**
+  String get zoneTempOverheated;
+
+  /// No description provided for @zoneTempAquaCold.
+  ///
+  /// In ru, this message translates to:
+  /// **'Холодно'**
+  String get zoneTempAquaCold;
+
+  /// No description provided for @zoneTempAquaCool.
+  ///
+  /// In ru, this message translates to:
+  /// **'Прохладно'**
+  String get zoneTempAquaCool;
+
+  /// No description provided for @zoneTempAquaNormal.
+  ///
+  /// In ru, this message translates to:
+  /// **'Норма'**
+  String get zoneTempAquaNormal;
+
+  /// No description provided for @zoneTempAquaWarm.
+  ///
+  /// In ru, this message translates to:
+  /// **'Тёпло'**
+  String get zoneTempAquaWarm;
+
+  /// No description provided for @zoneTempAquaOverheat.
+  ///
+  /// In ru, this message translates to:
+  /// **'Перегрев'**
+  String get zoneTempAquaOverheat;
+
+  /// No description provided for @zoneSgLow.
+  ///
+  /// In ru, this message translates to:
+  /// **'Низкая'**
+  String get zoneSgLow;
+
+  /// No description provided for @zoneSgNormal.
+  ///
+  /// In ru, this message translates to:
+  /// **'Норма'**
+  String get zoneSgNormal;
+
+  /// No description provided for @zoneSgMineralized.
+  ///
+  /// In ru, this message translates to:
+  /// **'Минерализован.'**
+  String get zoneSgMineralized;
+
+  /// No description provided for @zoneSgVeryDense.
+  ///
+  /// In ru, this message translates to:
+  /// **'Очень плотная'**
+  String get zoneSgVeryDense;
+
+  /// No description provided for @summaryAllMeasured.
+  ///
+  /// In ru, this message translates to:
+  /// **'Все параметры измерены.'**
+  String get summaryAllMeasured;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

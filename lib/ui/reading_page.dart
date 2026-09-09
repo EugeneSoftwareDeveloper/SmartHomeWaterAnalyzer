@@ -265,13 +265,15 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
     final settings = ref.read(appSettingsProvider);
     if (!settings.notificationsEnabled) return;
 
+    final l10n = AppL10n.of(context);
     final overview = WaterQualityOverview.compute(
       readingValues(reading),
       profile: settings.normsProfile,
+      l10n: l10n,
     );
     if (overview.isAllGood) return;
 
-    await ref.read(notificationServiceProvider).notifyIfOutOfRange(overview);
+    await ref.read(notificationServiceProvider).notifyIfOutOfRange(overview, l10n);
   }
 
   /// Сохранить текущий замер в историю + показать SnackBar с возможностью undo.
@@ -480,6 +482,8 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
   }
 
   Widget _buildBody() {
+    final l10n = AppL10n.of(context);
+
     if (_loading && _reading == null) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -493,13 +497,13 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
             const Icon(Icons.error_outline, size: 48, color: Colors.redAccent),
             const SizedBox(height: 12),
             Text(
-              AppL10n.of(context).readingFailed,
+              l10n.readingFailed,
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
             Text(_error!, textAlign: TextAlign.center),
             const SizedBox(height: 16),
-            FilledButton(onPressed: _refresh, child: Text(AppL10n.of(context).readingRetry)),
+            FilledButton(onPressed: _refresh, child: Text(l10n.readingRetry)),
           ],
         ),
       );
@@ -510,9 +514,9 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
 
     final settings = ref.watch(appSettingsProvider);
     final profile = settings.normsProfile;
-    final parameters = WaterParameterCatalog.forProfile(profile);
+    final parameters = WaterParameterCatalog.forProfile(profile, l10n);
     final values = readingValues(reading);
-    final overview = WaterQualityOverview.compute(values, profile: profile);
+    final overview = WaterQualityOverview.compute(values, profile: profile, l10n: l10n);
 
     // Значения базы берём тем же маппингом, что и свежий кадр, — иначе дельта
     // считалась бы между разными полями при добавлении нового параметра.
@@ -528,7 +532,7 @@ class _ReadingPageState extends ConsumerState<ReadingPage> {
           PlacePickerField(
             hint: _autoSelectionDistanceMeters == null
                 ? null
-                : AppL10n.of(context).readingAutoPlaceHint(_autoSelectionDistanceMeters!),
+                : l10n.readingAutoPlaceHint(_autoSelectionDistanceMeters!),
           ),
           SummaryHeader(overview: overview, reading: reading),
           if (_baselineLoaded) _TrendBaselineNote(baseline: baseline),

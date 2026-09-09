@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/generated/app_localizations.dart';
+
 /// Один цветной диапазон на шкале параметра: [min, max] и категория качества.
 class QualityZone {
   final double min;
@@ -19,19 +21,21 @@ class QualityZone {
   Color get color => category.color;
 }
 
-/// Категории качества: цвет + текстовая метка. Используется для подсветки текущего
-/// значения, бейджа статуса и пояснения «что это значит».
+/// Категории качества: цвет для подсветки значения и порядок «хуже — лучше».
+///
+/// Названия категорий живут в словаре, а не здесь: `enum` — это константы, а
+/// перевод зависит от языка, выбранного в рантайме. Читать их следует через
+/// [QualityCategoryText.label].
 enum QualityCategory {
-  danger(Color(0xFFD32F2F), 'Опасно'),
-  caution(Color(0xFFF57C00), 'Внимание'),
-  acceptable(Color(0xFFFBC02D), 'Приемлемо'),
-  good(Color(0xFF388E3C), 'Хорошо'),
-  excellent(Color(0xFF1976D2), 'Отлично');
+  danger(Color(0xFFD32F2F)),
+  caution(Color(0xFFF57C00)),
+  acceptable(Color(0xFFFBC02D)),
+  good(Color(0xFF388E3C)),
+  excellent(Color(0xFF1976D2));
 
-  const QualityCategory(this.color, this.label);
+  const QualityCategory(this.color);
 
   final Color color;
-  final String label;
 
   /// Порядок категорий от худшей к лучшей: `danger` < `caution` < `acceptable`
   /// < `good` < `excellent`. По нему тренд решает, стало лучше или хуже.
@@ -46,5 +50,16 @@ enum QualityCategory {
     QualityCategory.acceptable => 2,
     QualityCategory.good => 3,
     QualityCategory.excellent => 4,
+  };
+}
+
+/// Название категории на языке интерфейса.
+extension QualityCategoryText on QualityCategory {
+  String label(AppL10n l10n) => switch (this) {
+    QualityCategory.danger => l10n.categoryDanger,
+    QualityCategory.caution => l10n.categoryCaution,
+    QualityCategory.acceptable => l10n.categoryAcceptable,
+    QualityCategory.good => l10n.categoryGood,
+    QualityCategory.excellent => l10n.categoryExcellent,
   };
 }

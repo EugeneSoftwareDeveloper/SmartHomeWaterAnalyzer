@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:water_analyzer/l10n/generated/app_localizations.dart';
 import 'package:water_analyzer/quality/catalog.dart';
 import 'package:water_analyzer/quality/profile.dart';
 import 'package:water_analyzer/quality/trend.dart';
@@ -10,8 +12,12 @@ import 'package:water_analyzer/quality/zone.dart';
 ///
 /// Главное, что здесь проверяется, — что «выросло» и «стало лучше» остались
 /// разными вещами, и что шум электрода не выдаётся за изменение воды.
+/// Тексты каталога приходят из словаря, поэтому тестам нужен свой набор.
+/// Русский взят намеренно: проверки сравнивают знакомые формулировки.
+final l10n = lookupAppL10n(const Locale('ru'));
+
 void main() {
-  final ph = WaterParameterCatalog.parameterFor(NormsProfile.drinking, 'ph');
+  final ph = WaterParameterCatalog.parameterFor(NormsProfile.drinking, 'ph', l10n);
 
   ParameterTrend trend(double previous, double current) =>
       ParameterTrend.between(parameter: ph, previous: previous, current: current);
@@ -94,8 +100,8 @@ void main() {
       // то есть ухудшение. Для гидропоники — наоборот, слабый раствор дорос до
       // рабочей концентрации. Числа одни, вердикт противоположный, и это ровно
       // то, ради чего профиль хранится в самом замере начиная с 1.2.0.
-      final drinkingEc = WaterParameterCatalog.parameterFor(NormsProfile.drinking, 'ec');
-      final hydroEc = WaterParameterCatalog.parameterFor(NormsProfile.hydroponics, 'ec');
+      final drinkingEc = WaterParameterCatalog.parameterFor(NormsProfile.drinking, 'ec', l10n);
+      final hydroEc = WaterParameterCatalog.parameterFor(NormsProfile.hydroponics, 'ec', l10n);
 
       final drinking = ParameterTrend.between(parameter: drinkingEc, previous: 400, current: 1300);
       final hydroponics = ParameterTrend.between(parameter: hydroEc, previous: 400, current: 1300);
@@ -108,7 +114,7 @@ void main() {
     });
 
     test('зоны берутся из переданного параметра, а не из профиля по умолчанию', () {
-      final poolPh = WaterParameterCatalog.parameterFor(NormsProfile.pool, 'ph');
+      final poolPh = WaterParameterCatalog.parameterFor(NormsProfile.pool, 'ph', l10n);
 
       // pH 7.0: для питьевой воды «норма», для бассейна уже «низкая».
       expect(ph.zoneFor(7.0).category, QualityCategory.good);
@@ -134,7 +140,7 @@ void main() {
   group('пороги в каталоге', () {
     test('порог не меньше единицы вывода — иначе показали бы «+0.00»', () {
       for (final profile in NormsProfile.values) {
-        for (final parameter in WaterParameterCatalog.forProfile(profile)) {
+        for (final parameter in WaterParameterCatalog.forProfile(profile, l10n)) {
           final displayStep = math.pow(10, -parameter.fractionDigits);
 
           expect(
@@ -150,7 +156,7 @@ void main() {
 
     test('порог задан положительным у всех параметров', () {
       for (final profile in NormsProfile.values) {
-        for (final parameter in WaterParameterCatalog.forProfile(profile)) {
+        for (final parameter in WaterParameterCatalog.forProfile(profile, l10n)) {
           expect(parameter.noiseThreshold, greaterThan(0), reason: parameter.key);
         }
       }
@@ -169,8 +175,8 @@ void main() {
     });
 
     test('разрядность берётся у параметра, а не общая', () {
-      final tds = WaterParameterCatalog.parameterFor(NormsProfile.drinking, 'tds');
-      final sg = WaterParameterCatalog.parameterFor(NormsProfile.drinking, 'sg');
+      final tds = WaterParameterCatalog.parameterFor(NormsProfile.drinking, 'tds', l10n);
+      final sg = WaterParameterCatalog.parameterFor(NormsProfile.drinking, 'sg', l10n);
 
       expect(tds.formatDelta(-12.0), '−12');
       expect(sg.formatDelta(0.0025), '+0.003');

@@ -1,3 +1,4 @@
+import '../l10n/generated/app_localizations.dart';
 import 'parameter.dart';
 import 'profile.dart';
 import 'zone.dart';
@@ -5,69 +6,129 @@ import 'zone.dart';
 /// Каталог параметров качества воды. Зоны параметров зависят от выбранного профиля норм:
 /// питьевая вода / бассейн / аквариум / гидропоника. Для отсутствующего варианта возвращаем
 /// зоны питьевой воды по умолчанию.
+///
+/// Тексты приходят снаружи, а не лежат здесь: границы зон и пороги шума одинаковы
+/// для всех, а называются на разных языках по-разному. В тестах нужный набор
+/// берётся через `lookupAppL10n(const Locale('ru'))` — устройство для этого
+/// не требуется.
 abstract final class WaterParameterCatalog {
-  static List<WaterParameter> forProfile(NormsProfile profile) {
+  static List<WaterParameter> forProfile(NormsProfile profile, AppL10n l10n) {
     return [
-      _ph(profile),
-      _orp(profile),
-      _ec(profile),
-      _tds(profile),
-      _salinity(profile),
-      _temperature(profile),
-      _specificGravity(profile),
+      _ph(profile, l10n),
+      _orp(profile, l10n),
+      _ec(profile, l10n),
+      _tds(profile, l10n),
+      _salinity(profile, l10n),
+      _temperature(profile, l10n),
+      _specificGravity(profile, l10n),
     ];
   }
 
-  static WaterParameter parameterFor(NormsProfile profile, String key) {
-    return forProfile(profile).firstWhere((item) => item.key == key);
+  static WaterParameter parameterFor(NormsProfile profile, String key, AppL10n l10n) {
+    return forProfile(profile, l10n).firstWhere((item) => item.key == key);
   }
 
   // ────────────────────────────────────────────────────────────────────────────
   //                            pH
   // ────────────────────────────────────────────────────────────────────────────
 
-  static WaterParameter _ph(NormsProfile profile) {
+  static WaterParameter _ph(NormsProfile profile, AppL10n l10n) {
     final zones = switch (profile) {
-      NormsProfile.pool => const [
-        QualityZone(min: 0, max: 6.8, category: QualityCategory.danger, label: 'Кислая'),
-        QualityZone(min: 6.8, max: 7.2, category: QualityCategory.caution, label: 'Низкая'),
-        QualityZone(min: 7.2, max: 7.6, category: QualityCategory.excellent, label: 'Оптимум'),
-        QualityZone(min: 7.6, max: 7.8, category: QualityCategory.good, label: 'Норма'),
-        QualityZone(min: 7.8, max: 8.4, category: QualityCategory.caution, label: 'Высокая'),
-        QualityZone(min: 8.4, max: 14, category: QualityCategory.danger, label: 'Щелочная'),
+      NormsProfile.pool => [
+        QualityZone(min: 0, max: 6.8, category: QualityCategory.danger, label: l10n.zonePhAcidic),
+        QualityZone(min: 6.8, max: 7.2, category: QualityCategory.caution, label: l10n.zonePhLow),
+        QualityZone(
+          min: 7.2,
+          max: 7.6,
+          category: QualityCategory.excellent,
+          label: l10n.zonePhOptimum,
+        ),
+        QualityZone(min: 7.6, max: 7.8, category: QualityCategory.good, label: l10n.zonePhNormal),
+        QualityZone(min: 7.8, max: 8.4, category: QualityCategory.caution, label: l10n.zonePhHigh),
+        QualityZone(
+          min: 8.4,
+          max: 14,
+          category: QualityCategory.danger,
+          label: l10n.zonePhAlkaline,
+        ),
       ],
-      NormsProfile.aquariumFresh => const [
-        QualityZone(min: 0, max: 5.5, category: QualityCategory.danger, label: 'Кислая'),
-        QualityZone(min: 5.5, max: 6.5, category: QualityCategory.caution, label: 'Низкая'),
-        QualityZone(min: 6.5, max: 7.0, category: QualityCategory.good, label: 'Норма'),
-        QualityZone(min: 7.0, max: 7.5, category: QualityCategory.excellent, label: 'Оптимум'),
-        QualityZone(min: 7.5, max: 8.2, category: QualityCategory.good, label: 'Норма'),
-        QualityZone(min: 8.2, max: 9.0, category: QualityCategory.caution, label: 'Высокая'),
-        QualityZone(min: 9.0, max: 14, category: QualityCategory.danger, label: 'Щелочная'),
+      NormsProfile.aquariumFresh => [
+        QualityZone(min: 0, max: 5.5, category: QualityCategory.danger, label: l10n.zonePhAcidic),
+        QualityZone(min: 5.5, max: 6.5, category: QualityCategory.caution, label: l10n.zonePhLow),
+        QualityZone(min: 6.5, max: 7.0, category: QualityCategory.good, label: l10n.zonePhNormal),
+        QualityZone(
+          min: 7.0,
+          max: 7.5,
+          category: QualityCategory.excellent,
+          label: l10n.zonePhOptimum,
+        ),
+        QualityZone(min: 7.5, max: 8.2, category: QualityCategory.good, label: l10n.zonePhNormal),
+        QualityZone(min: 8.2, max: 9.0, category: QualityCategory.caution, label: l10n.zonePhHigh),
+        QualityZone(
+          min: 9.0,
+          max: 14,
+          category: QualityCategory.danger,
+          label: l10n.zonePhAlkaline,
+        ),
       ],
-      NormsProfile.hydroponics => const [
-        QualityZone(min: 0, max: 4.5, category: QualityCategory.danger, label: 'Кислая'),
-        QualityZone(min: 4.5, max: 5.5, category: QualityCategory.caution, label: 'Низкая'),
-        QualityZone(min: 5.5, max: 5.8, category: QualityCategory.good, label: 'Норма'),
-        QualityZone(min: 5.8, max: 6.5, category: QualityCategory.excellent, label: 'Оптимум'),
-        QualityZone(min: 6.5, max: 7.0, category: QualityCategory.good, label: 'Норма'),
-        QualityZone(min: 7.0, max: 8.0, category: QualityCategory.caution, label: 'Высокая'),
-        QualityZone(min: 8.0, max: 14, category: QualityCategory.danger, label: 'Щелочная'),
+      NormsProfile.hydroponics => [
+        QualityZone(min: 0, max: 4.5, category: QualityCategory.danger, label: l10n.zonePhAcidic),
+        QualityZone(min: 4.5, max: 5.5, category: QualityCategory.caution, label: l10n.zonePhLow),
+        QualityZone(min: 5.5, max: 5.8, category: QualityCategory.good, label: l10n.zonePhNormal),
+        QualityZone(
+          min: 5.8,
+          max: 6.5,
+          category: QualityCategory.excellent,
+          label: l10n.zonePhOptimum,
+        ),
+        QualityZone(min: 6.5, max: 7.0, category: QualityCategory.good, label: l10n.zonePhNormal),
+        QualityZone(min: 7.0, max: 8.0, category: QualityCategory.caution, label: l10n.zonePhHigh),
+        QualityZone(
+          min: 8.0,
+          max: 14,
+          category: QualityCategory.danger,
+          label: l10n.zonePhAlkaline,
+        ),
       ],
-      NormsProfile.drinking => const [
-        QualityZone(min: 0, max: 4.5, category: QualityCategory.danger, label: 'Сильно кислая'),
-        QualityZone(min: 4.5, max: 6.5, category: QualityCategory.caution, label: 'Кислая'),
-        QualityZone(min: 6.5, max: 7.2, category: QualityCategory.good, label: 'Норма'),
-        QualityZone(min: 7.2, max: 7.8, category: QualityCategory.excellent, label: 'Оптимум'),
-        QualityZone(min: 7.8, max: 8.5, category: QualityCategory.good, label: 'Норма'),
-        QualityZone(min: 8.5, max: 10.5, category: QualityCategory.caution, label: 'Щелочная'),
-        QualityZone(min: 10.5, max: 14, category: QualityCategory.danger, label: 'Сильно щелочная'),
+      NormsProfile.drinking => [
+        QualityZone(
+          min: 0,
+          max: 4.5,
+          category: QualityCategory.danger,
+          label: l10n.zonePhStronglyAcidic,
+        ),
+        QualityZone(
+          min: 4.5,
+          max: 6.5,
+          category: QualityCategory.caution,
+          label: l10n.zonePhAcidic,
+        ),
+        QualityZone(min: 6.5, max: 7.2, category: QualityCategory.good, label: l10n.zonePhNormal),
+        QualityZone(
+          min: 7.2,
+          max: 7.8,
+          category: QualityCategory.excellent,
+          label: l10n.zonePhOptimum,
+        ),
+        QualityZone(min: 7.8, max: 8.5, category: QualityCategory.good, label: l10n.zonePhNormal),
+        QualityZone(
+          min: 8.5,
+          max: 10.5,
+          category: QualityCategory.caution,
+          label: l10n.zonePhAlkaline,
+        ),
+        QualityZone(
+          min: 10.5,
+          max: 14,
+          category: QualityCategory.danger,
+          label: l10n.zonePhStronglyAlkaline,
+        ),
       ],
     };
 
     return WaterParameter(
       key: 'ph',
-      label: 'Кислотность',
+      label: l10n.paramPh,
       shortLabel: 'pH',
       unit: null,
       scaleMin: 0,
@@ -75,70 +136,91 @@ abstract final class WaterParameterCatalog {
       fractionDigits: 2,
       // ±0.1 между соседними кадрами даже в идеальной среде — см. docs/02-ble-protocol.md.
       noiseThreshold: 0.1,
-      description: _phDescription(profile),
+      description: switch (profile) {
+        NormsProfile.drinking => l10n.paramPhDescriptionDrinking,
+        NormsProfile.pool => l10n.paramPhDescriptionPool,
+        NormsProfile.aquariumFresh => l10n.paramPhDescriptionAquarium,
+        NormsProfile.hydroponics => l10n.paramPhDescriptionHydroponics,
+      },
       zones: zones,
     );
   }
-
-  static String _phDescription(NormsProfile profile) => switch (profile) {
-    NormsProfile.drinking => 'Кислотность/щёлочность. Норма питьевой воды 6.5–8.5.',
-    NormsProfile.pool => 'Кислотность бассейна. Оптимум 7.2–7.6 для эффективной дезинфекции.',
-    NormsProfile.aquariumFresh =>
-      'Кислотность аквариума. Большинство пресноводных рыб 6.5–7.5; уточняй по видам.',
-    NormsProfile.hydroponics =>
-      'Кислотность раствора. Оптимум 5.8–6.5 для усвоения большинства питательных веществ.',
-  };
 
   // ────────────────────────────────────────────────────────────────────────────
   //                            ORP
   // ────────────────────────────────────────────────────────────────────────────
 
-  static WaterParameter _orp(NormsProfile profile) {
+  static WaterParameter _orp(NormsProfile profile, AppL10n l10n) {
     final zones = switch (profile) {
-      NormsProfile.pool => const [
-        QualityZone(min: -500, max: 600, category: QualityCategory.danger, label: 'Низкий'),
-        QualityZone(min: 600, max: 650, category: QualityCategory.caution, label: 'Маловато'),
-        QualityZone(min: 650, max: 750, category: QualityCategory.excellent, label: 'Оптимум'),
-        QualityZone(min: 750, max: 850, category: QualityCategory.good, label: 'Высокий'),
+      NormsProfile.pool => [
+        QualityZone(min: -500, max: 600, category: QualityCategory.danger, label: l10n.zoneOrpLow),
+        QualityZone(
+          min: 600,
+          max: 650,
+          category: QualityCategory.caution,
+          label: l10n.zoneOrpSlightlyLow,
+        ),
+        QualityZone(
+          min: 650,
+          max: 750,
+          category: QualityCategory.excellent,
+          label: l10n.zoneOrpOptimum,
+        ),
+        QualityZone(min: 750, max: 850, category: QualityCategory.good, label: l10n.zoneOrpHigh),
         QualityZone(
           min: 850,
           max: 1000,
           category: QualityCategory.caution,
-          label: 'Сильно высокий',
+          label: l10n.zoneOrpVeryHigh,
         ),
       ],
-      _ => const [
-        QualityZone(min: -500, max: -100, category: QualityCategory.caution, label: 'Восстановит.'),
+      _ => [
+        QualityZone(
+          min: -500,
+          max: -100,
+          category: QualityCategory.caution,
+          label: l10n.zoneOrpReducing,
+        ),
         QualityZone(
           min: -100,
           max: 200,
           category: QualityCategory.acceptable,
-          label: 'Нейтральная',
+          label: l10n.zoneOrpNeutral,
         ),
-        QualityZone(min: 200, max: 600, category: QualityCategory.excellent, label: 'Оптимум'),
-        QualityZone(min: 600, max: 800, category: QualityCategory.good, label: 'Окислит.'),
+        QualityZone(
+          min: 200,
+          max: 600,
+          category: QualityCategory.excellent,
+          label: l10n.zoneOrpOptimum,
+        ),
+        QualityZone(
+          min: 600,
+          max: 800,
+          category: QualityCategory.good,
+          label: l10n.zoneOrpOxidizing,
+        ),
         QualityZone(
           min: 800,
           max: 1000,
           category: QualityCategory.caution,
-          label: 'Сильно окислит.',
+          label: l10n.zoneOrpStronglyOxidizing,
         ),
       ],
     };
 
     return WaterParameter(
       key: 'orp',
-      label: 'Редокс-потенциал',
+      label: l10n.paramOrp,
       shortLabel: 'ORP',
-      unit: 'мВ',
+      unit: l10n.unitMillivolt,
       scaleMin: -500,
       scaleMax: 1000,
       fractionDigits: 0,
       // Редокс-электрод шумит единицами милливольт; 5 мВ — консервативная оценка.
       noiseThreshold: 5,
       description: profile == NormsProfile.pool
-          ? 'Окислительный потенциал бассейна. ВОЗ рекомендует ≥650 мВ для безопасности.'
-          : 'Окислительно-восстановительный потенциал. Для питьевой воды обычно 200–600 мВ.',
+          ? l10n.paramOrpDescriptionPool
+          : l10n.paramOrpDescription,
       zones: zones,
     );
   }
@@ -147,37 +229,77 @@ abstract final class WaterParameterCatalog {
   //                            EC
   // ────────────────────────────────────────────────────────────────────────────
 
-  static WaterParameter _ec(NormsProfile profile) {
+  static WaterParameter _ec(NormsProfile profile, AppL10n l10n) {
     final zones = switch (profile) {
-      NormsProfile.hydroponics => const [
-        QualityZone(min: 0, max: 500, category: QualityCategory.caution, label: 'Слабый раствор'),
-        QualityZone(min: 500, max: 1200, category: QualityCategory.good, label: 'Норма'),
-        QualityZone(min: 1200, max: 2000, category: QualityCategory.excellent, label: 'Оптимум'),
-        QualityZone(min: 2000, max: 2500, category: QualityCategory.good, label: 'Концентрир.'),
-        QualityZone(min: 2500, max: 3000, category: QualityCategory.caution, label: 'Слишком'),
+      NormsProfile.hydroponics => [
+        QualityZone(
+          min: 0,
+          max: 500,
+          category: QualityCategory.caution,
+          label: l10n.zoneEcWeakSolution,
+        ),
+        QualityZone(min: 500, max: 1200, category: QualityCategory.good, label: l10n.zoneEcNormal),
+        QualityZone(
+          min: 1200,
+          max: 2000,
+          category: QualityCategory.excellent,
+          label: l10n.zoneEcOptimum,
+        ),
+        QualityZone(
+          min: 2000,
+          max: 2500,
+          category: QualityCategory.good,
+          label: l10n.zoneEcConcentrated,
+        ),
+        QualityZone(
+          min: 2500,
+          max: 3000,
+          category: QualityCategory.caution,
+          label: l10n.zoneEcTooStrong,
+        ),
       ],
-      _ => const [
-        QualityZone(min: 0, max: 50, category: QualityCategory.excellent, label: 'Очищенная'),
-        QualityZone(min: 50, max: 500, category: QualityCategory.good, label: 'Норма'),
-        QualityZone(min: 500, max: 1500, category: QualityCategory.acceptable, label: 'Приемлемо'),
-        QualityZone(min: 1500, max: 2500, category: QualityCategory.caution, label: 'Высоко'),
-        QualityZone(min: 2500, max: 3000, category: QualityCategory.danger, label: 'Очень высоко'),
+      _ => [
+        QualityZone(
+          min: 0,
+          max: 50,
+          category: QualityCategory.excellent,
+          label: l10n.zoneEcPurified,
+        ),
+        QualityZone(min: 50, max: 500, category: QualityCategory.good, label: l10n.zoneEcNormal),
+        QualityZone(
+          min: 500,
+          max: 1500,
+          category: QualityCategory.acceptable,
+          label: l10n.zoneEcAcceptable,
+        ),
+        QualityZone(
+          min: 1500,
+          max: 2500,
+          category: QualityCategory.caution,
+          label: l10n.zoneEcHigh,
+        ),
+        QualityZone(
+          min: 2500,
+          max: 3000,
+          category: QualityCategory.danger,
+          label: l10n.zoneEcVeryHigh,
+        ),
       ],
     };
 
     return WaterParameter(
       key: 'ec',
-      label: 'Электропроводность',
+      label: l10n.paramEc,
       shortLabel: 'EC',
-      unit: 'µС/см',
+      unit: l10n.unitMicrosiemens,
       scaleMin: 0,
       scaleMax: 3000,
       fractionDigits: 0,
-      // Паспортные ±2%: на водопроводных ~300–500 µС/см это 6–10 единиц.
+      // Паспортные ±2%: на водопроводных ~300–500 мкСм/см это 6–10 единиц.
       noiseThreshold: 10,
       description: profile == NormsProfile.hydroponics
-          ? 'Концентрация раствора. Большинство культур 1200–2000 µС/см.'
-          : 'Электропроводность. Для питьевой воды до 1500 µС/см.',
+          ? l10n.paramEcDescriptionHydroponics
+          : l10n.paramEcDescription,
       zones: zones,
     );
   }
@@ -186,10 +308,10 @@ abstract final class WaterParameterCatalog {
   //                            TDS
   // ────────────────────────────────────────────────────────────────────────────
 
-  static WaterParameter _tds(NormsProfile profile) {
+  static WaterParameter _tds(NormsProfile profile, AppL10n l10n) {
     return WaterParameter(
       key: 'tds',
-      label: 'Минерализация',
+      label: l10n.paramTds,
       shortLabel: 'TDS',
       unit: 'ppm',
       scaleMin: 0,
@@ -198,17 +320,37 @@ abstract final class WaterParameterCatalog {
       // TDS считается из EC тем же трактом: ±2% от типичных 250 ppm.
       noiseThreshold: 5,
       description: switch (profile) {
-        NormsProfile.drinking => 'Общая минерализация. Для питьевой воды до 1000 ppm.',
-        NormsProfile.pool => 'Минерализация бассейна.',
-        NormsProfile.aquariumFresh => 'Минерализация. Для большинства пресноводных рыб 80–300 ppm.',
-        NormsProfile.hydroponics => 'Минерализация раствора.',
+        NormsProfile.drinking => l10n.paramTdsDescriptionDrinking,
+        NormsProfile.pool => l10n.paramTdsDescriptionPool,
+        NormsProfile.aquariumFresh => l10n.paramTdsDescriptionAquarium,
+        NormsProfile.hydroponics => l10n.paramTdsDescriptionHydroponics,
       },
-      zones: const [
-        QualityZone(min: 0, max: 50, category: QualityCategory.excellent, label: 'Очищенная'),
-        QualityZone(min: 50, max: 300, category: QualityCategory.good, label: 'Норма'),
-        QualityZone(min: 300, max: 600, category: QualityCategory.acceptable, label: 'Приемлемо'),
-        QualityZone(min: 600, max: 1000, category: QualityCategory.caution, label: 'Жёсткая'),
-        QualityZone(min: 1000, max: 2000, category: QualityCategory.danger, label: 'Не питьевая'),
+      zones: [
+        QualityZone(
+          min: 0,
+          max: 50,
+          category: QualityCategory.excellent,
+          label: l10n.zoneTdsPurified,
+        ),
+        QualityZone(min: 50, max: 300, category: QualityCategory.good, label: l10n.zoneTdsNormal),
+        QualityZone(
+          min: 300,
+          max: 600,
+          category: QualityCategory.acceptable,
+          label: l10n.zoneTdsAcceptable,
+        ),
+        QualityZone(
+          min: 600,
+          max: 1000,
+          category: QualityCategory.caution,
+          label: l10n.zoneTdsHard,
+        ),
+        QualityZone(
+          min: 1000,
+          max: 2000,
+          category: QualityCategory.danger,
+          label: l10n.zoneTdsNotDrinkable,
+        ),
       ],
     );
   }
@@ -217,11 +359,11 @@ abstract final class WaterParameterCatalog {
   //                            Salinity
   // ────────────────────────────────────────────────────────────────────────────
 
-  static WaterParameter _salinity(NormsProfile profile) {
+  static WaterParameter _salinity(NormsProfile profile, AppL10n l10n) {
     return WaterParameter(
       key: 'salinity',
-      label: 'Солёность',
-      shortLabel: 'Соль',
+      label: l10n.paramSalinity,
+      shortLabel: l10n.paramSalinityShort,
       unit: 'ppm',
       scaleMin: 0,
       scaleMax: 2000,
@@ -229,18 +371,33 @@ abstract final class WaterParameterCatalog {
       // Тот же тракт, что у EC и TDS.
       noiseThreshold: 5,
       description: profile == NormsProfile.pool
-          ? 'Соленость бассейна. Для соляных систем 2700–3400 ppm (вне шкалы).'
-          : 'Соленость в ppm. Для пресной воды близко к нулю.',
-      zones: const [
-        QualityZone(min: 0, max: 100, category: QualityCategory.excellent, label: 'Пресная'),
-        QualityZone(min: 100, max: 500, category: QualityCategory.good, label: 'Низко'),
+          ? l10n.paramSalinityDescriptionPool
+          : l10n.paramSalinityDescription,
+      zones: [
+        QualityZone(
+          min: 0,
+          max: 100,
+          category: QualityCategory.excellent,
+          label: l10n.zoneSalinityFresh,
+        ),
+        QualityZone(
+          min: 100,
+          max: 500,
+          category: QualityCategory.good,
+          label: l10n.zoneSalinityLow,
+        ),
         QualityZone(
           min: 500,
           max: 1000,
           category: QualityCategory.acceptable,
-          label: 'Солоноватая',
+          label: l10n.zoneSalinityBrackish,
         ),
-        QualityZone(min: 1000, max: 2000, category: QualityCategory.caution, label: 'Высоко'),
+        QualityZone(
+          min: 1000,
+          max: 2000,
+          category: QualityCategory.caution,
+          label: l10n.zoneSalinityHigh,
+        ),
       ],
     );
   }
@@ -249,34 +406,74 @@ abstract final class WaterParameterCatalog {
   //                            Temperature
   // ────────────────────────────────────────────────────────────────────────────
 
-  static WaterParameter _temperature(NormsProfile profile) {
+  static WaterParameter _temperature(NormsProfile profile, AppL10n l10n) {
     final zones = switch (profile) {
-      NormsProfile.pool => const [
-        QualityZone(min: 0, max: 20, category: QualityCategory.caution, label: 'Холодная'),
-        QualityZone(min: 20, max: 25, category: QualityCategory.good, label: 'Прохладная'),
-        QualityZone(min: 25, max: 30, category: QualityCategory.excellent, label: 'Комфорт'),
-        QualityZone(min: 30, max: 35, category: QualityCategory.caution, label: 'Тёплая'),
-        QualityZone(min: 35, max: 50, category: QualityCategory.danger, label: 'Перегрета'),
+      NormsProfile.pool => [
+        QualityZone(min: 0, max: 20, category: QualityCategory.caution, label: l10n.zoneTempCold),
+        QualityZone(min: 20, max: 25, category: QualityCategory.good, label: l10n.zoneTempCool),
+        QualityZone(
+          min: 25,
+          max: 30,
+          category: QualityCategory.excellent,
+          label: l10n.zoneTempComfort,
+        ),
+        QualityZone(min: 30, max: 35, category: QualityCategory.caution, label: l10n.zoneTempWarm),
+        QualityZone(
+          min: 35,
+          max: 50,
+          category: QualityCategory.danger,
+          label: l10n.zoneTempOverheated,
+        ),
       ],
-      NormsProfile.aquariumFresh => const [
-        QualityZone(min: 0, max: 18, category: QualityCategory.danger, label: 'Холодно'),
-        QualityZone(min: 18, max: 22, category: QualityCategory.good, label: 'Прохладно'),
-        QualityZone(min: 22, max: 27, category: QualityCategory.excellent, label: 'Норма'),
-        QualityZone(min: 27, max: 30, category: QualityCategory.caution, label: 'Тёпло'),
-        QualityZone(min: 30, max: 50, category: QualityCategory.danger, label: 'Перегрев'),
+      NormsProfile.aquariumFresh => [
+        QualityZone(
+          min: 0,
+          max: 18,
+          category: QualityCategory.danger,
+          label: l10n.zoneTempAquaCold,
+        ),
+        QualityZone(min: 18, max: 22, category: QualityCategory.good, label: l10n.zoneTempAquaCool),
+        QualityZone(
+          min: 22,
+          max: 27,
+          category: QualityCategory.excellent,
+          label: l10n.zoneTempAquaNormal,
+        ),
+        QualityZone(
+          min: 27,
+          max: 30,
+          category: QualityCategory.caution,
+          label: l10n.zoneTempAquaWarm,
+        ),
+        QualityZone(
+          min: 30,
+          max: 50,
+          category: QualityCategory.danger,
+          label: l10n.zoneTempAquaOverheat,
+        ),
       ],
-      _ => const [
-        QualityZone(min: 0, max: 5, category: QualityCategory.caution, label: 'Очень холодная'),
-        QualityZone(min: 5, max: 15, category: QualityCategory.good, label: 'Холодная'),
-        QualityZone(min: 15, max: 25, category: QualityCategory.excellent, label: 'Комнатная'),
-        QualityZone(min: 25, max: 35, category: QualityCategory.good, label: 'Тёплая'),
-        QualityZone(min: 35, max: 50, category: QualityCategory.caution, label: 'Горячая'),
+      _ => [
+        QualityZone(
+          min: 0,
+          max: 5,
+          category: QualityCategory.caution,
+          label: l10n.zoneTempVeryCold,
+        ),
+        QualityZone(min: 5, max: 15, category: QualityCategory.good, label: l10n.zoneTempCold),
+        QualityZone(
+          min: 15,
+          max: 25,
+          category: QualityCategory.excellent,
+          label: l10n.zoneTempRoom,
+        ),
+        QualityZone(min: 25, max: 35, category: QualityCategory.good, label: l10n.zoneTempWarm),
+        QualityZone(min: 35, max: 50, category: QualityCategory.caution, label: l10n.zoneTempHot),
       ],
     };
 
     return WaterParameter(
       key: 'temperature',
-      label: 'Температура',
+      label: l10n.paramTemperature,
       shortLabel: 't°',
       unit: '°C',
       scaleMin: 0,
@@ -284,7 +481,7 @@ abstract final class WaterParameterCatalog {
       fractionDigits: 1,
       // Паспортная точность термодатчика ±0.5 °C.
       noiseThreshold: 0.5,
-      description: 'Температура воды.',
+      description: l10n.paramTemperatureDescription,
       zones: zones,
     );
   }
@@ -293,10 +490,10 @@ abstract final class WaterParameterCatalog {
   //                            S.G.
   // ────────────────────────────────────────────────────────────────────────────
 
-  static WaterParameter _specificGravity(NormsProfile profile) {
-    return const WaterParameter(
+  static WaterParameter _specificGravity(NormsProfile profile, AppL10n l10n) {
+    return WaterParameter(
       key: 'sg',
-      label: 'Плотность воды',
+      label: l10n.paramSg,
       shortLabel: 'S.G.',
       unit: null,
       scaleMin: 0.990,
@@ -304,36 +501,33 @@ abstract final class WaterParameterCatalog {
       fractionDigits: 3,
       // Плотность выводится с тремя знаками; меньше единицы вывода различить нечем.
       noiseThreshold: 0.001,
-      description: 'Удельная плотность. Для пресной воды близко к 1.000.',
+      description: l10n.paramSgDescription,
       zones: [
-        QualityZone(min: 0.990, max: 0.998, category: QualityCategory.acceptable, label: 'Низкая'),
-        QualityZone(min: 0.998, max: 1.005, category: QualityCategory.excellent, label: 'Норма'),
+        QualityZone(
+          min: 0.990,
+          max: 0.998,
+          category: QualityCategory.acceptable,
+          label: l10n.zoneSgLow,
+        ),
+        QualityZone(
+          min: 0.998,
+          max: 1.005,
+          category: QualityCategory.excellent,
+          label: l10n.zoneSgNormal,
+        ),
         QualityZone(
           min: 1.005,
           max: 1.020,
           category: QualityCategory.good,
-          label: 'Минерализован.',
+          label: l10n.zoneSgMineralized,
         ),
         QualityZone(
           min: 1.020,
           max: 1.040,
           category: QualityCategory.caution,
-          label: 'Очень плотная',
+          label: l10n.zoneSgVeryDense,
         ),
       ],
     );
   }
-
-  /// Совместимость с прежним кодом, который ожидает статический `all`. Возвращает профиль
-  /// «питьевая вода» (default).
-  static List<WaterParameter> get all => forProfile(NormsProfile.drinking);
-
-  // Геттеры для совместимости с UI, которые ссылаются на конкретный параметр по точечной ссылке.
-  static WaterParameter get ph => parameterFor(NormsProfile.drinking, 'ph');
-  static WaterParameter get orp => parameterFor(NormsProfile.drinking, 'orp');
-  static WaterParameter get electricalConductivity => parameterFor(NormsProfile.drinking, 'ec');
-  static WaterParameter get totalDissolvedSolids => parameterFor(NormsProfile.drinking, 'tds');
-  static WaterParameter get salinity => parameterFor(NormsProfile.drinking, 'salinity');
-  static WaterParameter get temperature => parameterFor(NormsProfile.drinking, 'temperature');
-  static WaterParameter get specificGravity => parameterFor(NormsProfile.drinking, 'sg');
 }

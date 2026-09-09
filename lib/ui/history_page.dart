@@ -279,7 +279,7 @@ class _MeasurementChartState extends ConsumerState<_MeasurementChart> {
     final l10n = AppL10n.of(context);
     final theme = Theme.of(context);
     final profile = ref.watch(appSettingsProvider).normsProfile;
-    final parameters = WaterParameterCatalog.forProfile(profile);
+    final parameters = WaterParameterCatalog.forProfile(profile, l10n);
     final parameter = parameters.firstWhere(
       (p) => p.key == _selectedKey,
       orElse: () => parameters.first,
