@@ -108,7 +108,7 @@ sequenceDiagram
     C->>C: connect → MTU → read FF02
     C->>D: decodeRawFrame(bytes)
     D-->>R: YinmikReading (числа)
-    R->>Q: compute(values, profile)
+    R->>Q: compute(values, profile, l10n)
     Q-->>R: оценка + зоны
     R->>Q: ParameterTrend.between(было, стало)
     Q-->>R: дельта + смена зоны
@@ -139,34 +139,40 @@ sequenceDiagram
 Сценарий: добавить, например, «остаточный хлор» (FC), если он появится в кадре или мы его вычислим.
 
 1. **Если параметр приходит в кадре FF02** — добавь поле в `lib/yinmik/reading.dart` и декодинг в `lib/yinmik/decoder.dart`. Тесты в `test/yinmik_decoder_test.dart` обновить с эталонным значением.
-2. Добавь константу `WaterParameter` в `lib/quality/catalog.dart`:
+2. Заведи подписи в **обоих** словарях — `lib/l10n/app_ru.arb` и `app_en.arb`: название, описание (по профилям, если оно разное) и подписи зон. Расхождение языков ловит `test/l10n_test.dart`.
+3. Добавь построитель параметра в `lib/quality/catalog.dart` и впиши его в список `WaterParameterCatalog.forProfile(...)`. Тексты приходят из словаря, числа — нет:
 
    ```dart
-   static const WaterParameter freeChlorine = WaterParameter(
-     key: 'fc',
-     label: 'Хлор',
-     unit: 'ppm',
-     scaleMin: 0,
-     scaleMax: 5,
-     fractionDigits: 1,
-     description: 'Остаточный хлор. Для питьевой воды до 0.5 ppm.',
-     zones: [
-       QualityZone(min: 0,   max: 0.3, category: QualityCategory.excellent, label: 'Норма'),
-       QualityZone(min: 0.3, max: 1.0, category: QualityCategory.acceptable, label: 'Приемлемо'),
-       QualityZone(min: 1.0, max: 5.0, category: QualityCategory.caution,   label: 'Высоко'),
-     ],
-   );
+   static WaterParameter _freeChlorine(NormsProfile profile, AppL10n l10n) {
+     return WaterParameter(
+       key: 'fc',
+       label: l10n.paramFc,
+       shortLabel: 'FC',
+       unit: 'ppm',
+       scaleMin: 0,
+       scaleMax: 5,
+       fractionDigits: 1,
+       // Порог шума обязателен и не меньше единицы вывода — это проверяет тест.
+       noiseThreshold: 0.1,
+       description: l10n.paramFcDescription,
+       zones: [
+         QualityZone(min: 0, max: 0.3, category: QualityCategory.excellent, label: l10n.zoneFcNormal),
+         QualityZone(min: 0.3, max: 1.0, category: QualityCategory.acceptable, label: l10n.zoneFcAcceptable),
+         QualityZone(min: 1.0, max: 5.0, category: QualityCategory.caution, label: l10n.zoneFcHigh),
+       ],
+     );
+   }
    ```
 
-3. Добавь параметр во все профили в `WaterParameterCatalog.forProfile(...)` (внутри `lib/quality/catalog.dart`) — у каждого профиля свой набор зон.
+   У каждого профиля норм может быть свой набор зон — тогда `switch (profile)`, как у pH.
 4. В `lib/yinmik/reading_values.dart` дополни `readingValues` и `measurementValues` — это **single source of truth** маппинга «домен/БД-запись → `Map<key, value>`»:
 
    ```dart
    'fc': reading.freeChlorinePpm,
    ```
 
-5. В `lib/help/parameter_help.dart` добавь подробную справку с тонкой градацией зон для нового параметра.
-6. Если параметр должен сохраняться в БД — поднять `schemaVersion` в `AppDatabase`, добавить колонку + ветку миграции, перегенерить drift.
+5. Справка: добавь ключ в `parameterHelpKeys` (`lib/help/parameter_help.dart`) и построитель в **оба** файла содержимого — `parameter_help_ru.dart` и `parameter_help_en.dart`. Числовые границы и цвета обязаны совпадать до символа, переводятся только подписи; это проверяет `test/parameter_help_test.dart`.
+6. Если параметр должен сохраняться в БД — поднять `schemaVersion` в `AppDatabase`, добавить колонку + ветку миграции, перегенерить drift и написать тест миграции на настоящем файле БД.
 
 Карточка появится автоматически на ReadingPage, HistoryDetailPage, а график получит новую опцию в `DropdownButton` (берётся из `WaterParameterCatalog.forProfile`).
 
@@ -174,8 +180,9 @@ sequenceDiagram
 
 Отдельный слой между плагином и UI, устроенный по тому же принципу, что и `yinmik/`: доменные типы не знают про плагин.
 
-- `measurement_location.dart` — `MeasurementLocation` (координаты + точность), `LocationFailure` (причина отказа с человеческим сообщением), `LocationResult`. Зависимостей от `geolocator` нет вообще, поэтому всё это тестируется без моков платформы.
-- `location_service.dart` — единственное место, где импортируется `geolocator`.
+- `measurement_location.dart` — `MeasurementLocation` (координаты + точность), `LocationFailure` (причина отказа; текст для пользователя — расширением `LocationFailureText.message(l10n)`), `LocationResult`. Зависимостей от `geolocator` нет вообще, поэтому всё это тестируется без моков платформы.
+- `geo_distance.dart`, `site_match.dart`, `site_anchor.dart` — привязка мест к координатам: расстояние, распознавание места по фиксу и обучение якоря места. Чистый Dart; правила и константы описаны в [`05-state-and-storage.md`](./05-state-and-storage.md#привязка-мест-к-координатам).
+- `location_service.dart` — единственное место, где импортируется `geolocator`. Два входа: `currentLocation` для сохранения замера (может спросить разрешение — это осознанное «Сохранить») и `currentLocationIfGranted` для автоподстановки места (никогда не спрашивает — иначе диалог появлялся бы при простом открытии экрана).
 
 Ключевое свойство, которое нужно сохранять при доработках: **получение координат никогда не роняет и не задерживает сохранение замера**. Любая проблема (нет разрешения, выключен GPS, не пришёл фикс за 5 секунд, платформенная ошибка) возвращается как `LocationFailure`, а замер сохраняется без координат. Поэтому `LocationService.currentLocation` не бросает исключений наружу.
 
@@ -246,8 +253,8 @@ sequenceDiagram
 | Слой | Что | Где |
 |---|---|---|
 | Singleton-сервисы | `YinmikBleClient`, `AppDatabase`, `NotificationService` | `lib/providers/` |
-| Persisted state | `AppSettings` (тема, профиль, lastDevice, currentLabel) | `app_settings.dart` |
+| Persisted state | `AppSettings` (тема, язык, профиль, lastDevice, выбранный источник, флаги) | `app_settings.dart` |
 | Стримы платформы | `bluetoothAdapterStateProvider` | `bluetooth_state_provider.dart` |
-| Стримы БД | `recentMeasurementsProvider` | `history_provider.dart` |
+| Стримы БД | `recentMeasurementsProvider`, `sitesProvider` / `roomsProvider` / `sourcesProvider` → `placeCatalogViewProvider` | `history_provider.dart` |
 
 Локальное эфемерное состояние (loading flag, текущая страница) остаётся в `StatefulWidget` с `setState` — не выносится в провайдеры без необходимости.

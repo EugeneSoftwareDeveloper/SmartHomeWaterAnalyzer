@@ -16,10 +16,10 @@
 | Провайдер | Тип | Файл | Что делает |
 |---|---|---|---|
 | `sharedPreferencesProvider` | Provider (override) | `preferences_provider.dart` | Доступ к `SharedPreferences`. Override-нут в `main.dart` после `await SharedPreferences.getInstance()`. |
-| `appSettingsProvider` | StateNotifierProvider | `app_settings.dart` | Тема, профиль норм, lastDeviceId + lastDeviceName, флаг уведомлений. Persist через SharedPreferences. |
+| `appSettingsProvider` | StateNotifierProvider | `app_settings.dart` | Тема, язык, профиль норм, выбранный источник, lastDeviceId + lastDeviceName, флаги уведомлений и геометки. Persist через SharedPreferences. |
 | `yinmikBleClientProvider` | Provider | `yinmik_client_provider.dart` | Singleton `YinmikBleClient` на всё приложение. |
 | `bluetoothAdapterStateProvider` | StreamProvider | `bluetooth_state_provider.dart` | Состояние Bluetooth-адаптера (включён/выключен). UI реагирует на изменение в реальном времени. |
-| `appDatabaseProvider` | Provider | `history_provider.dart` | Drift `AppDatabase` singleton. Закрывается через `ref.onDispose`. |
+| `appDatabaseProvider` | Provider | `history_provider.dart` | Drift `AppDatabase` singleton. Закрывается через `ref.onDispose`. Стартовый каталог (`CatalogSeed`) собирает на языке пользователя — выбранном в настройках, а при автоопределении системном: имена уходят в историю и потом не переводятся. |
 | `historyRepositoryProvider` | Provider | `history_provider.dart` | `HistoryRepository` — фасад над БД. |
 | `recentMeasurementsProvider` | StreamProvider | `history_provider.dart` | Стрим последних измерений. Auto-rebuild списка истории при `insert`/`delete`. |
 | `notificationServiceProvider` | Provider | `notification_provider.dart` | `NotificationService` с lazy-init (запрашивает разрешения, создаёт канал). |
@@ -27,6 +27,7 @@
 | `sitesProvider` / `roomsProvider` / `sourcesProvider` | StreamProvider | `history_provider.dart` | Три уровня каталога отдельными стримами: недавно использованные сверху, остальные по алфавиту. |
 | `placeCatalogViewProvider` | Provider | `history_provider.dart` | Сводит три стрима в `PlaceCatalog` — связку, которая умеет собрать полный адрес источника. Ошибка любого из трёх становится ошибкой целого, загрузка любого — загрузкой целого: подменять недогруженный стрим пустым списком нельзя, список выбора показал бы «мест нет» там, где они просто не приехали. |
 | `locationServiceProvider` | Provider | `location_provider.dart` | `LocationService` поверх `geolocator`. Состояния не имеет — в провайдере только ради подмены в тестах. |
+| `appVersionProvider` | FutureProvider | `app_version_provider.dart` | Версия вида «1.5.0 (8)» из метаданных сборки — для «О приложении». Константой её не держат: зашитая строка расходится с `pubspec.yaml` после каждого релиза. |
 
 ### Как добавить новый провайдер
 
@@ -61,14 +62,15 @@
 
 История измерений — таблица `Measurements` в SQLite-файле `<app docs>/water_analyzer.sqlite`.
 
-**Текущая schemaVersion = 4.** История версий:
+**Текущая schemaVersion = 6.** История версий:
 
 | Версия | Что появилось |
 |---|---|
 | v2 | `label TEXT NULL` — пользовательская метка замера |
 | v3 | `latitude` / `longitude` / `locationAccuracyMeters` (все `REAL NULL`) — геометка |
-| v4 | таблица `Places` — каталог мест замера |
+| v4 | таблица `places` — плоский каталог мест (удалена в v6) |
 | v5 | `normsProfile TEXT NULL` — профиль норм, по которому оценивался замер |
+| v6 | таблицы `Sites`, `Rooms`, `SamplingPoints` — иерархия «место → комната → источник»; колонки замера `siteName` и `roomName` |
 
 Миграции выполняются автоматически при первом запуске после обновления:
 
@@ -76,26 +78,32 @@
 MigrationStrategy get migration => MigrationStrategy(
       onCreate: (m) async {
         await m.createAll();
-        await _seedDefaultPlaces();   // иначе на свежей установке каталог пуст
+        await _createSamplingPointIndexes();
+        await _seedDefaultCatalog();   // «Дом» и стартовые источники из CatalogSeed
       },
       onUpgrade: (m, from, to) async {
         if (from < 2) await m.addColumn(measurements, measurements.label);
-        if (from < 3) {
-          await m.addColumn(measurements, measurements.latitude);
-          await m.addColumn(measurements, measurements.longitude);
-          await m.addColumn(measurements, measurements.locationAccuracyMeters);
-        }
+        if (from < 3) { /* latitude, longitude, locationAccuracyMeters */ }
         if (from < 4) {
-          await m.createTable(places);
-          await _importPlacesFromExistingLabels();  // ДО сидирования, см. ниже
-          await _seedDefaultPlaces();
+          await _createLegacyPlacesTable();       // сырым SQL: таблицы уже нет в схеме
+          await _importLegacyPlacesFromLabels();  // ДО сидирования, см. ниже
+          await _seedLegacyPlaces();
         }
-        if (from < 5) {
-          await m.addColumn(measurements, measurements.normsProfile);
+        if (from < 5) await m.addColumn(measurements, measurements.normsProfile);
+        if (from < 6) {
+          await m.createTable(sites);
+          await m.createTable(rooms);
+          await m.createTable(samplingPoints);
+          await _createSamplingPointIndexes();
+          await m.addColumn(measurements, measurements.siteName);
+          await m.addColumn(measurements, measurements.roomName);
+          await _migrateLegacyPlacesIntoHierarchy();  // places → источники под «Домом»
         }
       },
     );
 ```
+
+**Ветка v4 написана сырым SQL**, а не через drift-таблицу: в v6 таблица `places` удаляется и из схемы приложения ушла. Миграция обязана уметь пройти путь пользователя целиком — с версии 3 до 6 за один запуск, — даже если структуры, которую она создаёт по дороге, в текущем коде уже нет.
 
 Порядок в ветке v4 значим. Обе вставки идут через `insertOrIgnore`, то есть выигрывает пришедшая первой. Метка пользователя несёт `lastUsedAt` (время его последнего замера), дефолт — нет. При обратном порядке метка «Аквариум» была бы отброшена как дубликат уже вставленного дефолта, потеряла бы `lastUsedAt` и уехала в конец списка ниже мест, которыми не пользовались ни разу. Совпадение вероятно: дефолты названы типовыми словами.
 
@@ -109,7 +117,7 @@ MigrationStrategy get migration => MigrationStrategy(
 
 Схема — в `lib/history/database.dart`. После изменения схемы нужно:
 
-1. Поднять `schemaVersion` в `AppDatabase` (например, до 5).
+1. Поднять `schemaVersion` в `AppDatabase` (следующая — 7).
 2. Добавить ветку миграции в `migration` getter.
 3. Перегенерить через `dart run build_runner build --delete-conflicting-outputs`.
 4. Написать тест на миграцию по образцу `test/places_migration_test.dart` — он поднимает **настоящий файл БД** в старом состоянии (raw SQL + `PRAGMA user_version`), открывает его через `AppDatabase.forTesting(NativeDatabase(file))` и проверяет, что данные пользователя пережили обновление. In-memory база для этого не подходит: она пересоздаётся на каждое соединение.
@@ -118,11 +126,52 @@ MigrationStrategy get migration => MigrationStrategy(
 
 ### Каталог мест и денормализация
 
-`Measurements.label` хранит **имя** места строкой, а не внешний ключ на `Places`. Это сделано намеренно: переименование или удаление места не должно переписывать историю задним числом — записанное «Кран на кухне» остаётся тем, чем было в момент замера. `Places` нужна только для списка выбора.
+Замер хранит **имена** своего адреса, а не внешние ключи на каталог. Это сделано намеренно: переименование или удаление в каталоге не должно переписывать историю задним числом — записанное «Кран на кухне» остаётся тем, чем было в момент замера. Каталог нужен только для выбора адреса перед замером.
 
 Следствие: удаление места, комнаты или источника не трогает историю — сохранённые замеры держат **имена** всех трёх уровней в своих колонках. `markSourceUsed` для отсутствующего источника просто ничего не делает.
 
 Начиная со схемы v6 адрес замера разложен по трём колонкам: `siteName`, `roomName` и `label`. Последняя означает **источник** и сохранила прежний смысл — если бы в неё писался весь путь, на границе обновления строка изменилась бы и разорвала тренды с фильтром графика.
+
+### Таблицы каталога (v6)
+
+| Таблица | Ключевые колонки | Заметки |
+|---|---|---|
+| `Sites` — места | `name` UNIQUE, `city`, `latitude` / `longitude`, `anchorAccuracyMeters`, `anchorSamples`, `radiusMeters` (по умолчанию 150), `lastUsedAt` | Координаты — «якорь» места для автоподстановки; пустые, пока место не привязано. |
+| `Rooms` — комнаты | `siteId`, `name`, `lastUsedAt`; UNIQUE(`siteId`, `name`) | Уровень необязательный. |
+| `SamplingPoints` — источники | `siteId`, `roomId` (NULL — источник прямо на месте), `name`, `legacyLabel`, `lastUsedAt` | `legacyLabel` заполняет только миграция v6 — см. ниже. |
+
+**Уникальность источника — двумя частичными индексами, а не `UNIQUE(...)`.** В SQLite `NULL` в составном уникальном ключе считаются различными, и две «Скважины» без комнаты под одним местом прошли бы обе:
+
+```sql
+CREATE UNIQUE INDEX ux_sampling_points_room ON sampling_points (site_id, room_id, name) WHERE room_id IS NOT NULL;
+CREATE UNIQUE INDEX ux_sampling_points_site ON sampling_points (site_id, name)          WHERE room_id IS NULL;
+```
+
+**Вставка — `insertOrIgnore` с последующим чтением**, а не «сначала проверить, потом вставить»: между проверкой и вставкой успевает пролезть второй вызов (кнопка «+» и submit с клавиатуры срабатывают почти одновременно), и база отвечает `UNIQUE constraint failed`.
+
+**Удаление — явной транзакцией**, а не `ON DELETE CASCADE`: каскад в SQLite работает только при `PRAGMA foreign_keys = ON`, а включать его для всей базы ради одной операции значит заодно поменять поведение всех остальных таблиц.
+
+**`legacyLabel` склеивает историю через границу 1.4.0.** У замеров до неё `siteName` пуст, и по структуре они не найдутся как база сравнения. Поэтому `latestForPlace` для мигрировавшего источника дополнительно ищет замеры с `siteName IS NULL` и `label = legacyLabel`. У созданных вручную источников поле обязано оставаться пустым — иначе новый «Дача · Фильтр» присвоил бы себе историю старого «Фильтра», сделанного дома.
+
+### Привязка мест к координатам
+
+Автоподстановка места собрана из трёх чистых функций в `lib/location/` — без `geolocator`, без drift и без Flutter, поэтому проверяются в `test/geo_matching_test.dart` без устройства.
+
+| Функция | Файл | Правило |
+|---|---|---|
+| `distanceMeters` | `geo_distance.dart` | Гаверсинус через `atan2`, радиус Земли 6 371 008.8 м. |
+| `matchSite` | `site_match.dart` | Место — кандидат, если расстояние до якоря ≤ `radiusMeters` + погрешность фикса. Из нескольких кандидатов ближайший выбирается, только если следующий **вдвое** дальше; иначе не выбирается никто. |
+| `updateAnchor` | `site_anchor.dart` | Первый фикс становится якорем. Следующие усредняются с весом 1/погрешность², погрешность ограничена снизу 5 м. Фикс дальше `max(3 × радиус, 500 м)` отбрасывается как выброс. |
+| `anchorFromFixes` | `site_anchor.dart` | Одноразовый якорь из истории при миграции v6 — только если ≥ 80 % фиксов лежат в 200 м от медианы. |
+
+Почему именно так:
+
+- **Погрешность фикса прибавляется к радиусу.** При точности в сотню метров требовать попадания в 150 м значило бы не срабатывать ровно там, где подстановка нужнее всего, — в помещении.
+- **Неоднозначность — это отказ, а не выбор наугад.** Две квартиры в соседних домах не должны молча подменять друг друга: ошибка подстановки дороже её отсутствия, потому что замер уходит в историю не туда.
+- **Пол точности 5 м.** Платформа иногда рапортует единицы метров и даже ноль; без пола вес такого фикса ушёл бы в бесконечность, и один случайный замер намертво зафиксировал бы якорь.
+- **Медиана, а не среднее, при миграции.** У пользователя, мерившего и дома, и на даче, центроид оказался бы посреди поля между ними. Медиана позволяет распознать такой разброс и не привязывать место вовсе — якорь появится сам при первом сохранении.
+
+Якорь учится при каждом сохранении замера с координатами (`ReadingPage._learnAnchor`). Сама подстановка берёт координаты через `LocationService.currentLocationIfGranted`: этот метод **никогда** не показывает системный диалог разрешений — иначе диалог переехал бы с осознанного «Сохранить» на простое открытие экрана.
 
 Сортировка каталога — недавно использованные сверху, затем по алфавиту:
 
@@ -145,24 +194,41 @@ MigrationStrategy get migration => MigrationStrategy(
 
 | Метод | Что делает | Возвращает |
 |---|---|---|
-| `save(deviceId, reading, observedAt, {label})` | Вставка новой записи | `int` — id вставленной строки. Нужен для undo. |
+| `save(deviceId, reading, observedAt, {place, location, normsProfile})` | Вставка новой записи. Адрес раскладывается по `siteName` / `roomName` / `label` после нормализации имён. | `int` — id вставленной строки. Нужен для undo. |
 | `recent({deviceId, limit})` | Список последних, `desc by observedAt`. | `List<Measurement>` |
 | `watchRecent({deviceId, limit})` | Стрим последних с реактивным обновлением при insert/delete. | `Stream<List<Measurement>>` |
-| `latestForPlace(deviceId, place)` | Последний замер этого прибора в этом месте — база для сравнения «стало / было» на экране показаний. Место нормализуется тем же правилом, что при записи; отсутствие места ищется через `IS NULL`, иначе такие замеры никогда не находили бы базу. | `Measurement?` |
-| `updateLabel(id, label)` | Меняет только колонку `label`. Пустая строка из пробелов автоматически становится `null`. | `int` — затронутых строк (0 / 1). |
+| `latestForPlace(deviceId, place, {legacyLabel})` | Последний замер этого прибора по этому адресу — база для сравнения «стало / было» на экране показаний. Имена нормализуются тем же правилом, что при записи; пустой уровень ищется через `IS NULL`. `legacyLabel` подтягивает замеры до 1.4.0 — см. «Таблицы каталога». | `Measurement?` |
+| `updatePlace(id, place)` | Меняет адрес у сохранённой записи — из детального просмотра, через тот же каталог, что и экран показаний. | `int` — затронутых строк (0 / 1). |
 | `deleteById(id)` | Удаляет одну запись. | `int` — затронутых строк (0 / 1). |
 | `restoreFromMeasurement(m)` | Восстанавливает удалённую запись с её исходным id через `InsertMode.insertOrReplace`. Используется в undo для swipe-to-delete и FAB «Сохранить → Отменить». | `int` — затронутых строк. |
 | `clear({deviceId})` | Полная очистка таблицы. | `Future<void>` |
+
+### Методы PlaceCatalogRepository
+
+Каталог мест живёт в том же файле `repository.dart` и работает через тот же `AppDatabase`.
+
+| Метод | Что делает |
+|---|---|
+| `watchSites()` / `watchRooms()` / `watchSources()` | Три уровня каталога стримами — для `sitesProvider` и соседей. Недавно использованные сверху. |
+| `addSite(name, {city})` / `addRoom(siteId, name)` / `addSource(siteId, name, {roomId})` | Добавить или вернуть существующее с тем же именем. Пустое имя — `ArgumentError`: до базы оно доходить не должно, UI отсекает его раньше. |
+| `renameSite` / `renameRoom` / `renameSource` | Переименование. История не меняется — в ней имена на момент замера. |
+| `markSourceUsed(id)` | Поднимает источник в начало списка вместе с его комнатой и местом. Для удалённого источника ничего не делает. |
+| `setSiteAnchor(siteId, anchor)` | Записать якорь места или стереть его (`null`) — ручная привязка и сброс. |
+| `sourceByLegacyLabel(label)` | Найти мигрировавший источник по плоскому имени — для переноса выбора из настроек версий до 1.4.0. |
+| `deleteSite` / `deleteRoom` | Удаление явной транзакцией вместе с вложенными уровнями. |
+| `deleteSource` | Удаление одного источника — вложенного у него нет. |
+
+Тесты — в `test/place_catalog_repository_test.dart`.
 
 **Тесты CRUD-операций** — в `test/history_repository_test.dart`. Используется `AppDatabase.forTesting(NativeDatabase.memory())` — drift работает без файла и без `sqlite3_flutter_libs` инициализации (на Windows и Linux нативный sqlite подбирается автоматически).
 
 ### Группировка по дням
 
-`groupMeasurementsByDay(rows, {now})` в `lib/history/grouping.dart` — top-level функция, отдельная от UI. Принимает список `Measurement` (предполагается `desc by observedAt`), возвращает `List<MeasurementDayGroup>` в порядке первого появления каждого дня.
+`groupMeasurementsByDay(rows, l10n, {now})` в `lib/history/grouping.dart` — top-level функция, отдельная от UI. Принимает список `Measurement` (предполагается `desc by observedAt`), возвращает `List<MeasurementDayGroup>` в порядке первого появления каждого дня.
 
-Названия групп: «Сегодня» (diff=0), «Вчера» (diff=1), `dd.MM.yyyy` (остальные). Параметр `now` опциональный — в production не передаётся, в тестах фиксируется для детерминированности.
+Названия групп: «Сегодня» (diff=0), «Вчера» (diff=1), `dd.MM.yyyy` (остальные); первые два берутся из словаря. Параметр `now` опциональный — в production не передаётся, в тестах фиксируется для детерминированности.
 
-Тесты — в `test/measurement_grouping_test.dart` (8 случаев: пустой ввод, граница 23:59→00:00, порядок групп и т.д.).
+Тесты — в `test/measurement_grouping_test.dart`: пустой ввод, граница 23:59→00:00, порядок групп и соседние случаи.
 
 ### Реактивность
 
@@ -215,8 +281,13 @@ WaterQualityOverview.compute(values, profile: profile, l10n: l10n);
 `go_router` 14.x. Конфиг — `lib/router.dart`:
 
 ```
-/                  HomePage (сканирование)
-/device  → extra=BluetoothDevice → ShellPage с 3 вкладками
+/                  HomePage — сканирование
+/device            ShellPage с 3 вкладками (показания · история · настройки); extra = BluetoothDevice
+/history           HistoryPage отдельным экраном — история без подключения к прибору
+/history/detail    HistoryDetailPage — свайп между записями; extra = HistoryDetailArgs
+/places            PlacesPage — места, комнаты, источники и привязка к координатам
+/help              HelpPage — справка; extra = ключ параметра для фокуса (необязательно)
+/debug-commands    DebugCommandsPage — подбор байтов команд; extra = BluetoothDevice
 ```
 
 Переход на устройство — `context.push('/device', extra: device)`. Внутри `ShellPage` — `IndexedStack` с табами; смена таба — `setState`, не маршрутизация (быстрее, сохраняет state экранов).
